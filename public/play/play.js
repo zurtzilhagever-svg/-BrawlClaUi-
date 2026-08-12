@@ -189,6 +189,7 @@ const characterImages = Object.fromEntries(["blaze", "tank", "spark", "medic"].m
   image.src = `/characters/${id}.png`;
   return [id, image];
 }));
+const motionState = new Map();
 
 nameInput.value = localStorage.getItem("couchbrawl-name") || "";
 languageSelect.value = localStorage.getItem(languageKey) || "system";
@@ -456,16 +457,68 @@ GamepadController.onInput(next => {
   if (controlMode === "gamepad") Object.assign(input, next);
 });
 
-function drawCharacter(p) {
+function motionFor(p, now) {
+  const previous = motionState.get(p.id) || { x: p.x, y: p.y, phase: 0 };
+  const distance = Math.hypot(p.x - previous.x, p.y - previous.y);
+  const moving = p.alive && distance > .18;
+  const phase = moving ? previous.phase + distance * .42 : previous.phase;
+  motionState.set(p.id, { x: p.x, y: p.y, phase });
+  return {
+    moving,
+    bob: moving ? Math.sin(phase * 2) * 1.7 : 0,
+    leg: moving ? Math.sin(phase) : 0
+  };
+}
+
+function drawBoomerLegs(motion) {
+  const swing = motion.leg * 8;
+  ctx.save();
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+  ctx.strokeStyle = "#2b2f31";
+  ctx.lineWidth = 6;
+  ctx.beginPath();
+  ctx.moveTo(-7, 9);
+  ctx.lineTo(-10 - swing * .35, 21);
+  ctx.lineTo(-12 - swing, 34);
+  ctx.moveTo(7, 9);
+  ctx.lineTo(10 + swing * .35, 21);
+  ctx.lineTo(12 + swing, 34);
+  ctx.stroke();
+  ctx.strokeStyle = "#6f5132";
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(-7, 9);
+  ctx.lineTo(-10 - swing * .35, 21);
+  ctx.lineTo(-12 - swing, 34);
+  ctx.moveTo(7, 9);
+  ctx.lineTo(10 + swing * .35, 21);
+  ctx.lineTo(12 + swing, 34);
+  ctx.stroke();
+  ctx.fillStyle = "#171717";
+  ctx.beginPath();
+  ctx.ellipse(-13 - swing, 36, 8, 3, 0, 0, Math.PI * 2);
+  ctx.ellipse(13 + swing, 36, 8, 3, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+}
+
+function drawCharacter(p, motion) {
   const image = characterImages[p.character];
   if (image?.complete && image.naturalWidth) {
     ctx.save();
-    ctx.beginPath();
-    ctx.arc(0, 0, 24, 0, Math.PI * 2);
-    ctx.clip();
-    ctx.drawImage(image, -24, -24, 48, 48);
+    ctx.translate(0, p.character === "blaze" ? -12 + motion.bob : 0);
+    if (p.character === "blaze") {
+      ctx.drawImage(image, -24, -38, 48, 72);
+      if (motion.moving) drawBoomerLegs(motion);
+    } else {
+      ctx.beginPath();
+      ctx.arc(0, 0, 24, 0, Math.PI * 2);
+      ctx.clip();
+      ctx.drawImage(image, -24, -24, 48, 48);
+    }
     ctx.restore();
-    return;
+    return true;
   }
 
   const fill = p.ghost ? "#b8d9ff" : p.color;
@@ -507,9 +560,11 @@ function drawCharacter(p) {
     ctx.fillRect(-4, -14, 8, 28);
     ctx.fillRect(-14, -4, 28, 8);
   }
+  return false;
 }
 
 function draw() {
+  const now = performance.now();
   const g = ctx.createLinearGradient(0, 0, 800, 600);
   g.addColorStop(0, "#4d837b");
   g.addColorStop(1, "#2e504c");
@@ -549,6 +604,7 @@ function draw() {
     ctx.fillText(item.type === "gem" ? "G" : "C", item.x, item.y + 8);
   }
   for (const p of players) {
+    const motion = motionFor(p, now);
     ctx.save();
     ctx.translate(p.x, p.y);
     ctx.globalAlpha = p.alive ? 1 : .38;
@@ -556,7 +612,7 @@ function draw() {
     ctx.beginPath();
     ctx.ellipse(4, 18, 24, 8, 0, 0, Math.PI * 2);
     ctx.fill();
-    drawCharacter(p);
+    const imageCharacter = drawCharacter(p, motion);
     if (p.team) {
       ctx.strokeStyle = p.team === "red" ? "#ff606c" : "#55bfff";
       ctx.lineWidth = 5;
@@ -601,11 +657,13 @@ function draw() {
       ctx.arc(0, 0, 32, 0, Math.PI * 2);
       ctx.stroke();
     }
-    ctx.fillStyle = "#fff";
-    ctx.beginPath();
-    ctx.arc(-7, -3, 4, 0, Math.PI * 2);
-    ctx.arc(7, -3, 4, 0, Math.PI * 2);
-    ctx.fill();
+    if (!imageCharacter) {
+      ctx.fillStyle = "#fff";
+      ctx.beginPath();
+      ctx.arc(-7, -3, 4, 0, Math.PI * 2);
+      ctx.arc(7, -3, 4, 0, Math.PI * 2);
+      ctx.fill();
+    }
     if (p.alive) {
       ctx.fillStyle = "#1a223c";
       ctx.fillRect(-22, -34, 44, 5);
