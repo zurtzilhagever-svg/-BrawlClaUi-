@@ -1,0 +1,7 @@
+{
+  "appId": "com.couchbrawl.app",
+  "appName": "CouchBrawl",
+  "webDir": "public",
+  "bundledWebRuntime": false,
+  "server": { "androidScheme": "https", "allowNavigation": ["*"], "cleartext": false }
+}

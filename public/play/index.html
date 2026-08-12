@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+  <meta name="theme-color" content="#11172b">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="apple-touch-icon" href="/icons/icon.svg">
+  <title>CouchBrawl</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <section id="lobby" class="lobby">
+    <p class="brand">COUCH BRAWL</p>
+    <h1 data-i18n="title">Brawl anywhere.</h1>
+    <p data-i18n="subtitle">Choose a brawler, game mode, and controls.</p>
+    <label for="language" data-i18n="languageLabel">LANGUAGE</label>
+    <select id="language">
+      <option value="system" data-i18n="languageSystem">Use device language</option>
+      <option value="en">English</option>
+      <option value="he">עברית</option>
+    </select>
+    <input id="name" maxlength="14" placeholder="Your name" autocomplete="nickname" data-i18n-placeholder="namePlaceholder">
+
+    <label data-i18n="brawlerLabel">YOUR BRAWLER</label>
+    <div id="characters" class="choice-grid">
+      <button data-character="blaze" class="selected"><span class="portrait blaze"></span><img class="char-img" src="/characters/blaze.png" alt="" onerror="this.hidden=true"><span>Boomer</span><small data-i18n="blazeDesc">Jet dash</small></button>
+      <button data-character="tank"><span class="portrait tank"></span><img class="char-img" src="/characters/tank.png" alt="" onerror="this.hidden=true"><span>Tank</span><small data-i18n="tankDesc">Heavy shield</small></button>
+      <button data-character="spark"><span class="portrait spark"></span><img class="char-img" src="/characters/spark.png" alt="" onerror="this.hidden=true"><span>Spark</span><small data-i18n="sparkDesc">Fast striker</small></button>
+      <button data-character="medic"><span class="portrait medic"></span><img class="char-img" src="/characters/medic.png" alt="" onerror="this.hidden=true"><span>Medic</span><small data-i18n="medicDesc">Self heal</small></button>
+    </div>
+
+    <label data-i18n="modeLabel">GAME MODE</label>
+    <select id="mode">
+      <option value="survival" data-i18n="modeSurvival">Survival - bot waves</option>
+      <option value="brawl" data-i18n="modeBrawl">Solo Brawl - last alive</option>
+      <option value="gems" data-i18n="modeGems">Gem Grab - 10 gems</option>
+      <option value="showdown" data-i18n="modeShowdown">Showdown - last alive</option>
+      <option value="coins" data-i18n="modeCoins">Coin Rush - 15 coins</option>
+      <option value="zone" data-i18n="modeZone">Zone Control - Red vs Blue</option>
+      <option value="soloZone" data-i18n="modeSoloZone">Solo Zone Control - 15 seconds</option>
+    </select>
+
+    <label data-i18n="controlsLabel">CONTROLS</label>
+    <select id="control-mode">
+      <option value="touch" data-i18n="controlTouch">Phone / touch</option>
+      <option value="keyboard" data-i18n="controlKeyboard">Computer keyboard</option>
+      <option value="gamepad" data-i18n="controlGamepad">Bluetooth / USB controller</option>
+    </select>
+    <div id="keyboard-panel" class="key-panel" hidden>
+      <span data-i18n="keysMove">ARROWS</span>
+      <span data-i18n="keysAttack">J ATTACK</span>
+      <span data-i18n="keysSpecial">K SPECIAL</span>
+    </div>
+
+    <section class="room-preview" aria-live="polite">
+      <span data-i18n="roomCodeLabel">ROOM CODE</span>
+      <strong id="lobby-room-code">----</strong>
+      <small id="match-status" data-i18n="findingPlayers">Finding players...</small>
+      <div id="phone-connect" class="phone-connect" hidden>
+        <img id="phone-qr" alt="QR code for phone controller">
+        <div>
+          <span>PHONE CONTROLLER</span>
+          <a id="phone-link" href="/mobile/" target="_blank" rel="noreferrer">Open on phone</a>
+          <small>Phone and computer must be on the same Wi-Fi.</small>
+        </div>
+      </div>
+    </section>
+
+    <button id="create" data-i18n="playNow">PLAY NOW</button>
+    <div class="divider" data-i18n="joinDivider">OR JOIN A FRIEND</div>
+    <div class="join-row">
+      <input id="code" maxlength="4" placeholder="CODE" data-i18n-placeholder="codePlaceholder">
+      <button id="join" data-i18n="join">JOIN</button>
+    </div>
+    <p id="error" role="alert"></p>
+    <button id="install" hidden data-i18n="install">INSTALL APP</button>
+  </section>
+
+  <main id="game" hidden>
+    <header>
+      <button id="leave" aria-label="Leave game" data-i18n-aria-label="leaveAria">x</button>
+      <span id="room-label">ROOM ----</span>
+      <span id="count">1 PLAYER</span>
+    </header>
+    <canvas id="arena" width="800" height="600"></canvas>
+    <div class="hud">
+      <strong id="objective" data-i18n="initialObjective">Share the room code to play together</strong>
+      <span id="help"></span>
+    </div>
+    <section class="controls">
+      <div id="stick-zone">
+        <div id="stick-base"><div id="stick-knob"></div></div>
+      </div>
+      <div class="buttons">
+        <button id="attack" class="action attack" data-i18n="attack">ATTACK</button>
+        <button id="special" class="action special" data-i18n="special">SPECIAL</button>
+      </div>
+    </section>
+  </main>
+
+  <script src="/native-config.js"></script>
+  <script src="/shared/runtime.js"></script>
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="/shared/gamepad.js"></script>
+  <script src="/shared/qr-generator.js"></script>
+  <script src="play.js"></script>
+</body>
+</html>

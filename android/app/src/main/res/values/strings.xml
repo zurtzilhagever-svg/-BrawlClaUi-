@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">CouchBrawl</string>
+    <string name="title_activity_main">CouchBrawl</string>
+    <string name="package_name">com.couchbrawl.app</string>
+    <string name="custom_url_scheme">com.couchbrawl.app</string>
+</resources>
