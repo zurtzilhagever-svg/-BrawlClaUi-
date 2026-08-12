@@ -2,11 +2,11 @@
 const express = require("express"), http = require("http"), os = require("os"), path = require("path"), QRCode = require("qrcode");
 const { Server } = require("socket.io");
 const app = express(), server = http.createServer(app), io = new Server(server, { cors: { origin: "*" } });
-const PORT = Number(process.env.PORT) || 3000, RECONNECT_MS = 30_000, MAX_PLAYERS = 8;
+const PORT = Number(process.env.PORT) || 3000, RECONNECT_MS = 30_000, MAX_PLAYERS = 8, SPECIAL_HITS = 5;
 const rooms = new Map(), socketIndex = new Map();
 const COLORS = ["#ff5964", "#36c8ff", "#ffd54a", "#a875ff", "#52e084", "#ff8e4f", "#fa73bd", "#80a7ff"];
 const CHARACTERS = {
-  blaze: { name: "Boomer", hp: 100, speed: 4, damage: 14, range: 145, rate: 420, special: "Jet dash" },
+  blaze: { name: "\u05d1\u05d5\u05de\u05e8", hp: 100, speed: 4, damage: 14, range: 145, rate: 420, special: "Jet dash" },
   tank: { name: "Tank", hp: 180, speed: 2.65, damage: 24, range: 92, rate: 650, special: "Iron shield" },
   spark: { name: "Spark", hp: 82, speed: 5.1, damage: 10, range: 165, rate: 300, special: "Lightning dash" },
   medic: { name: "Medic", hp: 115, speed: 3.45, damage: 9, range: 120, rate: 440, special: "Heal pulse" },
@@ -44,7 +44,7 @@ function clamp(n, min, max) { return Math.max(min, Math.min(max, n)); }
 function randomSpot() { return { x: 90 + Math.random() * 620, y: 90 + Math.random() * 420 }; }
 function makeItems(amount, type) { return Array.from({ length: amount }, () => ({ ...randomSpot(), type })); }
 function gameFor(mode) { return { startedAt: Date.now(), winner: null, winnerTeam: null, items: mode === "gems" ? makeItems(12, "gem") : mode === "coins" ? makeItems(18, "coin") : [], zoneScore: { red: 0, blue: 0 }, safeRadius: 350, nextItemAt: 0, nextBotAt: 0, botSerial: 0, wave: 0 }; }
-function publicPlayer(p) { return { id:p.id, name:p.name, color:p.color, team:p.team, character:p.character, characterName:CHARACTERS[p.character]?.name || p.character, bot:p.bot, x:p.x, y:p.y, health:Math.ceil(p.health), maxHealth:p.maxHealth, alive:p.alive, ghost:p.ghost, ghostItem:p.ghostItem, ghostItemName:p.ghostItem && GHOST_ITEM_NAMES[p.ghostItem], ghostPing:Date.now() < (p.pingUntil || 0), haunted:Date.now() < (p.hauntedUntil || 0), walled:Date.now() < (p.wallUntil || 0), inked:Date.now() < (p.inkUntil || 0), hit:Date.now() < (p.hitUntil || 0), score:p.score, gems:p.gems, coins:p.coins, connected:p.connected, shield:Date.now() < p.shieldUntil }; }
+function publicPlayer(p) { return { id:p.id, name:p.name, color:p.color, team:p.team, character:p.character, characterName:CHARACTERS[p.character]?.name || p.character, bot:p.bot, x:p.x, y:p.y, health:Math.ceil(p.health), maxHealth:p.maxHealth, alive:p.alive, ghost:p.ghost, ghostItem:p.ghostItem, ghostItemName:p.ghostItem && GHOST_ITEM_NAMES[p.ghostItem], ghostPing:Date.now() < (p.pingUntil || 0), haunted:Date.now() < (p.hauntedUntil || 0), walled:Date.now() < (p.wallUntil || 0), inked:Date.now() < (p.inkUntil || 0), hit:Date.now() < (p.hitUntil || 0), score:p.score, gems:p.gems, coins:p.coins, connected:p.connected, shield:Date.now() < p.shieldUntil, specialCharge:p.specialCharge || 0, specialRequired:SPECIAL_HITS, specialReady:(p.specialCharge || 0) >= SPECIAL_HITS }; }
 function players(room) { return [...room.players.values()].map(publicPlayer); }
 function humanPlayers(room) { return [...room.players.values()].filter(player => !player.bot); }
 function meta(room) { const mode = MODES[room.mode], survivalTime = room.mode === "survival" ? Math.floor(((room.game.endedAt || Date.now()) - room.game.startedAt) / 1000) : 0, winner = room.players.has(room.game.winner) ? publicPlayer(room.players.get(room.game.winner)) : room.game.winner, botCount = [...room.players.values()].filter(p => p.bot).length; return { mode:room.mode, modeName:mode.name, objective:mode.objective, target:mode.target, winner, winnerTeam:room.game.winnerTeam, items:room.game.items, safeRadius:room.game.safeRadius, zoneScore:room.game.zoneScore, survivalTime, wave:room.game.wave, botCount }; }
@@ -76,13 +76,14 @@ function joinPlayer(socket, roomCode, playerId, name, character, ack) {
       p.character = character; p.maxHealth = stats.hp; p.health = Math.min(stats.hp, Math.max(1, Math.round(stats.hp * ratio)));
     }
   }
-  else { const c = PLAYABLE_CHARACTERS.has(character) ? character : "blaze", stats = CHARACTERS[c], spot = randomSpot(), redCount=[...room.players.values()].filter(p=>p.team==="red").length, blueCount=[...room.players.values()].filter(p=>p.team==="blue").length, team=room.mode==="zone"?(redCount<=blueCount?"red":"blue"):null; p = { id, socketId:socket.id, name:String(name || "Player").trim().slice(0, 14) || "Player", character:c, color:COLORS[room.players.size % COLORS.length], team, x:spot.x, y:spot.y, maxHealth:stats.hp, health:stats.hp, alive:true, score:0, gems:0, coins:0, input:{x:0,y:0,attack:false,special:false}, lastAttack:0, lastSpecial:false, shieldUntil:0, connected:true }; room.players.set(id, p); }
+  else { const c = PLAYABLE_CHARACTERS.has(character) ? character : "blaze", stats = CHARACTERS[c], spot = randomSpot(), redCount=[...room.players.values()].filter(p=>p.team==="red").length, blueCount=[...room.players.values()].filter(p=>p.team==="blue").length, team=room.mode==="zone"?(redCount<=blueCount?"red":"blue"):null, defaultName=`Player ${humanPlayers(room).length + 1}`, displayName=String(name || "").trim().slice(0, 14) || defaultName; p = { id, socketId:socket.id, name:displayName, character:c, color:COLORS[room.players.size % COLORS.length], team, x:spot.x, y:spot.y, maxHealth:stats.hp, health:stats.hp, alive:true, score:0, gems:0, coins:0, input:{x:0,y:0,attack:false,special:false}, lastAttack:0, lastSpecial:false, specialCharge:0, shieldUntil:0, connected:true }; room.players.set(id, p); }
   socketIndex.set(socket.id, { code:roomCode, playerId:id }); socket.join(roomCode); ack({ ok:true, code:roomCode, player:publicPlayer(p), players:players(room), meta:meta(room) }); broadcast(room);
 }
 function end(room, winner) { if (room.game.winner || !winner) return; room.game.winner = winner.id; broadcast(room); }
 function endTeam(room, team) { if (room.game.winner || room.game.winnerTeam) return; room.game.winnerTeam = team; broadcast(room); }
 function kill(room, victim, killer) {
   if (!victim.alive) return; victim.alive = false; victim.health = 0; victim.diedAt = Date.now();
+  victim.specialCharge = 0;
   if (victim.bot) {
     if (killer && killer.id !== victim.id) {
       killer.score += 1;
@@ -102,9 +103,9 @@ function kill(room, victim, killer) {
 function attack(room, attacker, now) {
   const stats = CHARACTERS[attacker.character]; if (now - attacker.lastAttack < stats.rate) return; attacker.lastAttack = now;
   let victim, distance = Infinity; for (const p of room.players.values()) { const d=Math.hypot(p.x-attacker.x,p.y-attacker.y); if (p.id!==attacker.id && p.alive && p.connected && !(room.mode==="zone" && p.team===attacker.team) && !(room.mode==="survival" && Boolean(p.bot)===Boolean(attacker.bot)) && d < distance) { victim=p; distance=d; } }
-  if (!victim || distance > stats.range) return; const damage = stats.damage * (now < victim.shieldUntil ? .35 : 1); victim.health -= damage; victim.hitUntil = now + 150; if (victim.health <= 0) kill(room, victim, attacker);
+  if (!victim || distance > stats.range) return; const damage = stats.damage * (now < victim.shieldUntil ? .35 : 1); victim.health -= damage; victim.hitUntil = now + 150; if (!attacker.bot && PLAYABLE_CHARACTERS.has(attacker.character)) attacker.specialCharge = Math.min(SPECIAL_HITS, (attacker.specialCharge || 0) + 1); if (victim.health <= 0) kill(room, victim, attacker);
 }
-function special(room, p, now) { if (p.lastSpecial || now - (p.lastSpecialAt || 0) < 6000) return; p.lastSpecialAt = now; const stats = CHARACTERS[p.character]; if (p.character === "tank") p.shieldUntil = now + 2600; else if (p.character === "medic") p.health = Math.min(stats.hp, p.health + 42); else { const len=Math.hypot(p.input.x,p.input.y)||1; p.x=clamp(p.x+p.input.x/len*105,28,772); p.y=clamp(p.y+p.input.y/len*105,28,572); } }
+function special(room, p, now) { if (p.lastSpecial || (p.specialCharge || 0) < SPECIAL_HITS) return; p.specialCharge = 0; p.lastSpecialAt = now; const stats = CHARACTERS[p.character]; if (p.character === "tank") p.shieldUntil = now + 2600; else if (p.character === "medic") p.health = Math.min(stats.hp, p.health + 42); else { const len=Math.hypot(p.input.x,p.input.y)||1; p.x=clamp(p.x+p.input.x/len*105,28,772); p.y=clamp(p.y+p.input.y/len*105,28,572); } }
 function spawnBot(room, now) {
   const count = [...room.players.values()].filter(p => p.bot).length;
   const cap = Math.min(9, 2 + Math.floor(room.game.wave / 2));

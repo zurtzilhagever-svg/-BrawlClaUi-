@@ -11,11 +11,10 @@ socket.on("game:state", next => { const previous = players.length; players = nex
 socket.on("room:closed", () => message("Host room closed"));
 
 function motionFor(p){const previous=motionState.get(p.id)||{x:p.x,y:p.y,phase:0},distance=Math.hypot(p.x-previous.x,p.y-previous.y),moving=p.alive&&distance>.18,phase=moving?previous.phase+distance*.42:previous.phase;motionState.set(p.id,{x:p.x,y:p.y,phase});return{moving,bob:moving?Math.sin(phase*2)*1.7:0,leg:moving?Math.sin(phase):0};}
-function drawBoomerLegs(motion){const swing=motion.leg*8;ctx.save();ctx.lineCap="round";ctx.lineJoin="round";ctx.strokeStyle="#2b2f31";ctx.lineWidth=6;ctx.beginPath();ctx.moveTo(-7,9);ctx.lineTo(-10-swing*.35,21);ctx.lineTo(-12-swing,34);ctx.moveTo(7,9);ctx.lineTo(10+swing*.35,21);ctx.lineTo(12+swing,34);ctx.stroke();ctx.strokeStyle="#6f5132";ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(-7,9);ctx.lineTo(-10-swing*.35,21);ctx.lineTo(-12-swing,34);ctx.moveTo(7,9);ctx.lineTo(10+swing*.35,21);ctx.lineTo(12+swing,34);ctx.stroke();ctx.fillStyle="#171717";ctx.beginPath();ctx.ellipse(-13-swing,36,8,3,0,0,Math.PI*2);ctx.ellipse(13+swing,36,8,3,0,0,Math.PI*2);ctx.fill();ctx.restore();}
 
 function drawCharacter(p,motion) {
   const image = characterImages[p.character];
-  if (image?.complete && image.naturalWidth) { ctx.save();ctx.translate(0,p.character==="blaze"?-12+motion.bob:0);if(p.character==="blaze"){ctx.drawImage(image,-24,-38,48,72);if(motion.moving)drawBoomerLegs(motion);}else{ctx.beginPath();ctx.arc(0,0,24,0,Math.PI*2);ctx.clip();ctx.drawImage(image,-24,-24,48,48);}ctx.restore();return true; }
+  if (image?.complete && image.naturalWidth) { ctx.save();ctx.translate(0,p.character==="blaze"?-14+motion.bob*.35:0);if(p.character==="blaze"){ctx.drawImage(image,-25,-40,50,76);}else{ctx.beginPath();ctx.arc(0,0,24,0,Math.PI*2);ctx.clip();ctx.drawImage(image,-24,-24,48,48);}ctx.restore();return true; }
   ctx.fillStyle = p.ghost ? "#b8d9ff" : p.color; ctx.beginPath();
   if (p.character === "tank") ctx.rect(-23,-22,46,42);
   else if (p.character === "spark") { ctx.moveTo(0,-27);ctx.lineTo(24,0);ctx.lineTo(0,27);ctx.lineTo(-24,0);ctx.closePath(); }

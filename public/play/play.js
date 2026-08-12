@@ -26,8 +26,8 @@ const keyboardBindings = {
   special: "KeyK"
 };
 const playerKey = "couchbrawl-player-id";
-const playerId = localStorage.getItem(playerKey) || crypto.randomUUID();
-localStorage.setItem(playerKey, playerId);
+const playerId = sessionStorage.getItem(playerKey) || crypto.randomUUID();
+sessionStorage.setItem(playerKey, playerId);
 const languageKey = "couchbrawl-language";
 const translations = {
   en: {
@@ -37,7 +37,8 @@ const translations = {
     languageSystem: "Use device language",
     namePlaceholder: "Your name",
     brawlerLabel: "YOUR BRAWLER",
-    blazeDesc: "Balanced dash",
+    boomerName: "Boomer",
+    blazeDesc: "",
     tankDesc: "Heavy shield",
     sparkDesc: "Fast striker",
     medicDesc: "Self heal",
@@ -93,66 +94,67 @@ const translations = {
     kos: "KOs"
   },
   he: {
-    title: "קרב מכל מכשיר.",
-    subtitle: "בחר דמות, מצב משחק ושליטה.",
-    languageLabel: "שפה",
-    languageSystem: "לפי שפת המכשיר",
-    namePlaceholder: "השם שלך",
-    brawlerLabel: "דמות",
-    blazeDesc: "מאוזן עם דאש",
-    tankDesc: "הרבה חיים ומגן",
-    sparkDesc: "מהיר מאוד",
-    medicDesc: "ריפוי עצמי",
-    modeLabel: "מצב משחק",
-    modeSurvival: "הישרדות - גלי בוטים",
-    modeBrawl: "קרב יחיד - האחרון שנשאר",
-    modeGems: "איסוף יהלומים - 10 לניצחון",
-    modeShowdown: "שואודאון - האחרון שנשאר",
-    modeCoins: "מרוץ מטבעות - 15 לניצחון",
-    modeZone: "שליטה באזור - אדום מול כחול",
-    modeSoloZone: "שליטה יחיד - 15 שניות",
-    controlsLabel: "שליטה",
-    controlTouch: "טלפון / מגע",
-    controlKeyboard: "מקלדת מחשב",
-    controlGamepad: "שלט Bluetooth / USB",
-    keysMove: "חצים",
-    keysAttack: "J התקפה",
-    keysSpecial: "K מיוחד",
-    create: "צור משחק",
-    playNow: "שחק עכשיו",
-    roomCodeLabel: "קוד חדר",
-    findingPlayers: "מחפש שחקנים...",
-    readyRoom: "מוכן - שתף את הקוד או לחץ שחק",
-    joinDivider: "או הצטרף לחבר",
-    codePlaceholder: "קוד",
-    join: "הצטרף",
-    install: "התקן אפליקציה",
-    leaveAria: "צא מהמשחק",
-    initialObjective: "שתף את קוד החדר כדי לשחק יחד",
-    attack: "התקפה",
-    special: "מיוחד",
-    useItem: "השתמש",
-    ping: "סימון",
-    survivalEnded: "ההישרדות הסתיימה",
-    createAgain: "צור משחק חדש כדי לשחק שוב",
-    shareRoom: "שתף את קוד החדר כדי לשחק יחד",
-    reconnecting: "מתחבר מחדש...",
-    ghostCharge: "אתה רוח - פריט נטען כל 30 שניות",
-    targetSelected: "נבחר יעד",
-    wave: "גל",
-    survived: "שניות שרדת",
-    bots: "בוטים",
-    botSingular: "בוט",
-    botPlural: "בוטים",
-    playerSingular: "שחקן",
-    playerPlural: "שחקנים",
-    room: "חדר",
-    control: "שליטה",
-    red: "אדום",
-    blue: "כחול",
-    teamWins: "ניצחו",
-    wins: "ניצח",
-    kos: "חיסולים"
+    title: "\u05e7\u05e8\u05d1 \u05de\u05db\u05dc \u05de\u05db\u05e9\u05d9\u05e8.",
+    subtitle: "\u05d1\u05d7\u05e8 \u05d3\u05de\u05d5\u05ea, \u05de\u05e6\u05d1 \u05de\u05e9\u05d7\u05e7 \u05d5\u05e9\u05dc\u05d9\u05d8\u05d4.",
+    languageLabel: "\u05e9\u05e4\u05d4",
+    languageSystem: "\u05dc\u05e4\u05d9 \u05e9\u05e4\u05ea \u05d4\u05de\u05db\u05e9\u05d9\u05e8",
+    namePlaceholder: "\u05d4\u05e9\u05dd \u05e9\u05dc\u05da",
+    brawlerLabel: "\u05d3\u05de\u05d5\u05ea",
+    boomerName: "\u05d1\u05d5\u05de\u05e8",
+    blazeDesc: "",
+    tankDesc: "\u05d4\u05e8\u05d1\u05d4 \u05d7\u05d9\u05d9\u05dd \u05d5\u05de\u05d2\u05df",
+    sparkDesc: "\u05de\u05d4\u05d9\u05e8 \u05de\u05d0\u05d5\u05d3",
+    medicDesc: "\u05e8\u05d9\u05e4\u05d5\u05d9 \u05e2\u05e6\u05de\u05d9",
+    modeLabel: "\u05de\u05e6\u05d1 \u05de\u05e9\u05d7\u05e7",
+    modeSurvival: "\u05d4\u05d9\u05e9\u05e8\u05d3\u05d5\u05ea - \u05d2\u05dc\u05d9 \u05d1\u05d5\u05d8\u05d9\u05dd",
+    modeBrawl: "\u05e7\u05e8\u05d1 \u05d9\u05d7\u05d9\u05d3 - \u05d4\u05d0\u05d7\u05e8\u05d5\u05df \u05e9\u05e0\u05e9\u05d0\u05e8",
+    modeGems: "\u05d0\u05d9\u05e1\u05d5\u05e3 \u05d9\u05d4\u05dc\u05d5\u05de\u05d9\u05dd - 10 \u05dc\u05e0\u05d9\u05e6\u05d7\u05d5\u05df",
+    modeShowdown: "\u05e9\u05d5\u05d0\u05d5\u05d3\u05d0\u05d5\u05df - \u05d4\u05d0\u05d7\u05e8\u05d5\u05df \u05e9\u05e0\u05e9\u05d0\u05e8",
+    modeCoins: "\u05de\u05e8\u05d5\u05e5 \u05de\u05d8\u05d1\u05e2\u05d5\u05ea - 15 \u05dc\u05e0\u05d9\u05e6\u05d7\u05d5\u05df",
+    modeZone: "\u05e9\u05dc\u05d9\u05d8\u05d4 \u05d1\u05d0\u05d6\u05d5\u05e8 - \u05d0\u05d3\u05d5\u05dd \u05de\u05d5\u05dc \u05db\u05d7\u05d5\u05dc",
+    modeSoloZone: "\u05e9\u05dc\u05d9\u05d8\u05d4 \u05d9\u05d7\u05d9\u05d3 - 15 \u05e9\u05e0\u05d9\u05d5\u05ea",
+    controlsLabel: "\u05e9\u05dc\u05d9\u05d8\u05d4",
+    controlTouch: "\u05d8\u05dc\u05e4\u05d5\u05df / \u05de\u05d2\u05e2",
+    controlKeyboard: "\u05de\u05e7\u05dc\u05d3\u05ea \u05de\u05d7\u05e9\u05d1",
+    controlGamepad: "\u05e9\u05dc\u05d8 Bluetooth / USB",
+    keysMove: "\u05d7\u05e6\u05d9\u05dd",
+    keysAttack: "J \u05d4\u05ea\u05e7\u05e4\u05d4",
+    keysSpecial: "K \u05de\u05d9\u05d5\u05d7\u05d3",
+    create: "\u05e6\u05d5\u05e8 \u05de\u05e9\u05d7\u05e7",
+    playNow: "\u05e9\u05d7\u05e7 \u05e2\u05db\u05e9\u05d9\u05d5",
+    roomCodeLabel: "\u05e7\u05d5\u05d3 \u05d7\u05d3\u05e8",
+    findingPlayers: "\u05de\u05d7\u05e4\u05e9 \u05e9\u05d7\u05e7\u05e0\u05d9\u05dd...",
+    readyRoom: "\u05de\u05d5\u05db\u05df - \u05e9\u05ea\u05e3 \u05d0\u05ea \u05d4\u05e7\u05d5\u05d3 \u05d0\u05d5 \u05dc\u05d7\u05e5 \u05e9\u05d7\u05e7",
+    joinDivider: "\u05d0\u05d5 \u05d4\u05e6\u05d8\u05e8\u05e3 \u05dc\u05d7\u05d1\u05e8",
+    codePlaceholder: "\u05e7\u05d5\u05d3",
+    join: "\u05d4\u05e6\u05d8\u05e8\u05e3",
+    install: "\u05d4\u05ea\u05e7\u05df \u05d0\u05e4\u05dc\u05d9\u05e7\u05e6\u05d9\u05d4",
+    leaveAria: "\u05e6\u05d0 \u05de\u05d4\u05de\u05e9\u05d7\u05e7",
+    initialObjective: "\u05e9\u05ea\u05e3 \u05d0\u05ea \u05e7\u05d5\u05d3 \u05d4\u05d7\u05d3\u05e8 \u05db\u05d3\u05d9 \u05dc\u05e9\u05d7\u05e7 \u05d9\u05d7\u05d3",
+    attack: "\u05d4\u05ea\u05e7\u05e4\u05d4",
+    special: "\u05de\u05d9\u05d5\u05d7\u05d3",
+    useItem: "\u05d4\u05e9\u05ea\u05de\u05e9",
+    ping: "\u05e1\u05d9\u05de\u05d5\u05df",
+    survivalEnded: "\u05d4\u05d4\u05d9\u05e9\u05e8\u05d3\u05d5\u05ea \u05d4\u05e1\u05ea\u05d9\u05d9\u05de\u05d4",
+    createAgain: "\u05e6\u05d5\u05e8 \u05de\u05e9\u05d7\u05e7 \u05d7\u05d3\u05e9 \u05db\u05d3\u05d9 \u05dc\u05e9\u05d7\u05e7 \u05e9\u05d5\u05d1",
+    shareRoom: "\u05e9\u05ea\u05e3 \u05d0\u05ea \u05e7\u05d5\u05d3 \u05d4\u05d7\u05d3\u05e8 \u05db\u05d3\u05d9 \u05dc\u05e9\u05d7\u05e7 \u05d9\u05d7\u05d3",
+    reconnecting: "\u05de\u05ea\u05d7\u05d1\u05e8 \u05de\u05d7\u05d3\u05e9...",
+    ghostCharge: "\u05d0\u05ea\u05d4 \u05e8\u05d5\u05d7 - \u05e4\u05e8\u05d9\u05d8 \u05e0\u05d8\u05e2\u05df \u05db\u05dc 30 \u05e9\u05e0\u05d9\u05d5\u05ea",
+    targetSelected: "\u05e0\u05d1\u05d7\u05e8 \u05d9\u05e2\u05d3",
+    wave: "\u05d2\u05dc",
+    survived: "\u05e9\u05e0\u05d9\u05d5\u05ea \u05e9\u05e8\u05d3\u05ea",
+    bots: "\u05d1\u05d5\u05d8\u05d9\u05dd",
+    botSingular: "\u05d1\u05d5\u05d8",
+    botPlural: "\u05d1\u05d5\u05d8\u05d9\u05dd",
+    playerSingular: "\u05e9\u05d7\u05e7\u05df",
+    playerPlural: "\u05e9\u05d7\u05e7\u05e0\u05d9\u05dd",
+    room: "\u05d7\u05d3\u05e8",
+    control: "\u05e9\u05dc\u05d9\u05d8\u05d4",
+    red: "\u05d0\u05d3\u05d5\u05dd",
+    blue: "\u05db\u05d7\u05d5\u05dc",
+    teamWins: "\u05e0\u05d9\u05e6\u05d7\u05d5",
+    wins: "\u05e0\u05d9\u05e6\u05d7",
+    kos: "\u05d7\u05d9\u05e1\u05d5\u05dc\u05d9\u05dd"
   }
 };
 function deviceLanguage() {
@@ -199,7 +201,7 @@ applyControlMode();
 loadPhoneOrigin();
 
 function name() {
-  return nameInput.value.trim().slice(0, 14) || "Player";
+  return nameInput.value.trim().slice(0, 14);
 }
 
 function enter(reply) {
@@ -220,7 +222,7 @@ function enter(reply) {
 function updateLobbyRoom() {
   if (!lobbyRoomCode || !matchStatus) return;
   lobbyRoomCode.textContent = roomCode || "----";
-  matchStatus.textContent = roomCode ? `${t("readyRoom")} - ${players.filter(p => !p.bot).length}/8` : t("findingPlayers");
+  matchStatus.textContent = roomCode ? `${t("readyRoom")} - ${players.filter(p => !p.bot).length}/8` : t("initialObjective");
   updatePhoneConnect();
 }
 
@@ -246,35 +248,9 @@ function updatePhoneConnect() {
   if (window.QRGenerator) QRGenerator.setImage(phoneQr, url);
 }
 
-function autoJoinLobby() {
-  if (!socket.connected || wasPlaying) return;
-  window.clearTimeout(autoJoinTimer);
-  matchStatus.textContent = t("findingPlayers");
-  socket.emit("player:autoJoin", {
-    playerId,
-    name: name(),
-    character: selectedCharacter,
-    mode: document.querySelector("#mode").value
-  }, reply => {
-    if (!reply.ok) {
-      error.textContent = reply.error;
-      roomCode = "";
-      updateLobbyRoom();
-      return;
-    }
-    error.textContent = "";
-    roomCode = reply.code;
-    players = reply.players;
-    gameMeta = reply.meta || gameMeta;
-    localStorage.setItem("couchbrawl-room", roomCode);
-    updateLobbyRoom();
-    updateMeta();
-  });
-}
-
 function queueAutoJoin() {
   window.clearTimeout(autoJoinTimer);
-  autoJoinTimer = window.setTimeout(autoJoinLobby, 120);
+  autoJoinTimer = window.setTimeout(updateLobbyRoom, 120);
 }
 
 function updateMeta() {
@@ -351,9 +327,14 @@ socket.on("game:state", next => {
   const special = document.querySelector("#special");
   if (me?.ghost) {
     special.textContent = me.ghostItem ? t("useItem") : t("ping");
+    special.classList.remove("charging", "ready");
     document.querySelector("#help").textContent = me.ghostItem ? `${me.ghostItemName}: tap a living player, then use it` : t("ghostCharge");
   } else {
-    special.textContent = t("special");
+    const charge = Math.min(me?.specialCharge || 0, me?.specialRequired || 5);
+    const required = me?.specialRequired || 5;
+    special.textContent = charge >= required ? t("special") : `${t("special")} ${charge}/${required}`;
+    special.classList.toggle("charging", charge < required);
+    special.classList.toggle("ready", charge >= required);
   }
 });
 socket.on("game:meta", next => {
@@ -366,10 +347,9 @@ socket.on("game:meta", next => {
 socket.on("disconnect", () => { if (wasPlaying) document.querySelector("#help").textContent = t("reconnecting"); });
 socket.on("connect", () => {
   if (wasPlaying && roomCode) socket.emit("player:join", { code: roomCode, playerId, name: name(), character: selectedCharacter }, enter);
-  else autoJoinLobby();
+  else updateLobbyRoom();
 });
-if (socket.connected) autoJoinLobby();
-else updateLobbyRoom();
+updateLobbyRoom();
 
 const zone = document.querySelector("#stick-zone");
 const knob = document.querySelector("#stick-knob");
@@ -470,47 +450,13 @@ function motionFor(p, now) {
   };
 }
 
-function drawBoomerLegs(motion) {
-  const swing = motion.leg * 8;
-  ctx.save();
-  ctx.lineCap = "round";
-  ctx.lineJoin = "round";
-  ctx.strokeStyle = "#2b2f31";
-  ctx.lineWidth = 6;
-  ctx.beginPath();
-  ctx.moveTo(-7, 9);
-  ctx.lineTo(-10 - swing * .35, 21);
-  ctx.lineTo(-12 - swing, 34);
-  ctx.moveTo(7, 9);
-  ctx.lineTo(10 + swing * .35, 21);
-  ctx.lineTo(12 + swing, 34);
-  ctx.stroke();
-  ctx.strokeStyle = "#6f5132";
-  ctx.lineWidth = 3;
-  ctx.beginPath();
-  ctx.moveTo(-7, 9);
-  ctx.lineTo(-10 - swing * .35, 21);
-  ctx.lineTo(-12 - swing, 34);
-  ctx.moveTo(7, 9);
-  ctx.lineTo(10 + swing * .35, 21);
-  ctx.lineTo(12 + swing, 34);
-  ctx.stroke();
-  ctx.fillStyle = "#171717";
-  ctx.beginPath();
-  ctx.ellipse(-13 - swing, 36, 8, 3, 0, 0, Math.PI * 2);
-  ctx.ellipse(13 + swing, 36, 8, 3, 0, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.restore();
-}
-
 function drawCharacter(p, motion) {
   const image = characterImages[p.character];
   if (image?.complete && image.naturalWidth) {
     ctx.save();
-    ctx.translate(0, p.character === "blaze" ? -12 + motion.bob : 0);
+    ctx.translate(0, p.character === "blaze" ? -14 + motion.bob * .35 : 0);
     if (p.character === "blaze") {
-      ctx.drawImage(image, -24, -38, 48, 72);
-      if (motion.moving) drawBoomerLegs(motion);
+      ctx.drawImage(image, -25, -40, 50, 76);
     } else {
       ctx.beginPath();
       ctx.arc(0, 0, 24, 0, Math.PI * 2);
