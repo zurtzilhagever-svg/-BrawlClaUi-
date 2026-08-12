@@ -4,6 +4,7 @@ const { Server } = require("socket.io");
 const app = express(), server = http.createServer(app), io = new Server(server, { cors: { origin: "*" } });
 const PORT = Number(process.env.PORT) || 3000, RECONNECT_MS = 30_000, MAX_PLAYERS = 8, SPECIAL_HITS = 5;
 const rooms = new Map(), socketIndex = new Map();
+const survivalLeaders = [];
 const COLORS = ["#ff5964", "#36c8ff", "#ffd54a", "#a875ff", "#52e084", "#ff8e4f", "#fa73bd", "#80a7ff"];
 const CHARACTERS = {
   blaze: { name: "\u05d1\u05d5\u05de\u05e8", hp: 100, speed: 4, damage: 14, range: 145, rate: 420, special: "Jet dash" },
@@ -21,6 +22,31 @@ const MODES = {
   coins: { name: "Coin Rush", objective: "Collect 15 coins to win", target: 15 },
   zone: { name: "Zone Control", objective: "Red or Blue: hold the center for 35 seconds", target: 35 },
   soloZone: { name: "Solo Zone Control", objective: "Hold the center for 15 seconds", target: 15 }
+};
+const ARENA = {
+  width: 800,
+  height: 600,
+  obstacles: [
+    { x: 104, y: 126, w: 92, h: 48, kind: "stone" },
+    { x: 604, y: 126, w: 92, h: 48, kind: "stone" },
+    { x: 104, y: 426, w: 92, h: 48, kind: "stone" },
+    { x: 604, y: 426, w: 92, h: 48, kind: "stone" },
+    { x: 312, y: 86, w: 176, h: 34, kind: "stone" },
+    { x: 312, y: 480, w: 176, h: 34, kind: "stone" },
+    { x: 246, y: 246, w: 68, h: 108, kind: "crate" },
+    { x: 486, y: 246, w: 68, h: 108, kind: "crate" }
+  ],
+  bushes: [
+    { x: 214, y: 158, w: 118, h: 58 },
+    { x: 468, y: 158, w: 118, h: 58 },
+    { x: 214, y: 384, w: 118, h: 58 },
+    { x: 468, y: 384, w: 118, h: 58 },
+    { x: 352, y: 252, w: 96, h: 96 }
+  ],
+  spawnPoints: [
+    { x: 88, y: 88 }, { x: 712, y: 88 }, { x: 88, y: 512 }, { x: 712, y: 512 },
+    { x: 210, y: 300 }, { x: 590, y: 300 }, { x: 400, y: 168 }, { x: 400, y: 432 }
+  ]
 };
 const GHOST_ITEMS = ["wall", "ink", "slow", "teleport", "shareHealth"];
 const GHOST_ITEM_NAMES = { wall:"Spirit Wall", ink:"Ink Blast", slow:"Chill Curse", teleport:"Warp", shareHealth:"Life Siphon" };
@@ -41,14 +67,57 @@ app.get("/api/network", (req, res) => {
 app.get("/api/qr", async (req, res) => { try { const value = String(req.query.value || "").slice(0, 2048); if (!value) throw Error(); res.type("image/svg+xml").send(await QRCode.toString(value, { type: "svg", margin: 1, errorCorrectionLevel: "M" })); } catch { res.status(400).json({ error: "Missing or invalid value" }); } });
 function code() { const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; let result; do result = Array.from({ length: 4 }, () => chars[Math.floor(Math.random() * chars.length)]).join(""); while (rooms.has(result)); return result; }
 function clamp(n, min, max) { return Math.max(min, Math.min(max, n)); }
-function randomSpot() { return { x: 90 + Math.random() * 620, y: 90 + Math.random() * 420 }; }
+function intersectsRect(x, y, radius, rect) { const cx=clamp(x,rect.x,rect.x+rect.w), cy=clamp(y,rect.y,rect.y+rect.h); return Math.hypot(x-cx,y-cy) < radius; }
+function blocked(x, y, radius = 24) { return ARENA.obstacles.some(rect => intersectsRect(x, y, radius, rect)); }
+function randomSpot() {
+  for (let i=0;i<70;i++) {
+    const base = i < ARENA.spawnPoints.length ? ARENA.spawnPoints[Math.floor(Math.random()*ARENA.spawnPoints.length)] : { x:90+Math.random()*620, y:90+Math.random()*420 };
+    const spot = { x:clamp(base.x+(Math.random()-.5)*46,35,765), y:clamp(base.y+(Math.random()-.5)*46,35,565) };
+    if (!blocked(spot.x, spot.y, 28)) return spot;
+  }
+  return { x: 400, y: 300 };
+}
 function makeItems(amount, type) { return Array.from({ length: amount }, () => ({ ...randomSpot(), type })); }
 function gameFor(mode) { return { startedAt: Date.now(), winner: null, winnerTeam: null, items: mode === "gems" ? makeItems(12, "gem") : mode === "coins" ? makeItems(18, "coin") : [], zoneScore: { red: 0, blue: 0 }, safeRadius: 350, nextItemAt: 0, nextBotAt: 0, botSerial: 0, wave: 0 }; }
+function playerRadius(p) { return p.character === "tank" ? 26 : p.character === "grunt" ? 18 : 23; }
+function movePlayer(p, dx, dy) {
+  const radius = playerRadius(p);
+  const nextX = clamp(p.x + dx, 28, 772);
+  if (!blocked(nextX, p.y, radius)) p.x = nextX;
+  const nextY = clamp(p.y + dy, 28, 572);
+  if (!blocked(p.x, nextY, radius)) p.y = nextY;
+}
+function dashPlayer(p, dx, dy) {
+  const steps = Math.max(1, Math.ceil(Math.hypot(dx, dy) / 18));
+  for (let i=0;i<steps;i++) movePlayer(p, dx / steps, dy / steps);
+}
+function lineBlocked(x1, y1, x2, y2) {
+  const steps = Math.ceil(Math.hypot(x2-x1, y2-y1) / 12);
+  for (let i=1;i<steps;i++) {
+    const t = i / steps;
+    if (blocked(x1+(x2-x1)*t, y1+(y2-y1)*t, 8)) return true;
+  }
+  return false;
+}
 function publicPlayer(p) { return { id:p.id, name:p.name, color:p.color, team:p.team, character:p.character, characterName:CHARACTERS[p.character]?.name || p.character, bot:p.bot, x:p.x, y:p.y, health:Math.ceil(p.health), maxHealth:p.maxHealth, alive:p.alive, ghost:p.ghost, ghostItem:p.ghostItem, ghostItemName:p.ghostItem && GHOST_ITEM_NAMES[p.ghostItem], ghostPing:Date.now() < (p.pingUntil || 0), haunted:Date.now() < (p.hauntedUntil || 0), walled:Date.now() < (p.wallUntil || 0), inked:Date.now() < (p.inkUntil || 0), hit:Date.now() < (p.hitUntil || 0), score:p.score, gems:p.gems, coins:p.coins, connected:p.connected, shield:Date.now() < p.shieldUntil, specialCharge:p.specialCharge || 0, specialRequired:SPECIAL_HITS, specialReady:(p.specialCharge || 0) >= SPECIAL_HITS }; }
 function players(room) { return [...room.players.values()].map(publicPlayer); }
 function humanPlayers(room) { return [...room.players.values()].filter(player => !player.bot); }
-function meta(room) { const mode = MODES[room.mode], survivalTime = room.mode === "survival" ? Math.floor(((room.game.endedAt || Date.now()) - room.game.startedAt) / 1000) : 0, winner = room.players.has(room.game.winner) ? publicPlayer(room.players.get(room.game.winner)) : room.game.winner, botCount = [...room.players.values()].filter(p => p.bot).length; return { mode:room.mode, modeName:mode.name, objective:mode.objective, target:mode.target, winner, winnerTeam:room.game.winnerTeam, items:room.game.items, safeRadius:room.game.safeRadius, zoneScore:room.game.zoneScore, survivalTime, wave:room.game.wave, botCount }; }
+function meta(room) { const mode = MODES[room.mode], survivalTime = room.mode === "survival" ? Math.floor(((room.game.endedAt || Date.now()) - room.game.startedAt) / 1000) : 0, winner = room.players.has(room.game.winner) ? publicPlayer(room.players.get(room.game.winner)) : room.game.winner, botCount = [...room.players.values()].filter(p => p.bot).length; return { mode:room.mode, modeName:mode.name, objective:mode.objective, target:mode.target, winner, winnerTeam:room.game.winnerTeam, items:room.game.items, safeRadius:room.game.safeRadius, zoneScore:room.game.zoneScore, survivalTime, wave:room.game.wave, botCount, arena:ARENA, survivalLeaders }; }
 function broadcast(room) { io.to(room.code).emit("game:state", players(room)); io.to(room.code).emit("game:meta", meta(room)); }
+function recordSurvivalLeaders(room) {
+  const survived = Math.floor((room.game.endedAt - room.game.startedAt) / 1000);
+  for (const player of humanPlayers(room)) {
+    survivalLeaders.push({
+      name: player.name,
+      character: CHARACTERS[player.character]?.name || player.character,
+      time: survived,
+      score: player.score || 0,
+      at: Date.now()
+    });
+  }
+  survivalLeaders.sort((a, b) => b.time - a.time || b.score - a.score || a.at - b.at);
+  survivalLeaders.splice(10);
+}
 function removePlayer(room, id) { const p = room.players.get(id); if (!p) return; clearTimeout(p.removeTimer); room.players.delete(id); broadcast(room); if (!room.players.size && !room.hostSocketId) rooms.delete(room.code); }
 function createRoom(hostSocketId, mode = "brawl") { const room = { code:code(), hostSocketId, mode:MODES[mode] ? mode : "brawl", players:new Map(), game:null }; room.game = gameFor(room.mode); rooms.set(room.code, room); return room; }
 function findOpenRoom(mode) {
@@ -98,14 +167,18 @@ function kill(room, victim, killer) {
   if (killer && killer.id !== victim.id) killer.score += 1;
   if (room.mode === "gems" && victim.gems) { for (let i=0;i<victim.gems;i++) room.game.items.push({ x:clamp(victim.x+(Math.random()-.5)*45,25,775), y:clamp(victim.y+(Math.random()-.5)*45,25,575), type:"gem" }); victim.gems=0; }
   if (room.mode === "showdown" || room.mode === "brawl") { const alive = [...room.players.values()].filter(p => p.alive); if (alive.length === 1) end(room, alive[0]); }
-  if (room.mode === "survival" && ![...room.players.values()].some(p => !p.bot && p.alive)) { room.game.winner = "survival-ended"; room.game.endedAt = Date.now(); }
+  if (room.mode === "survival" && ![...room.players.values()].some(p => !p.bot && p.alive) && !room.game.endedAt) {
+    room.game.winner = "survival-ended";
+    room.game.endedAt = Date.now();
+    recordSurvivalLeaders(room);
+  }
 }
 function attack(room, attacker, now) {
   const stats = CHARACTERS[attacker.character]; if (now - attacker.lastAttack < stats.rate) return; attacker.lastAttack = now;
-  let victim, distance = Infinity; for (const p of room.players.values()) { const d=Math.hypot(p.x-attacker.x,p.y-attacker.y); if (p.id!==attacker.id && p.alive && p.connected && !(room.mode==="zone" && p.team===attacker.team) && !(room.mode==="survival" && Boolean(p.bot)===Boolean(attacker.bot)) && d < distance) { victim=p; distance=d; } }
+  let victim, distance = Infinity; for (const p of room.players.values()) { const d=Math.hypot(p.x-attacker.x,p.y-attacker.y); if (p.id!==attacker.id && p.alive && p.connected && !(room.mode==="zone" && p.team===attacker.team) && !(room.mode==="survival" && Boolean(p.bot)===Boolean(attacker.bot)) && d < distance && !lineBlocked(attacker.x,attacker.y,p.x,p.y)) { victim=p; distance=d; } }
   if (!victim || distance > stats.range) return; const damage = stats.damage * (now < victim.shieldUntil ? .35 : 1); victim.health -= damage; victim.hitUntil = now + 150; if (!attacker.bot && PLAYABLE_CHARACTERS.has(attacker.character)) attacker.specialCharge = Math.min(SPECIAL_HITS, (attacker.specialCharge || 0) + 1); if (victim.health <= 0) kill(room, victim, attacker);
 }
-function special(room, p, now) { if (p.lastSpecial || (p.specialCharge || 0) < SPECIAL_HITS) return; p.specialCharge = 0; p.lastSpecialAt = now; const stats = CHARACTERS[p.character]; if (p.character === "tank") p.shieldUntil = now + 2600; else if (p.character === "medic") p.health = Math.min(stats.hp, p.health + 42); else { const len=Math.hypot(p.input.x,p.input.y)||1; p.x=clamp(p.x+p.input.x/len*105,28,772); p.y=clamp(p.y+p.input.y/len*105,28,572); } }
+function special(room, p, now) { if (p.lastSpecial || (p.specialCharge || 0) < SPECIAL_HITS) return; p.specialCharge = 0; p.lastSpecialAt = now; const stats = CHARACTERS[p.character]; if (p.character === "tank") p.shieldUntil = now + 2600; else if (p.character === "medic") p.health = Math.min(stats.hp, p.health + 42); else { const len=Math.hypot(p.input.x,p.input.y)||1; dashPlayer(p,p.input.x/len*105,p.input.y/len*105); } }
 function spawnBot(room, now) {
   const count = [...room.players.values()].filter(p => p.bot).length;
   const cap = Math.min(9, 2 + Math.floor(room.game.wave / 2));
@@ -138,7 +211,7 @@ function updateRoom(room, now) {
     if (!p.alive && p.ghost) {
       // Dead players remain as non-combat ghosts. SPECIAL becomes a visible warning ping.
       const ghostSpeed = CHARACTERS[p.character].speed * .72;
-      p.x=clamp(p.x+p.input.x*ghostSpeed,28,772); p.y=clamp(p.y+p.input.y*ghostSpeed,28,572);
+      movePlayer(p, p.input.x*ghostSpeed, p.input.y*ghostSpeed);
       if (now >= p.nextGhostItemAt) { p.ghostItem = GHOST_ITEMS[Math.floor(Math.random()*GHOST_ITEMS.length)]; p.nextGhostItemAt = now + 30_000; }
       if (p.input.special && !p.lastSpecial) {
         const target = room.players.get(p.ghostTargetId);
@@ -160,7 +233,7 @@ function updateRoom(room, now) {
       continue;
     }
     const stats=CHARACTERS[p.character], moveScale=now < (p.wallUntil||0) ? 0 : now < (p.hauntedUntil||0) ? .58 : 1;
-    p.x=clamp(p.x+p.input.x*stats.speed*moveScale,28,772); p.y=clamp(p.y+p.input.y*stats.speed*moveScale,28,572);
+    movePlayer(p, p.input.x*stats.speed*moveScale, p.input.y*stats.speed*moveScale);
     if (p.input.attack) attack(room,p,now); if (p.input.special) special(room,p,now); p.lastSpecial=p.input.special;
     if (room.mode === "showdown" && Math.hypot(p.x-400,p.y-300) > room.game.safeRadius) { p.health -= .55; if (p.health<=0) kill(room,p,null); }
     for (let i=room.game.items.length-1;i>=0;i--) { const item=room.game.items[i]; if (Math.hypot(item.x-p.x,item.y-p.y)<32) { room.game.items.splice(i,1); if(item.type==="gem")p.gems++; else p.coins++; } }
