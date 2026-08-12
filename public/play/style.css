@@ -286,6 +286,89 @@ select {
   margin-top: 4px;
 }
 
+.survival-panel {
+  margin: 12px 0;
+  padding: 12px;
+  border-radius: 12px;
+  background: #121c34;
+  border: 1px solid #ffffff1f;
+}
+
+.survival-stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.survival-stats span,
+.survival-game-stats span {
+  display: grid;
+  gap: 2px;
+  padding: 8px;
+  border-radius: 10px;
+  background: #0e1427;
+  text-align: center;
+}
+
+.survival-stats b,
+.survival-game-stats b,
+.leaderboard > strong {
+  color: #aab8d9;
+  font-size: .68rem;
+  font-weight: 900;
+  letter-spacing: .1em;
+}
+
+.survival-stats strong,
+.survival-game-stats strong {
+  color: #ffd34f;
+  font-size: 1.25rem;
+  font-weight: 900;
+}
+
+.leaderboard ol {
+  list-style: none;
+  display: grid;
+  gap: 6px;
+  margin: 8px 0 0;
+  padding: 0;
+}
+
+.leaderboard li {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 8px;
+  align-items: center;
+  padding: 7px 8px;
+  border-radius: 9px;
+  background: #0e1427;
+  color: #dbe4ff;
+  font-size: .78rem;
+  font-weight: 800;
+}
+
+.leaderboard li strong {
+  color: #ffd34f;
+}
+
+.leaderboard li em {
+  color: #9fb0d4;
+  font-style: normal;
+  font-size: .72rem;
+}
+
+.survival-game-stats {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.survival-game-stats[hidden] {
+  display: none;
+}
+
 .divider {
   text-align: center;
   color: #9daaca;

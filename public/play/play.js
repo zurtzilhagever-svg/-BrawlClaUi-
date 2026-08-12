@@ -11,6 +11,12 @@ const matchStatus = document.querySelector("#match-status");
 const phoneConnect = document.querySelector("#phone-connect");
 const phoneLink = document.querySelector("#phone-link");
 const phoneQr = document.querySelector("#phone-qr");
+const personalBestEl = document.querySelector("#personal-best");
+const currentRunEl = document.querySelector("#current-run");
+const leaderboardList = document.querySelector("#leaderboard-list");
+const survivalGameStats = document.querySelector("#survival-game-stats");
+const gamePersonalBestEl = document.querySelector("#game-personal-best");
+const gameGlobalBestEl = document.querySelector("#game-global-best");
 const languageSelect = document.querySelector("#language");
 const controlModeSelect = document.querySelector("#control-mode");
 const keyboardPanel = document.querySelector("#keyboard-panel");
@@ -29,6 +35,7 @@ const playerKey = "couchbrawl-player-id";
 const playerId = sessionStorage.getItem(playerKey) || crypto.randomUUID();
 sessionStorage.setItem(playerKey, playerId);
 const languageKey = "couchbrawl-language";
+const survivalBestKey = "couchbrawl-survival-best";
 const translations = {
   en: {
     title: "Brawl anywhere.",
@@ -91,7 +98,13 @@ const translations = {
     blue: "BLUE",
     teamWins: "TEAM wins",
     wins: "wins",
-    kos: "KOs"
+    kos: "KOs",
+    personalBest: "BEST",
+    currentRun: "CURRENT",
+    globalBest: "GLOBAL",
+    globalLeaders: "GLOBAL BEST",
+    noLeaders: "No scores yet",
+    secondsShort: "s"
   },
   he: {
     title: "\u05e7\u05e8\u05d1 \u05de\u05db\u05dc \u05de\u05db\u05e9\u05d9\u05e8.",
@@ -154,7 +167,13 @@ const translations = {
     blue: "\u05db\u05d7\u05d5\u05dc",
     teamWins: "\u05e0\u05d9\u05e6\u05d7\u05d5",
     wins: "\u05e0\u05d9\u05e6\u05d7",
-    kos: "\u05d7\u05d9\u05e1\u05d5\u05dc\u05d9\u05dd"
+    kos: "\u05d7\u05d9\u05e1\u05d5\u05dc\u05d9\u05dd",
+    personalBest: "\u05e9\u05d9\u05d0",
+    currentRun: "\u05e2\u05db\u05e9\u05d9\u05d5",
+    globalBest: "\u05db\u05dc\u05dc\u05d9",
+    globalLeaders: "\u05d8\u05d1\u05dc\u05ea \u05e9\u05d9\u05d0\u05d9\u05dd",
+    noLeaders: "\u05d0\u05d9\u05df \u05e9\u05d9\u05d0\u05d9\u05dd \u05e2\u05d3\u05d9\u05d9\u05df",
+    secondsShort: "\u05e9'"
   }
 };
 function deviceLanguage() {
@@ -167,6 +186,30 @@ function selectedLanguage() {
 function t(key) {
   return translations[selectedLanguage()]?.[key] || translations.en[key] || key;
 }
+function formatSeconds(value) {
+  return `${Math.max(0, Math.floor(Number(value) || 0))}${t("secondsShort")}`;
+}
+function escapeHtml(value) {
+  return String(value).replace(/[&<>"']/g, char => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[char]));
+}
+function renderSurvivalStats() {
+  const current = gameMeta.mode === "survival" ? gameMeta.survivalTime || 0 : 0;
+  if (gameMeta.mode === "survival" && gameMeta.winner && current > personalBest) {
+    personalBest = current;
+    localStorage.setItem(survivalBestKey, String(personalBest));
+  }
+  const globalBest = gameMeta.survivalLeaders?.[0]?.time || 0;
+  if (personalBestEl) personalBestEl.textContent = formatSeconds(personalBest);
+  if (currentRunEl) currentRunEl.textContent = formatSeconds(current);
+  if (gamePersonalBestEl) gamePersonalBestEl.textContent = formatSeconds(personalBest);
+  if (gameGlobalBestEl) gameGlobalBestEl.textContent = formatSeconds(globalBest);
+  if (survivalGameStats) survivalGameStats.hidden = gameMeta.mode !== "survival";
+  if (!leaderboardList) return;
+  const leaders = gameMeta.survivalLeaders || [];
+  leaderboardList.innerHTML = leaders.length
+    ? leaders.slice(0, 5).map(entry => `<li><span>${escapeHtml(entry.name)}</span><strong>${formatSeconds(entry.time)}</strong><em>${entry.score || 0} ${t("kos")}</em></li>`).join("")
+    : `<li>${t("noLeaders")}</li>`;
+}
 function applyLanguage() {
   const language = selectedLanguage();
   document.documentElement.lang = language;
@@ -176,6 +219,7 @@ function applyLanguage() {
   document.querySelectorAll("[data-i18n-aria-label]").forEach(el => { el.setAttribute("aria-label", t(el.dataset.i18nAriaLabel)); });
   if (roomCode) document.querySelector("#room-label").textContent = `${t("room")} ${roomCode}`;
   updateLobbyRoom();
+  renderSurvivalStats();
   updateMeta();
 }
 let roomCode = "";
@@ -186,18 +230,21 @@ let gameMeta = { items: [], zoneScore: {} };
 let controlMode = localStorage.getItem("couchbrawl-control-mode") || "touch";
 let autoJoinTimer = 0;
 let phoneOrigin = location.origin;
+let personalBest = Number(localStorage.getItem(survivalBestKey)) || 0;
 const characterImages = Object.fromEntries(["blaze", "tank", "spark", "medic"].map(id => {
   const image = new Image();
   image.src = `/characters/${id}.png`;
   return [id, image];
 }));
 const motionState = new Map();
+const fallbackArena = { width: 800, height: 600, obstacles: [], bushes: [], spawnPoints: [] };
 
 nameInput.value = localStorage.getItem("couchbrawl-name") || "";
 languageSelect.value = localStorage.getItem(languageKey) || "system";
 controlModeSelect.value = controlMode;
 applyLanguage();
 applyControlMode();
+renderSurvivalStats();
 loadPhoneOrigin();
 
 function name() {
@@ -254,6 +301,7 @@ function queueAutoJoin() {
 }
 
 function updateMeta() {
+  renderSurvivalStats();
   if (!gameMeta.mode) {
     document.querySelector("#objective").textContent = t("initialObjective");
     document.querySelector("#help").textContent = "";
@@ -509,45 +557,135 @@ function drawCharacter(p, motion) {
   return false;
 }
 
-function draw() {
-  const now = performance.now();
+function drawRoundedRect(x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + w - r, y);
+  ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+  ctx.lineTo(x + w, y + h - r);
+  ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+  ctx.lineTo(x + r, y + h);
+  ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+  ctx.lineTo(x, y + r);
+  ctx.quadraticCurveTo(x, y, x + r, y);
+  ctx.closePath();
+}
+
+function drawArena(now) {
+  const arena = gameMeta.arena || fallbackArena;
   const g = ctx.createLinearGradient(0, 0, 800, 600);
-  g.addColorStop(0, "#4d837b");
-  g.addColorStop(1, "#2e504c");
+  g.addColorStop(0, "#5f986f");
+  g.addColorStop(.56, "#47765e");
+  g.addColorStop(1, "#315b54");
   ctx.fillStyle = g;
   ctx.fillRect(0, 0, 800, 600);
-  ctx.strokeStyle = "#ffffff14";
-  ctx.lineWidth = 3;
-  for (let x = 0; x < 800; x += 80) {
+
+  ctx.fillStyle = "#45685b";
+  ctx.fillRect(0, 258, 800, 84);
+  ctx.fillRect(358, 0, 84, 600);
+  ctx.fillStyle = "#6e9f6c";
+  for (let x = 28; x < 800; x += 64) {
+    for (let y = 30; y < 600; y += 64) {
+      ctx.globalAlpha = ((x + y) / 64) % 2 ? .1 : .05;
+      ctx.fillRect(x, y, 34, 24);
+    }
+  }
+  ctx.globalAlpha = 1;
+
+  ctx.strokeStyle = "#ffffff13";
+  ctx.lineWidth = 2;
+  for (let x = 40; x < 800; x += 80) {
     ctx.beginPath();
     ctx.moveTo(x, 0);
     ctx.lineTo(x, 600);
     ctx.stroke();
   }
-  for (let y = 0; y < 600; y += 80) {
+  for (let y = 40; y < 600; y += 80) {
     ctx.beginPath();
     ctx.moveTo(0, y);
     ctx.lineTo(800, y);
     ctx.stroke();
   }
+
+  for (const bush of arena.bushes || []) {
+    const pulse = Math.sin(now / 650 + bush.x * .01) * 2;
+    ctx.fillStyle = "#286f46cc";
+    drawRoundedRect(bush.x, bush.y + pulse, bush.w, bush.h, 18);
+    ctx.fill();
+    ctx.fillStyle = "#55b86c88";
+    for (let x = bush.x + 14; x < bush.x + bush.w - 8; x += 24) {
+      ctx.beginPath();
+      ctx.arc(x, bush.y + bush.h / 2 + Math.sin(now / 500 + x) * 4, 16, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  for (const block of arena.obstacles || []) {
+    ctx.fillStyle = "#00000024";
+    drawRoundedRect(block.x + 5, block.y + 8, block.w, block.h, 8);
+    ctx.fill();
+    const bg = ctx.createLinearGradient(block.x, block.y, block.x, block.y + block.h);
+    bg.addColorStop(0, block.kind === "crate" ? "#bd8751" : "#9aa3a0");
+    bg.addColorStop(1, block.kind === "crate" ? "#7b5131" : "#59615f");
+    ctx.fillStyle = bg;
+    drawRoundedRect(block.x, block.y, block.w, block.h, 8);
+    ctx.fill();
+    ctx.strokeStyle = "#ffffff35";
+    ctx.lineWidth = 2;
+    drawRoundedRect(block.x + 3, block.y + 3, block.w - 6, block.h - 6, 6);
+    ctx.stroke();
+  }
+
   if (gameMeta.mode === "zone" || gameMeta.mode === "soloZone") {
-    ctx.strokeStyle = "#75d8ff99";
+    ctx.fillStyle = "#75d8ff22";
+    ctx.strokeStyle = "#75d8ffcc";
     ctx.lineWidth = 5;
     ctx.beginPath();
     ctx.arc(400, 300, 70, 0, Math.PI * 2);
+    ctx.fill();
     ctx.stroke();
   }
   if (gameMeta.mode === "showdown") {
-    ctx.strokeStyle = "#ff6978aa";
+    ctx.strokeStyle = "#ff6978cc";
     ctx.lineWidth = 8;
     ctx.beginPath();
     ctx.arc(400, 300, gameMeta.safeRadius || 350, 0, Math.PI * 2);
     ctx.stroke();
   }
+}
+
+function draw() {
+  const now = performance.now();
+  drawArena(now);
   for (const item of gameMeta.items || []) {
-    ctx.font = "24px sans-serif";
-    ctx.textAlign = "center";
-    ctx.fillText(item.type === "gem" ? "G" : "C", item.x, item.y + 8);
+    ctx.save();
+    ctx.translate(item.x, item.y);
+    ctx.fillStyle = "#00000035";
+    ctx.beginPath();
+    ctx.ellipse(3, 10, 13, 5, 0, 0, Math.PI * 2);
+    ctx.fill();
+    if (item.type === "gem") {
+      ctx.fillStyle = "#74e5ff";
+      ctx.beginPath();
+      ctx.moveTo(0, -15);
+      ctx.lineTo(14, 0);
+      ctx.lineTo(0, 16);
+      ctx.lineTo(-14, 0);
+      ctx.closePath();
+      ctx.fill();
+      ctx.strokeStyle = "#ffffffaa";
+      ctx.lineWidth = 2;
+      ctx.stroke();
+    } else {
+      ctx.fillStyle = "#ffd761";
+      ctx.beginPath();
+      ctx.arc(0, 0, 14, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = "#9c6a20";
+      ctx.lineWidth = 3;
+      ctx.stroke();
+    }
+    ctx.restore();
   }
   for (const p of players) {
     const motion = motionFor(p, now);

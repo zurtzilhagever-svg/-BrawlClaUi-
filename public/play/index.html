@@ -7,7 +7,7 @@
   <link rel="manifest" href="/manifest.webmanifest">
   <link rel="apple-touch-icon" href="/icons/icon.svg">
   <title>CouchBrawl</title>
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="style.css?v=8">
 </head>
 <body>
   <section id="lobby" class="lobby">
@@ -67,6 +67,17 @@
       </div>
     </section>
 
+    <section class="survival-panel">
+      <div class="survival-stats">
+        <span><b data-i18n="personalBest">BEST</b><strong id="personal-best">0s</strong></span>
+        <span><b data-i18n="currentRun">CURRENT</b><strong id="current-run">0s</strong></span>
+      </div>
+      <div class="leaderboard">
+        <strong data-i18n="globalLeaders">GLOBAL BEST</strong>
+        <ol id="leaderboard-list"><li data-i18n="noLeaders">No scores yet</li></ol>
+      </div>
+    </section>
+
     <button id="create" data-i18n="playNow">PLAY NOW</button>
     <div class="divider" data-i18n="joinDivider">OR JOIN A FRIEND</div>
     <div class="join-row">
@@ -87,6 +98,10 @@
     <div class="hud">
       <strong id="objective" data-i18n="initialObjective">Share the room code to play together</strong>
       <span id="help"></span>
+      <div id="survival-game-stats" class="survival-game-stats" hidden>
+        <span><b data-i18n="personalBest">BEST</b> <strong id="game-personal-best">0s</strong></span>
+        <span><b data-i18n="globalBest">GLOBAL</b> <strong id="game-global-best">0s</strong></span>
+      </div>
     </div>
     <section class="controls">
       <div id="stick-zone">
@@ -104,6 +119,6 @@
   <script src="/socket.io/socket.io.js"></script>
   <script src="/shared/gamepad.js"></script>
   <script src="/shared/qr-generator.js"></script>
-  <script src="play.js"></script>
+  <script src="play.js?v=8"></script>
 </body>
 </html>
