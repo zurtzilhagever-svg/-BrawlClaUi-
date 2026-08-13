@@ -14,7 +14,7 @@ const CHARACTERS = {
   medic: { name: "Medic", hp: 115, speed: 3.45, damage: 9, range: 120, rate: 440, special: "Heal pulse" },
   grunt: { name: "Grunt", hp: 70, speed: 2.35, damage: 8, range: 44, rate: 760, special: "None" }
 };
-const PLAYABLE_CHARACTERS = new Set(["blaze", "boomer", "tank", "spark", "medic"]);
+const PLAYABLE_CHARACTERS = new Set(["blaze", "boomer"]);
 const MODES = {
   survival: { name: "Survival", objective: "Survive bot waves as long as you can", target: 0 },
   brawl: { name: "Solo Brawl", objective: "Be the last brawler alive", target: 1 },
@@ -316,4 +316,4 @@ io.on("connection", socket => {
   socket.on("disconnect", () => { const host=socket.data.hostRoom; if(host&&rooms.get(host)?.hostSocketId===socket.id){io.to(host).emit("room:closed");rooms.delete(host);} const ref=socketIndex.get(socket.id);socketIndex.delete(socket.id);const room=ref&&rooms.get(ref.code),p=room&&room.players.get(ref.playerId);if(p&&p.socketId===socket.id){p.connected=false;p.input={x:0,y:0,attack:false,special:false};p.removeTimer=setTimeout(()=>removePlayer(room,ref.playerId),RECONNECT_MS);broadcast(room);} });
 });
 setInterval(()=>{const now=Date.now();for(const room of rooms.values())updateRoom(room,now);},1000/30);
-server.listen(PORT,()=>console.log(`CouchBrawl running at http://localhost:${PORT}/play/`));
+server.listen(PORT,()=>console.log(`BrawlClaUi running at http://localhost:${PORT}/play/`));

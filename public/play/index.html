@@ -2,16 +2,16 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
   <meta name="theme-color" content="#11172b">
   <link rel="manifest" href="/manifest.webmanifest">
   <link rel="apple-touch-icon" href="/icons/icon.svg">
-  <title>CouchBrawl</title>
-  <link rel="stylesheet" href="style.css?v=16">
+  <title>BrawlClaUi</title>
+  <link rel="stylesheet" href="style.css?v=20">
 </head>
 <body>
   <section id="lobby" class="lobby">
-    <p class="brand">COUCH BRAWL</p>
+    <p class="brand">BrawlClaUi</p>
     <h1 data-i18n="title">Brawl anywhere.</h1>
     <p data-i18n="subtitle">Choose a brawler, game mode, and controls.</p>
     <label for="language" data-i18n="languageLabel">LANGUAGE</label>
@@ -21,14 +21,15 @@
       <option value="he">&#x05e2;&#x05d1;&#x05e8;&#x05d9;&#x05ea;</option>
     </select>
     <input id="name" maxlength="14" placeholder="Your name" autocomplete="nickname" data-i18n-placeholder="namePlaceholder">
+    <button id="create" data-i18n="playNow">PLAY NOW</button>
 
     <label data-i18n="brawlerLabel">YOUR BRAWLER</label>
     <div id="characters" class="choice-grid">
       <button data-character="blaze" class="selected"><span class="portrait blaze"></span><img class="char-img" src="/characters/blaze.png" alt="" onerror="this.hidden=true"><span data-i18n="bobName">Bob</span><small data-i18n="blazeDesc"></small></button>
       <button data-character="boomer" class="locked"><span class="portrait boomer"></span><img class="char-img" src="/characters/boomer.png" alt="" onerror="this.hidden=true"><span data-i18n="boomerName">Boomer</span><small data-i18n="boomerDesc"></small></button>
-      <button data-character="tank"><span class="portrait tank"></span><img class="char-img" src="/characters/tank.png" alt="" onerror="this.hidden=true"><span data-i18n="auroraName">Aurora</span><small data-i18n="tankDesc">Snow Princess</small></button>
-      <button data-character="spark"><span class="portrait spark"></span><img class="char-img" src="/characters/spark.png" alt="" onerror="this.hidden=true"><span>Spark</span><small data-i18n="sparkDesc">Fast striker</small></button>
-      <button data-character="medic"><span class="portrait medic"></span><img class="char-img" src="/characters/medic.png" alt="" onerror="this.hidden=true"><span>Medic</span><small data-i18n="medicDesc">Self heal</small></button>
+      <button data-character="tank" class="locked"><span class="portrait tank"></span><img class="char-img" src="/characters/tank.png" alt="" onerror="this.hidden=true"><span data-i18n="auroraName">Aurora</span><small data-i18n="tankDesc">Snow Princess</small></button>
+      <button data-character="spark" class="locked"><span class="portrait spark"></span><img class="char-img" src="/characters/spark.png" alt="" onerror="this.hidden=true"><span>Spark</span><small data-i18n="sparkDesc">Fast striker</small></button>
+      <button data-character="medic" class="locked"><span class="portrait medic"></span><img class="char-img" src="/characters/medic.png" alt="" onerror="this.hidden=true"><span>Medic</span><small data-i18n="medicDesc">Self heal</small></button>
     </div>
 
     <label data-i18n="modeLabel">GAME MODE</label>
@@ -79,7 +80,6 @@
       </div>
     </section>
 
-    <button id="create" data-i18n="playNow">PLAY NOW</button>
     <div class="divider" data-i18n="joinDivider">OR JOIN A FRIEND</div>
     <div class="join-row">
       <input id="code" maxlength="4" placeholder="CODE" data-i18n-placeholder="codePlaceholder">
@@ -120,6 +120,6 @@
   <script src="/socket.io/socket.io.js"></script>
   <script src="/shared/gamepad.js"></script>
   <script src="/shared/qr-generator.js"></script>
-  <script src="play.js?v=16"></script>
+  <script src="play.js?v=20"></script>
 </body>
 </html>

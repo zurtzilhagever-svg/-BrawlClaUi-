@@ -1,4 +1,4 @@
-const socket = io(CouchBrawlRuntime.serverUrl, { transports: ["websocket", "polling"] });
+const socket = io(BrawlClaUiRuntime.serverUrl, { transports: ["websocket", "polling"] });
 const lobby = document.querySelector("#lobby");
 const game = document.querySelector("#game");
 const nameInput = document.querySelector("#name");
@@ -31,13 +31,13 @@ const keyboardBindings = {
   attack: "KeyJ",
   special: "KeyK"
 };
-const playerKey = "couchbrawl-player-id";
+const playerKey = "brawlclaui-player-id";
 const playerId = sessionStorage.getItem(playerKey) || crypto.randomUUID();
 sessionStorage.setItem(playerKey, playerId);
-const languageKey = "couchbrawl-language";
-const survivalBestKey = "couchbrawl-survival-best";
-const unlockedCharactersKey = "couchbrawl-unlocked-characters";
-const lockedCharacters = new Set(["boomer"]);
+const languageKey = "brawlclaui-language";
+const survivalBestKey = "brawlclaui-survival-best";
+const unlockedCharactersKey = "brawlclaui-unlocked-characters";
+const lockedCharacters = new Set(["boomer", "tank", "spark", "medic"]);
 const translations = {
   en: {
     title: "Brawl anywhere.",
@@ -53,6 +53,7 @@ const translations = {
     boomerDesc: "",
     unlockBoomer: "Beat wave 10 with Bob",
     boomerUnlocked: "Boomer unlocked",
+    lockedCharacter: "Locked",
     tankDesc: "Snow Princess",
     sparkDesc: "Fast striker",
     medicDesc: "Self heal",
@@ -127,6 +128,7 @@ const translations = {
     boomerDesc: "",
     unlockBoomer: "\u05e0\u05e6\u05d7 \u05d0\u05ea \u05d2\u05dc 10 \u05e2\u05dd \u05d1\u05d5\u05d1",
     boomerUnlocked: "\u05d1\u05d5\u05de\u05e8 \u05e0\u05e4\u05ea\u05d7",
+    lockedCharacter: "\u05e0\u05e2\u05d5\u05dc",
     tankDesc: "\u05e0\u05e1\u05d9\u05db\u05ea \u05d4\u05e9\u05dc\u05d2",
     sparkDesc: "\u05de\u05d4\u05d9\u05e8 \u05de\u05d0\u05d5\u05d3",
     medicDesc: "\u05e8\u05d9\u05e4\u05d5\u05d9 \u05e2\u05e6\u05de\u05d9",
@@ -247,7 +249,8 @@ function renderCharacterLocks() {
     button.classList.toggle("locked", locked);
     button.disabled = locked;
     const label = button.querySelector("small");
-    if (label && character === "boomer") label.textContent = locked ? t("unlockBoomer") : t("boomerDesc");
+    if (label && locked) label.textContent = character === "boomer" ? t("unlockBoomer") : t("lockedCharacter");
+    else if (label && character === "boomer") label.textContent = t("boomerDesc");
     if (locked && button.classList.contains("selected")) {
       selectedCharacter = "blaze";
       document.querySelectorAll("[data-character]").forEach(b => b.classList.toggle("selected", b.dataset.character === selectedCharacter));
@@ -272,7 +275,7 @@ let players = [];
 let wasPlaying = false;
 let selectedCharacter = "blaze";
 let gameMeta = { items: [], zoneScore: {} };
-let controlMode = localStorage.getItem("couchbrawl-control-mode") || "touch";
+let controlMode = localStorage.getItem("brawlclaui-control-mode") || "touch";
 let autoJoinTimer = 0;
 let phoneOrigin = location.origin;
 let personalBest = Number(localStorage.getItem(survivalBestKey)) || 0;
@@ -288,7 +291,7 @@ function clamp(n, min, max) {
   return Math.max(min, Math.min(max, n));
 }
 
-nameInput.value = localStorage.getItem("couchbrawl-name") || "";
+nameInput.value = localStorage.getItem("brawlclaui-name") || "";
 languageSelect.value = localStorage.getItem(languageKey) || "system";
 controlModeSelect.value = controlMode;
 applyLanguage();
@@ -300,16 +303,27 @@ function name() {
   return nameInput.value.trim().slice(0, 14);
 }
 
+function requestAppFullscreen() {
+  const target = document.documentElement;
+  if (document.fullscreenElement || !target.requestFullscreen) return;
+  try {
+    target.requestFullscreen({ navigationUI: "hide" }).catch(() => {});
+  } catch {}
+}
+
 function enter(reply) {
   if (!reply.ok) return error.textContent = reply.error;
   roomCode = reply.code;
   players = reply.players;
   gameMeta = reply.meta || gameMeta;
   wasPlaying = true;
-  localStorage.setItem("couchbrawl-name", name());
-  localStorage.setItem("couchbrawl-room", roomCode);
+  localStorage.setItem("brawlclaui-name", name());
+  localStorage.setItem("brawlclaui-room", roomCode);
   lobby.hidden = true;
   game.hidden = false;
+  document.documentElement.classList.add("playing");
+  document.body.classList.add("playing");
+  window.scrollTo(0, 0);
   document.querySelector("#room-label").textContent = `${t("room")} ${roomCode}`;
   applyControlMode();
   updateMeta();
@@ -376,7 +390,7 @@ function updateMeta() {
 
 function applyControlMode() {
   controlMode = controlModeSelect.value;
-  localStorage.setItem("couchbrawl-control-mode", controlMode);
+  localStorage.setItem("brawlclaui-control-mode", controlMode);
   keyboardPanel.hidden = controlMode !== "keyboard";
   controls.hidden = controlMode === "keyboard" || controlMode === "gamepad";
   if (controlMode !== "keyboard") keyboardState.clear();
@@ -404,10 +418,14 @@ document.querySelectorAll("[data-character]").forEach(button => {
 document.querySelector("#mode").addEventListener("change", queueAutoJoin);
 nameInput.addEventListener("change", queueAutoJoin);
 document.querySelector("#create").onclick = () => {
+  requestAppFullscreen();
   if (roomCode) return enter({ ok: true, code: roomCode, players, meta: gameMeta });
   socket.emit("player:autoJoin", { playerId, name: name(), character: selectedCharacter, mode: document.querySelector("#mode").value }, enter);
 };
-document.querySelector("#join").onclick = () => socket.emit("player:join", { code: codeInput.value.trim().toUpperCase(), playerId, name: name(), character: selectedCharacter }, enter);
+document.querySelector("#join").onclick = () => {
+  requestAppFullscreen();
+  socket.emit("player:join", { code: codeInput.value.trim().toUpperCase(), playerId, name: name(), character: selectedCharacter }, enter);
+};
 codeInput.addEventListener("input", () => codeInput.value = codeInput.value.toUpperCase());
 document.querySelector("#leave").onclick = () => { location.reload(); };
 
@@ -455,6 +473,7 @@ updateLobbyRoom();
 const zone = document.querySelector("#stick-zone");
 const knob = document.querySelector("#stick-knob");
 function moveStick(e) {
+  e.preventDefault();
   if (controlMode !== "touch") return;
   const r = zone.getBoundingClientRect();
   const dx = e.clientX - (r.left + r.width / 2);
@@ -466,8 +485,8 @@ function moveStick(e) {
   input.y = +(dy * s / max).toFixed(3);
   knob.style.transform = `translate(${dx * s}px,${dy * s}px)`;
 }
-zone.addEventListener("pointerdown", e => { zone.setPointerCapture(e.pointerId); moveStick(e); });
-zone.addEventListener("pointermove", e => { if (zone.hasPointerCapture(e.pointerId)) moveStick(e); });
+zone.addEventListener("pointerdown", e => { e.preventDefault(); zone.setPointerCapture(e.pointerId); moveStick(e); });
+zone.addEventListener("pointermove", e => { e.preventDefault(); if (zone.hasPointerCapture(e.pointerId)) moveStick(e); });
 ["pointerup", "pointercancel"].forEach(type => zone.addEventListener(type, () => {
   if (controlMode !== "touch") return;
   input.x = 0;
@@ -517,8 +536,18 @@ window.addEventListener("blur", () => {
   keyboardState.clear();
   updateKeyboardInput();
 });
+window.addEventListener("touchmove", event => {
+  if (!game.hidden) event.preventDefault();
+}, { passive: false });
+window.addEventListener("wheel", event => {
+  if (!game.hidden) event.preventDefault();
+}, { passive: false });
+window.addEventListener("scroll", () => {
+  if (!game.hidden) window.scrollTo(0, 0);
+});
 
 canvas.addEventListener("pointerdown", event => {
+  event.preventDefault();
   const me = players.find(p => p.id === playerId);
   if (!me?.ghost) return;
   const rect = canvas.getBoundingClientRect();
