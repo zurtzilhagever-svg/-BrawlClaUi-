@@ -1,5 +1,5 @@
-const CACHE = "couchbrawl-v14";
-const ASSETS = ["/play/", "/play/style.css?v=14", "/play/play.js?v=14", "/shared/gamepad.js", "/shared/qr-generator.js", "/shared/runtime.js", "/native-config.js", "/manifest.webmanifest", "/icons/icon.svg"];
+const CACHE = "couchbrawl-v16";
+const ASSETS = ["/play/", "/play/style.css?v=16", "/play/play.js?v=16", "/shared/gamepad.js", "/shared/qr-generator.js", "/shared/runtime.js", "/native-config.js", "/manifest.webmanifest", "/icons/icon.svg"];
 self.addEventListener("install", event => event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(ASSETS)).then(() => self.skipWaiting())));
 self.addEventListener("activate", event => event.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(key => key !== CACHE).map(key => caches.delete(key)))).then(() => self.clients.claim())));
 self.addEventListener("fetch", event => {

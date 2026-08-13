@@ -2,7 +2,7 @@
 const express = require("express"), http = require("http"), os = require("os"), path = require("path"), QRCode = require("qrcode");
 const { Server } = require("socket.io");
 const app = express(), server = http.createServer(app), io = new Server(server, { cors: { origin: "*" } });
-const PORT = Number(process.env.PORT) || 3000, RECONNECT_MS = 30_000, MAX_PLAYERS = 8, SPECIAL_HITS = 5, PROJECTILE_SPEED = 12;
+const PORT = Number(process.env.PORT) || 3000, RECONNECT_MS = 30_000, MAX_PLAYERS = 8, SPECIAL_HITS = 5, PROJECTILE_SPEED = 12, BOB_UNLOCK_WAVE = 10;
 const rooms = new Map(), socketIndex = new Map();
 const survivalLeaders = [];
 const COLORS = ["#ff5964", "#36c8ff", "#ffd54a", "#a875ff", "#52e084", "#ff8e4f", "#fa73bd", "#80a7ff"];
@@ -89,7 +89,7 @@ function randomSpot() {
   return arenaCenter();
 }
 function makeItems(amount, type) { return Array.from({ length: amount }, () => ({ ...randomSpot(), type })); }
-function gameFor(mode) { return { startedAt: Date.now(), winner: null, winnerTeam: null, items: mode === "gems" ? makeItems(12, "gem") : mode === "coins" ? makeItems(18, "coin") : [], projectiles: [], nextProjectileId: 0, zoneScore: { red: 0, blue: 0 }, safeRadius: arenaSafeRadius(), nextItemAt: 0, nextBotAt: 0, botSerial: 0, wave: 0 }; }
+function gameFor(mode) { return { startedAt: Date.now(), winner: null, winnerTeam: null, rewardCharacter: null, items: mode === "gems" ? makeItems(12, "gem") : mode === "coins" ? makeItems(18, "coin") : [], projectiles: [], nextProjectileId: 0, zoneScore: { red: 0, blue: 0 }, safeRadius: arenaSafeRadius(), nextItemAt: 0, nextBotAt: 0, botSerial: 0, wave: 0 }; }
 function playerRadius(p) { return p.character === "tank" ? 26 : p.character === "grunt" ? 18 : 23; }
 function movePlayer(p, dx, dy) {
   const radius = playerRadius(p);
@@ -119,7 +119,7 @@ function aimDirection(p) {
 function publicPlayer(p) { return { id:p.id, name:p.name, color:p.color, team:p.team, character:p.character, characterName:CHARACTERS[p.character]?.name || p.character, bot:p.bot, x:p.x, y:p.y, health:Math.ceil(p.health), maxHealth:p.maxHealth, alive:p.alive, ghost:p.ghost, ghostItem:p.ghostItem, ghostItemName:p.ghostItem && GHOST_ITEM_NAMES[p.ghostItem], ghostPing:Date.now() < (p.pingUntil || 0), haunted:Date.now() < (p.hauntedUntil || 0), walled:Date.now() < (p.wallUntil || 0), inked:Date.now() < (p.inkUntil || 0), hit:Date.now() < (p.hitUntil || 0), score:p.score, gems:p.gems, coins:p.coins, connected:p.connected, shield:Date.now() < p.shieldUntil, specialCharge:p.specialCharge || 0, specialRequired:SPECIAL_HITS, specialReady:(p.specialCharge || 0) >= SPECIAL_HITS }; }
 function players(room) { return [...room.players.values()].map(publicPlayer); }
 function humanPlayers(room) { return [...room.players.values()].filter(player => !player.bot); }
-function meta(room) { const mode = MODES[room.mode], survivalTime = room.mode === "survival" ? Math.floor(((room.game.endedAt || Date.now()) - room.game.startedAt) / 1000) : 0, winner = room.players.has(room.game.winner) ? publicPlayer(room.players.get(room.game.winner)) : room.game.winner, botCount = [...room.players.values()].filter(p => p.bot).length; return { mode:room.mode, modeName:mode.name, objective:mode.objective, target:mode.target, winner, winnerTeam:room.game.winnerTeam, items:room.game.items, projectiles:room.game.projectiles.map(({ id, x, y, vx, vy, type, color }) => ({ id, x, y, vx, vy, type, color })), safeRadius:room.game.safeRadius, zoneScore:room.game.zoneScore, survivalTime, wave:room.game.wave, botCount, arena:ARENA, survivalLeaders }; }
+function meta(room) { const mode = MODES[room.mode], survivalTime = room.mode === "survival" ? Math.floor(((room.game.endedAt || Date.now()) - room.game.startedAt) / 1000) : 0, winner = room.players.has(room.game.winner) ? publicPlayer(room.players.get(room.game.winner)) : room.game.winner, botCount = [...room.players.values()].filter(p => p.bot).length; return { mode:room.mode, modeName:mode.name, objective:mode.objective, target:mode.target, winner, winnerTeam:room.game.winnerTeam, rewardCharacter:room.game.rewardCharacter, items:room.game.items, projectiles:room.game.projectiles.map(({ id, x, y, vx, vy, type, color }) => ({ id, x, y, vx, vy, type, color })), safeRadius:room.game.safeRadius, zoneScore:room.game.zoneScore, survivalTime, wave:room.game.wave, botCount, arena:ARENA, survivalLeaders }; }
 function broadcast(room) { io.to(room.code).emit("game:state", players(room)); io.to(room.code).emit("game:meta", meta(room)); }
 function recordSurvivalLeaders(room) {
   const survived = Math.floor((room.game.endedAt - room.game.startedAt) / 1000);
@@ -234,6 +234,14 @@ function spawnBot(room, now) {
 }
 function updateSurvival(room, now) {
   room.game.wave = Math.floor((now - room.game.startedAt) / 15000) + 1;
+  const bobWinner = [...room.players.values()].find(p => !p.bot && p.alive && p.character === "blaze");
+  if (room.game.wave > BOB_UNLOCK_WAVE && bobWinner && !room.game.endedAt) {
+    room.game.winner = bobWinner.id;
+    room.game.endedAt = now;
+    room.game.rewardCharacter = "boomer";
+    recordSurvivalLeaders(room);
+    return;
+  }
   if (now >= room.game.nextBotAt) spawnBot(room, now);
   const humans = [...room.players.values()].filter(p => !p.bot && p.alive);
   for (const bot of [...room.players.values()].filter(p => p.bot && p.alive)) {

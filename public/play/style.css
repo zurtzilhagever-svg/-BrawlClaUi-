@@ -112,6 +112,12 @@ select {
   color: #fff;
 }
 
+.choice-grid button.locked {
+  cursor: not-allowed;
+  filter: grayscale(.75);
+  opacity: .58;
+}
+
 .choice-grid small {
   grid-column: 2;
   display: block;

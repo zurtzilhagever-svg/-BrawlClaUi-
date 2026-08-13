@@ -36,6 +36,8 @@ const playerId = sessionStorage.getItem(playerKey) || crypto.randomUUID();
 sessionStorage.setItem(playerKey, playerId);
 const languageKey = "couchbrawl-language";
 const survivalBestKey = "couchbrawl-survival-best";
+const unlockedCharactersKey = "couchbrawl-unlocked-characters";
+const lockedCharacters = new Set(["boomer"]);
 const translations = {
   en: {
     title: "Brawl anywhere.",
@@ -46,9 +48,11 @@ const translations = {
     brawlerLabel: "YOUR BRAWLER",
     bobName: "Bob",
     boomerName: "Boomer",
-    auroraName: "Aurora",
+    auroraName: "\u05d0\u05d5\u05e8\u05e8\u05d4",
     blazeDesc: "Starting Character",
     boomerDesc: "",
+    unlockBoomer: "Beat wave 10 with Bob",
+    boomerUnlocked: "Boomer unlocked",
     tankDesc: "Snow Princess",
     sparkDesc: "Fast striker",
     medicDesc: "Self heal",
@@ -121,6 +125,8 @@ const translations = {
     auroraName: "\u05d0\u05d5\u05e8\u05e8\u05d4",
     blazeDesc: "\u05d4\u05d3\u05de\u05d5\u05ea \u05d4\u05d4\u05ea\u05d7\u05dc\u05ea\u05d9\u05ea",
     boomerDesc: "",
+    unlockBoomer: "\u05e0\u05e6\u05d7 \u05d0\u05ea \u05d2\u05dc 10 \u05e2\u05dd \u05d1\u05d5\u05d1",
+    boomerUnlocked: "\u05d1\u05d5\u05de\u05e8 \u05e0\u05e4\u05ea\u05d7",
     tankDesc: "\u05e0\u05e1\u05d9\u05db\u05ea \u05d4\u05e9\u05dc\u05d2",
     sparkDesc: "\u05de\u05d4\u05d9\u05e8 \u05de\u05d0\u05d5\u05d3",
     medicDesc: "\u05e8\u05d9\u05e4\u05d5\u05d9 \u05e2\u05e6\u05de\u05d9",
@@ -216,6 +222,38 @@ function renderSurvivalStats() {
     ? leaders.slice(0, 5).map(entry => `<li><span>${escapeHtml(entry.name)}</span><strong>${formatSeconds(entry.time)}</strong><em>${entry.score || 0} ${t("kos")}</em></li>`).join("")
     : `<li>${t("noLeaders")}</li>`;
 }
+function unlockedCharacters() {
+  try {
+    return new Set(JSON.parse(localStorage.getItem(unlockedCharactersKey) || "[]"));
+  } catch {
+    return new Set();
+  }
+}
+function isCharacterUnlocked(character) {
+  return !lockedCharacters.has(character) || unlockedCharacters().has(character);
+}
+function unlockCharacter(character) {
+  const unlocked = unlockedCharacters();
+  if (unlocked.has(character)) return false;
+  unlocked.add(character);
+  localStorage.setItem(unlockedCharactersKey, JSON.stringify([...unlocked]));
+  renderCharacterLocks();
+  return true;
+}
+function renderCharacterLocks() {
+  document.querySelectorAll("[data-character]").forEach(button => {
+    const character = button.dataset.character;
+    const locked = !isCharacterUnlocked(character);
+    button.classList.toggle("locked", locked);
+    button.disabled = locked;
+    const label = button.querySelector("small");
+    if (label && character === "boomer") label.textContent = locked ? t("unlockBoomer") : t("boomerDesc");
+    if (locked && button.classList.contains("selected")) {
+      selectedCharacter = "blaze";
+      document.querySelectorAll("[data-character]").forEach(b => b.classList.toggle("selected", b.dataset.character === selectedCharacter));
+    }
+  });
+}
 function applyLanguage() {
   const language = selectedLanguage();
   document.documentElement.lang = language;
@@ -227,6 +265,7 @@ function applyLanguage() {
   updateLobbyRoom();
   renderSurvivalStats();
   updateMeta();
+  renderCharacterLocks();
 }
 let roomCode = "";
 let players = [];
@@ -244,6 +283,10 @@ const characterImages = Object.fromEntries(["blaze", "boomer", "tank", "spark", 
 }));
 const motionState = new Map();
 const fallbackArena = { width: 1200, height: 900, zoneRadius: 95, obstacles: [], bushes: [], spawnPoints: [] };
+const viewport = { width: 800, height: 600 };
+function clamp(n, min, max) {
+  return Math.max(min, Math.min(max, n));
+}
 
 nameInput.value = localStorage.getItem("couchbrawl-name") || "";
 languageSelect.value = localStorage.getItem(languageKey) || "system";
@@ -316,7 +359,9 @@ function updateMeta() {
   const me = players.find(p => p.id === playerId);
   const winner = gameMeta.winnerTeam
     ? `${gameMeta.winnerTeam === "red" ? t("red") : t("blue")} ${t("teamWins")} ${gameMeta.modeName}!`
-    : gameMeta.mode === "survival" && gameMeta.winner
+    : gameMeta.mode === "survival" && gameMeta.rewardCharacter === "boomer" && gameMeta.winner?.id === playerId
+      ? t("boomerUnlocked")
+      : gameMeta.mode === "survival" && gameMeta.winner
       ? `${t("survivalEnded")} - ${gameMeta.survivalTime || 0}s - ${me?.score || 0} ${t("kos")}`
       : gameMeta.winner
         ? `${gameMeta.winner.name} ${t("wins")} ${gameMeta.modeName}!`
@@ -350,6 +395,7 @@ languageSelect.addEventListener("change", () => {
 
 document.querySelectorAll("[data-character]").forEach(button => {
   button.onclick = () => {
+    if (!isCharacterUnlocked(button.dataset.character)) return;
     selectedCharacter = button.dataset.character;
     document.querySelectorAll("[data-character]").forEach(b => b.classList.toggle("selected", b === button));
     queueAutoJoin();
@@ -393,6 +439,7 @@ socket.on("game:state", next => {
 });
 socket.on("game:meta", next => {
   gameMeta = next;
+  if (next.mode === "survival" && next.rewardCharacter === "boomer" && next.winner?.id === playerId) unlockCharacter("boomer");
   updateMeta();
   if (next.mode === "survival") document.querySelector("#count").textContent = `${t("wave")} ${next.wave || 1} - ${next.survivalTime || 0}s`;
   if (next.mode === "zone") document.querySelector("#count").textContent = `${t("red")} ${Math.floor(next.zoneScore?.red || 0)} - ${Math.floor(next.zoneScore?.blue || 0)} ${t("blue")}`;
@@ -476,8 +523,9 @@ canvas.addEventListener("pointerdown", event => {
   if (!me?.ghost) return;
   const rect = canvas.getBoundingClientRect();
   const arena = gameMeta.arena || fallbackArena;
-  const x = (event.clientX - rect.left) * arena.width / rect.width;
-  const y = (event.clientY - rect.top) * arena.height / rect.height;
+  const camera = cameraFor(arena);
+  const x = camera.x + (event.clientX - rect.left) * canvas.width / rect.width;
+  const y = camera.y + (event.clientY - rect.top) * canvas.height / rect.height;
   const target = players.find(p => p.alive && Math.hypot(p.x - x, p.y - y) < 42);
   if (target) {
     socket.emit("ghost:target", { targetId: target.id });
@@ -573,14 +621,29 @@ function drawRoundedRect(x, y, w, h, r) {
   ctx.closePath();
 }
 
+function cameraFor(arena) {
+  const me = players.find(p => p.id === playerId) || players.find(p => p.alive);
+  const viewWidth = Math.min(viewport.width, arena.width);
+  const viewHeight = Math.min(viewport.height, arena.height);
+  return {
+    x: clamp((me?.x || arena.width / 2) - viewWidth / 2, 0, Math.max(0, arena.width - viewWidth)),
+    y: clamp((me?.y || arena.height / 2) - viewHeight / 2, 0, Math.max(0, arena.height - viewHeight)),
+    width: viewWidth,
+    height: viewHeight
+  };
+}
+
 function drawArena(now) {
   const arena = gameMeta.arena || fallbackArena;
-  if (canvas.width !== arena.width || canvas.height !== arena.height) {
-    canvas.width = arena.width;
-    canvas.height = arena.height;
+  const camera = cameraFor(arena);
+  if (canvas.width !== camera.width || canvas.height !== camera.height) {
+    canvas.width = camera.width;
+    canvas.height = camera.height;
   }
   const centerX = arena.width / 2;
   const centerY = arena.height / 2;
+  ctx.save();
+  ctx.translate(-camera.x, -camera.y);
   const g = ctx.createLinearGradient(0, 0, arena.width, arena.height);
   g.addColorStop(0, "#5f986f");
   g.addColorStop(.56, "#47765e");
@@ -660,6 +723,7 @@ function drawArena(now) {
     ctx.arc(centerX, centerY, gameMeta.safeRadius || Math.min(arena.width, arena.height) * .58, 0, Math.PI * 2);
     ctx.stroke();
   }
+  ctx.restore();
 }
 
 function drawProjectile(projectile, now) {
@@ -707,7 +771,11 @@ function drawProjectile(projectile, now) {
 
 function draw() {
   const now = performance.now();
+  const arena = gameMeta.arena || fallbackArena;
+  const camera = cameraFor(arena);
   drawArena(now);
+  ctx.save();
+  ctx.translate(-camera.x, -camera.y);
   for (const item of gameMeta.items || []) {
     ctx.save();
     ctx.translate(item.x, item.y);
@@ -812,6 +880,7 @@ function draw() {
     ctx.fillText(`${p.name}${p.ghost ? " GHOST" : ""} - ${p.score}`, 0, -43);
     ctx.restore();
   }
+  ctx.restore();
   const me = players.find(p => p.id === playerId);
   if (me?.inked) {
     ctx.fillStyle = "#10101de8";
