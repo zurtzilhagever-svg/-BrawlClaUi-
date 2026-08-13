@@ -44,9 +44,12 @@ const translations = {
     languageSystem: "Use device language",
     namePlaceholder: "Your name",
     brawlerLabel: "YOUR BRAWLER",
+    bobName: "Bob",
     boomerName: "Boomer",
-    blazeDesc: "",
-    tankDesc: "Heavy shield",
+    auroraName: "Aurora",
+    blazeDesc: "Starting Character",
+    boomerDesc: "",
+    tankDesc: "Snow Princess",
     sparkDesc: "Fast striker",
     medicDesc: "Self heal",
     modeLabel: "GAME MODE",
@@ -113,9 +116,12 @@ const translations = {
     languageSystem: "\u05dc\u05e4\u05d9 \u05e9\u05e4\u05ea \u05d4\u05de\u05db\u05e9\u05d9\u05e8",
     namePlaceholder: "\u05d4\u05e9\u05dd \u05e9\u05dc\u05da",
     brawlerLabel: "\u05d3\u05de\u05d5\u05ea",
+    bobName: "\u05d1\u05d5\u05d1",
     boomerName: "\u05d1\u05d5\u05de\u05e8",
-    blazeDesc: "",
-    tankDesc: "\u05d4\u05e8\u05d1\u05d4 \u05d7\u05d9\u05d9\u05dd \u05d5\u05de\u05d2\u05df",
+    auroraName: "\u05d0\u05d5\u05e8\u05e8\u05d4",
+    blazeDesc: "\u05d4\u05d3\u05de\u05d5\u05ea \u05d4\u05d4\u05ea\u05d7\u05dc\u05ea\u05d9\u05ea",
+    boomerDesc: "",
+    tankDesc: "\u05e0\u05e1\u05d9\u05db\u05ea \u05d4\u05e9\u05dc\u05d2",
     sparkDesc: "\u05de\u05d4\u05d9\u05e8 \u05de\u05d0\u05d5\u05d3",
     medicDesc: "\u05e8\u05d9\u05e4\u05d5\u05d9 \u05e2\u05e6\u05de\u05d9",
     modeLabel: "\u05de\u05e6\u05d1 \u05de\u05e9\u05d7\u05e7",
@@ -231,13 +237,13 @@ let controlMode = localStorage.getItem("couchbrawl-control-mode") || "touch";
 let autoJoinTimer = 0;
 let phoneOrigin = location.origin;
 let personalBest = Number(localStorage.getItem(survivalBestKey)) || 0;
-const characterImages = Object.fromEntries(["blaze", "tank", "spark", "medic"].map(id => {
+const characterImages = Object.fromEntries(["blaze", "boomer", "tank", "spark", "medic"].map(id => {
   const image = new Image();
   image.src = `/characters/${id}.png`;
   return [id, image];
 }));
 const motionState = new Map();
-const fallbackArena = { width: 800, height: 600, obstacles: [], bushes: [], spawnPoints: [] };
+const fallbackArena = { width: 1200, height: 900, zoneRadius: 95, obstacles: [], bushes: [], spawnPoints: [] };
 
 nameInput.value = localStorage.getItem("couchbrawl-name") || "";
 languageSelect.value = localStorage.getItem(languageKey) || "system";
@@ -469,8 +475,9 @@ canvas.addEventListener("pointerdown", event => {
   const me = players.find(p => p.id === playerId);
   if (!me?.ghost) return;
   const rect = canvas.getBoundingClientRect();
-  const x = (event.clientX - rect.left) * 800 / rect.width;
-  const y = (event.clientY - rect.top) * 600 / rect.height;
+  const arena = gameMeta.arena || fallbackArena;
+  const x = (event.clientX - rect.left) * arena.width / rect.width;
+  const y = (event.clientY - rect.top) * arena.height / rect.height;
   const target = players.find(p => p.alive && Math.hypot(p.x - x, p.y - y) < 42);
   if (target) {
     socket.emit("ghost:target", { targetId: target.id });
@@ -502,15 +509,10 @@ function drawCharacter(p, motion) {
   const image = characterImages[p.character];
   if (image?.complete && image.naturalWidth) {
     ctx.save();
-    ctx.translate(0, p.character === "blaze" ? -14 + motion.bob * .35 : 0);
-    if (p.character === "blaze") {
-      ctx.drawImage(image, -25, -40, 50, 76);
-    } else {
-      ctx.beginPath();
-      ctx.arc(0, 0, 24, 0, Math.PI * 2);
-      ctx.clip();
-      ctx.drawImage(image, -24, -24, 48, 48);
-    }
+    ctx.beginPath();
+    ctx.arc(0, 0, 24, 0, Math.PI * 2);
+    ctx.clip();
+    ctx.drawImage(image, -24, -24, 48, 48);
     ctx.restore();
     return true;
   }
@@ -573,19 +575,25 @@ function drawRoundedRect(x, y, w, h, r) {
 
 function drawArena(now) {
   const arena = gameMeta.arena || fallbackArena;
-  const g = ctx.createLinearGradient(0, 0, 800, 600);
+  if (canvas.width !== arena.width || canvas.height !== arena.height) {
+    canvas.width = arena.width;
+    canvas.height = arena.height;
+  }
+  const centerX = arena.width / 2;
+  const centerY = arena.height / 2;
+  const g = ctx.createLinearGradient(0, 0, arena.width, arena.height);
   g.addColorStop(0, "#5f986f");
   g.addColorStop(.56, "#47765e");
   g.addColorStop(1, "#315b54");
   ctx.fillStyle = g;
-  ctx.fillRect(0, 0, 800, 600);
+  ctx.fillRect(0, 0, arena.width, arena.height);
 
   ctx.fillStyle = "#45685b";
-  ctx.fillRect(0, 258, 800, 84);
-  ctx.fillRect(358, 0, 84, 600);
+  ctx.fillRect(0, centerY - 54, arena.width, 108);
+  ctx.fillRect(centerX - 54, 0, 108, arena.height);
   ctx.fillStyle = "#6e9f6c";
-  for (let x = 28; x < 800; x += 64) {
-    for (let y = 30; y < 600; y += 64) {
+  for (let x = 28; x < arena.width; x += 64) {
+    for (let y = 30; y < arena.height; y += 64) {
       ctx.globalAlpha = ((x + y) / 64) % 2 ? .1 : .05;
       ctx.fillRect(x, y, 34, 24);
     }
@@ -594,16 +602,16 @@ function drawArena(now) {
 
   ctx.strokeStyle = "#ffffff13";
   ctx.lineWidth = 2;
-  for (let x = 40; x < 800; x += 80) {
+  for (let x = 40; x < arena.width; x += 80) {
     ctx.beginPath();
     ctx.moveTo(x, 0);
-    ctx.lineTo(x, 600);
+    ctx.lineTo(x, arena.height);
     ctx.stroke();
   }
-  for (let y = 40; y < 600; y += 80) {
+  for (let y = 40; y < arena.height; y += 80) {
     ctx.beginPath();
     ctx.moveTo(0, y);
-    ctx.lineTo(800, y);
+    ctx.lineTo(arena.width, y);
     ctx.stroke();
   }
 
@@ -641,7 +649,7 @@ function drawArena(now) {
     ctx.strokeStyle = "#75d8ffcc";
     ctx.lineWidth = 5;
     ctx.beginPath();
-    ctx.arc(400, 300, 70, 0, Math.PI * 2);
+    ctx.arc(centerX, centerY, arena.zoneRadius || 95, 0, Math.PI * 2);
     ctx.fill();
     ctx.stroke();
   }
@@ -649,9 +657,52 @@ function drawArena(now) {
     ctx.strokeStyle = "#ff6978cc";
     ctx.lineWidth = 8;
     ctx.beginPath();
-    ctx.arc(400, 300, gameMeta.safeRadius || 350, 0, Math.PI * 2);
+    ctx.arc(centerX, centerY, gameMeta.safeRadius || Math.min(arena.width, arena.height) * .58, 0, Math.PI * 2);
     ctx.stroke();
   }
+}
+
+function drawProjectile(projectile, now) {
+  const angle = Math.atan2(projectile.vy, projectile.vx);
+  ctx.save();
+  ctx.translate(projectile.x, projectile.y);
+  ctx.rotate(angle);
+  ctx.fillStyle = "#00000035";
+  ctx.beginPath();
+  ctx.ellipse(-3, 9, 14, 4, 0, 0, Math.PI * 2);
+  ctx.fill();
+  if (projectile.type === "rocket") {
+    const flicker = Math.sin(now / 55 + projectile.x) * 2;
+    ctx.fillStyle = "#ff7b35";
+    ctx.beginPath();
+    ctx.moveTo(-18 - flicker, 0);
+    ctx.lineTo(-30 - flicker, -7);
+    ctx.lineTo(-26 - flicker, 0);
+    ctx.lineTo(-30 - flicker, 7);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = "#f4f0df";
+    drawRoundedRect(-18, -7, 28, 14, 6);
+    ctx.fill();
+    ctx.fillStyle = projectile.color || "#ff5964";
+    ctx.beginPath();
+    ctx.moveTo(10, -7);
+    ctx.lineTo(24, 0);
+    ctx.lineTo(10, 7);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = "#314057";
+    ctx.fillRect(-7, -10, 7, 20);
+  } else {
+    ctx.fillStyle = projectile.color || "#ffd761";
+    ctx.beginPath();
+    ctx.arc(0, 0, 8, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = "#ffffffaa";
+    ctx.lineWidth = 2;
+    ctx.stroke();
+  }
+  ctx.restore();
 }
 
 function draw() {
@@ -687,6 +738,7 @@ function draw() {
     }
     ctx.restore();
   }
+  for (const projectile of gameMeta.projectiles || []) drawProjectile(projectile, now);
   for (const p of players) {
     const motion = motionFor(p, now);
     ctx.save();
@@ -763,11 +815,11 @@ function draw() {
   const me = players.find(p => p.id === playerId);
   if (me?.inked) {
     ctx.fillStyle = "#10101de8";
-    ctx.fillRect(0, 0, 800, 600);
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
     ctx.fillStyle = "#b6b6d0";
     ctx.font = "bold 32px sans-serif";
     ctx.textAlign = "center";
-    ctx.fillText("INKED!", 400, 300);
+    ctx.fillText("INKED!", canvas.width / 2, canvas.height / 2);
   }
   requestAnimationFrame(draw);
 }

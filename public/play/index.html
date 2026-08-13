@@ -7,7 +7,7 @@
   <link rel="manifest" href="/manifest.webmanifest">
   <link rel="apple-touch-icon" href="/icons/icon.svg">
   <title>CouchBrawl</title>
-  <link rel="stylesheet" href="style.css?v=8">
+  <link rel="stylesheet" href="style.css?v=14">
 </head>
 <body>
   <section id="lobby" class="lobby">
@@ -24,8 +24,9 @@
 
     <label data-i18n="brawlerLabel">YOUR BRAWLER</label>
     <div id="characters" class="choice-grid">
-      <button data-character="blaze" class="selected"><span class="portrait blaze"></span><img class="char-img" src="/characters/blaze.png" alt="" onerror="this.hidden=true"><span data-i18n="boomerName">Boomer</span><small data-i18n="blazeDesc"></small></button>
-      <button data-character="tank"><span class="portrait tank"></span><img class="char-img" src="/characters/tank.png" alt="" onerror="this.hidden=true"><span>Tank</span><small data-i18n="tankDesc">Heavy shield</small></button>
+      <button data-character="blaze" class="selected"><span class="portrait blaze"></span><img class="char-img" src="/characters/blaze.png" alt="" onerror="this.hidden=true"><span data-i18n="bobName">Bob</span><small data-i18n="blazeDesc"></small></button>
+      <button data-character="boomer"><span class="portrait boomer"></span><img class="char-img" src="/characters/boomer.png" alt="" onerror="this.hidden=true"><span data-i18n="boomerName">Boomer</span><small data-i18n="boomerDesc"></small></button>
+      <button data-character="tank"><span class="portrait tank"></span><img class="char-img" src="/characters/tank.png" alt="" onerror="this.hidden=true"><span data-i18n="auroraName">Aurora</span><small data-i18n="tankDesc">Snow Princess</small></button>
       <button data-character="spark"><span class="portrait spark"></span><img class="char-img" src="/characters/spark.png" alt="" onerror="this.hidden=true"><span>Spark</span><small data-i18n="sparkDesc">Fast striker</small></button>
       <button data-character="medic"><span class="portrait medic"></span><img class="char-img" src="/characters/medic.png" alt="" onerror="this.hidden=true"><span>Medic</span><small data-i18n="medicDesc">Self heal</small></button>
     </div>
@@ -94,7 +95,7 @@
       <span id="room-label">ROOM ----</span>
       <span id="count">1 PLAYER</span>
     </header>
-    <canvas id="arena" width="800" height="600"></canvas>
+    <canvas id="arena" width="1200" height="900"></canvas>
     <div class="hud">
       <strong id="objective" data-i18n="initialObjective">Share the room code to play together</strong>
       <span id="help"></span>
@@ -119,6 +120,6 @@
   <script src="/socket.io/socket.io.js"></script>
   <script src="/shared/gamepad.js"></script>
   <script src="/shared/qr-generator.js"></script>
-  <script src="play.js?v=8"></script>
+  <script src="play.js?v=14"></script>
 </body>
 </html>

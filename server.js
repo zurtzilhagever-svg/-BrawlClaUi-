@@ -2,18 +2,19 @@
 const express = require("express"), http = require("http"), os = require("os"), path = require("path"), QRCode = require("qrcode");
 const { Server } = require("socket.io");
 const app = express(), server = http.createServer(app), io = new Server(server, { cors: { origin: "*" } });
-const PORT = Number(process.env.PORT) || 3000, RECONNECT_MS = 30_000, MAX_PLAYERS = 8, SPECIAL_HITS = 5;
+const PORT = Number(process.env.PORT) || 3000, RECONNECT_MS = 30_000, MAX_PLAYERS = 8, SPECIAL_HITS = 5, PROJECTILE_SPEED = 12;
 const rooms = new Map(), socketIndex = new Map();
 const survivalLeaders = [];
 const COLORS = ["#ff5964", "#36c8ff", "#ffd54a", "#a875ff", "#52e084", "#ff8e4f", "#fa73bd", "#80a7ff"];
 const CHARACTERS = {
-  blaze: { name: "\u05d1\u05d5\u05de\u05e8", hp: 100, speed: 4, damage: 14, range: 145, rate: 420, special: "Jet dash" },
-  tank: { name: "Tank", hp: 180, speed: 2.65, damage: 24, range: 92, rate: 650, special: "Iron shield" },
+  blaze: { name: "\u05d1\u05d5\u05d1", hp: 100, speed: 4, damage: 14, range: 145, rate: 420, special: "Cardboard blast" },
+  boomer: { name: "\u05d1\u05d5\u05de\u05e8", hp: 100, speed: 4, damage: 14, range: 145, rate: 420, special: "Jet dash" },
+  tank: { name: "\u05d0\u05d5\u05e8\u05e8\u05d4", hp: 180, speed: 2.65, damage: 24, range: 92, rate: 650, special: "Ice shield" },
   spark: { name: "Spark", hp: 82, speed: 5.1, damage: 10, range: 165, rate: 300, special: "Lightning dash" },
   medic: { name: "Medic", hp: 115, speed: 3.45, damage: 9, range: 120, rate: 440, special: "Heal pulse" },
   grunt: { name: "Grunt", hp: 70, speed: 2.35, damage: 8, range: 44, rate: 760, special: "None" }
 };
-const PLAYABLE_CHARACTERS = new Set(["blaze", "tank", "spark", "medic"]);
+const PLAYABLE_CHARACTERS = new Set(["blaze", "boomer", "tank", "spark", "medic"]);
 const MODES = {
   survival: { name: "Survival", objective: "Survive bot waves as long as you can", target: 0 },
   brawl: { name: "Solo Brawl", objective: "Be the last brawler alive", target: 1 },
@@ -24,28 +25,36 @@ const MODES = {
   soloZone: { name: "Solo Zone Control", objective: "Hold the center for 15 seconds", target: 15 }
 };
 const ARENA = {
-  width: 800,
-  height: 600,
+  width: 1200,
+  height: 900,
+  zoneRadius: 95,
   obstacles: [
-    { x: 104, y: 126, w: 92, h: 48, kind: "stone" },
-    { x: 604, y: 126, w: 92, h: 48, kind: "stone" },
-    { x: 104, y: 426, w: 92, h: 48, kind: "stone" },
-    { x: 604, y: 426, w: 92, h: 48, kind: "stone" },
-    { x: 312, y: 86, w: 176, h: 34, kind: "stone" },
-    { x: 312, y: 480, w: 176, h: 34, kind: "stone" },
-    { x: 246, y: 246, w: 68, h: 108, kind: "crate" },
-    { x: 486, y: 246, w: 68, h: 108, kind: "crate" }
+    { x: 132, y: 146, w: 138, h: 58, kind: "stone" },
+    { x: 930, y: 146, w: 138, h: 58, kind: "stone" },
+    { x: 132, y: 696, w: 138, h: 58, kind: "stone" },
+    { x: 930, y: 696, w: 138, h: 58, kind: "stone" },
+    { x: 430, y: 106, w: 340, h: 40, kind: "stone" },
+    { x: 430, y: 754, w: 340, h: 40, kind: "stone" },
+    { x: 170, y: 386, w: 168, h: 46, kind: "stone" },
+    { x: 862, y: 468, w: 168, h: 46, kind: "stone" },
+    { x: 366, y: 342, w: 82, h: 154, kind: "crate" },
+    { x: 752, y: 404, w: 82, h: 154, kind: "crate" },
+    { x: 548, y: 270, w: 104, h: 54, kind: "crate" },
+    { x: 548, y: 576, w: 104, h: 54, kind: "crate" }
   ],
   bushes: [
-    { x: 214, y: 158, w: 118, h: 58 },
-    { x: 468, y: 158, w: 118, h: 58 },
-    { x: 214, y: 384, w: 118, h: 58 },
-    { x: 468, y: 384, w: 118, h: 58 },
-    { x: 352, y: 252, w: 96, h: 96 }
+    { x: 318, y: 176, w: 160, h: 66 },
+    { x: 722, y: 176, w: 160, h: 66 },
+    { x: 318, y: 658, w: 160, h: 66 },
+    { x: 722, y: 658, w: 160, h: 66 },
+    { x: 128, y: 286, w: 134, h: 72 },
+    { x: 938, y: 542, w: 134, h: 72 },
+    { x: 536, y: 386, w: 128, h: 128 }
   ],
   spawnPoints: [
-    { x: 88, y: 88 }, { x: 712, y: 88 }, { x: 88, y: 512 }, { x: 712, y: 512 },
-    { x: 210, y: 300 }, { x: 590, y: 300 }, { x: 400, y: 168 }, { x: 400, y: 432 }
+    { x: 92, y: 92 }, { x: 1108, y: 92 }, { x: 92, y: 808 }, { x: 1108, y: 808 },
+    { x: 262, y: 450 }, { x: 938, y: 450 }, { x: 600, y: 205 }, { x: 600, y: 695 },
+    { x: 410, y: 284 }, { x: 790, y: 616 }
   ]
 };
 const GHOST_ITEMS = ["wall", "ink", "slow", "teleport", "shareHealth"];
@@ -67,24 +76,26 @@ app.get("/api/network", (req, res) => {
 app.get("/api/qr", async (req, res) => { try { const value = String(req.query.value || "").slice(0, 2048); if (!value) throw Error(); res.type("image/svg+xml").send(await QRCode.toString(value, { type: "svg", margin: 1, errorCorrectionLevel: "M" })); } catch { res.status(400).json({ error: "Missing or invalid value" }); } });
 function code() { const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; let result; do result = Array.from({ length: 4 }, () => chars[Math.floor(Math.random() * chars.length)]).join(""); while (rooms.has(result)); return result; }
 function clamp(n, min, max) { return Math.max(min, Math.min(max, n)); }
+function arenaCenter() { return { x:ARENA.width / 2, y:ARENA.height / 2 }; }
+function arenaSafeRadius() { return Math.min(ARENA.width, ARENA.height) * .58; }
 function intersectsRect(x, y, radius, rect) { const cx=clamp(x,rect.x,rect.x+rect.w), cy=clamp(y,rect.y,rect.y+rect.h); return Math.hypot(x-cx,y-cy) < radius; }
 function blocked(x, y, radius = 24) { return ARENA.obstacles.some(rect => intersectsRect(x, y, radius, rect)); }
 function randomSpot() {
   for (let i=0;i<70;i++) {
-    const base = i < ARENA.spawnPoints.length ? ARENA.spawnPoints[Math.floor(Math.random()*ARENA.spawnPoints.length)] : { x:90+Math.random()*620, y:90+Math.random()*420 };
-    const spot = { x:clamp(base.x+(Math.random()-.5)*46,35,765), y:clamp(base.y+(Math.random()-.5)*46,35,565) };
+    const base = i < ARENA.spawnPoints.length ? ARENA.spawnPoints[Math.floor(Math.random()*ARENA.spawnPoints.length)] : { x:90+Math.random()*(ARENA.width-180), y:90+Math.random()*(ARENA.height-180) };
+    const spot = { x:clamp(base.x+(Math.random()-.5)*64,35,ARENA.width-35), y:clamp(base.y+(Math.random()-.5)*64,35,ARENA.height-35) };
     if (!blocked(spot.x, spot.y, 28)) return spot;
   }
-  return { x: 400, y: 300 };
+  return arenaCenter();
 }
 function makeItems(amount, type) { return Array.from({ length: amount }, () => ({ ...randomSpot(), type })); }
-function gameFor(mode) { return { startedAt: Date.now(), winner: null, winnerTeam: null, items: mode === "gems" ? makeItems(12, "gem") : mode === "coins" ? makeItems(18, "coin") : [], zoneScore: { red: 0, blue: 0 }, safeRadius: 350, nextItemAt: 0, nextBotAt: 0, botSerial: 0, wave: 0 }; }
+function gameFor(mode) { return { startedAt: Date.now(), winner: null, winnerTeam: null, items: mode === "gems" ? makeItems(12, "gem") : mode === "coins" ? makeItems(18, "coin") : [], projectiles: [], nextProjectileId: 0, zoneScore: { red: 0, blue: 0 }, safeRadius: arenaSafeRadius(), nextItemAt: 0, nextBotAt: 0, botSerial: 0, wave: 0 }; }
 function playerRadius(p) { return p.character === "tank" ? 26 : p.character === "grunt" ? 18 : 23; }
 function movePlayer(p, dx, dy) {
   const radius = playerRadius(p);
-  const nextX = clamp(p.x + dx, 28, 772);
+  const nextX = clamp(p.x + dx, 28, ARENA.width - 28);
   if (!blocked(nextX, p.y, radius)) p.x = nextX;
-  const nextY = clamp(p.y + dy, 28, 572);
+  const nextY = clamp(p.y + dy, 28, ARENA.height - 28);
   if (!blocked(p.x, nextY, radius)) p.y = nextY;
 }
 function dashPlayer(p, dx, dy) {
@@ -99,10 +110,16 @@ function lineBlocked(x1, y1, x2, y2) {
   }
   return false;
 }
+function aimDirection(p) {
+  const x = Number.isFinite(p.aimX) ? p.aimX : p.input.x;
+  const y = Number.isFinite(p.aimY) ? p.aimY : p.input.y;
+  const len = Math.hypot(x, y);
+  return len > .01 ? { x:x/len, y:y/len } : { x:1, y:0 };
+}
 function publicPlayer(p) { return { id:p.id, name:p.name, color:p.color, team:p.team, character:p.character, characterName:CHARACTERS[p.character]?.name || p.character, bot:p.bot, x:p.x, y:p.y, health:Math.ceil(p.health), maxHealth:p.maxHealth, alive:p.alive, ghost:p.ghost, ghostItem:p.ghostItem, ghostItemName:p.ghostItem && GHOST_ITEM_NAMES[p.ghostItem], ghostPing:Date.now() < (p.pingUntil || 0), haunted:Date.now() < (p.hauntedUntil || 0), walled:Date.now() < (p.wallUntil || 0), inked:Date.now() < (p.inkUntil || 0), hit:Date.now() < (p.hitUntil || 0), score:p.score, gems:p.gems, coins:p.coins, connected:p.connected, shield:Date.now() < p.shieldUntil, specialCharge:p.specialCharge || 0, specialRequired:SPECIAL_HITS, specialReady:(p.specialCharge || 0) >= SPECIAL_HITS }; }
 function players(room) { return [...room.players.values()].map(publicPlayer); }
 function humanPlayers(room) { return [...room.players.values()].filter(player => !player.bot); }
-function meta(room) { const mode = MODES[room.mode], survivalTime = room.mode === "survival" ? Math.floor(((room.game.endedAt || Date.now()) - room.game.startedAt) / 1000) : 0, winner = room.players.has(room.game.winner) ? publicPlayer(room.players.get(room.game.winner)) : room.game.winner, botCount = [...room.players.values()].filter(p => p.bot).length; return { mode:room.mode, modeName:mode.name, objective:mode.objective, target:mode.target, winner, winnerTeam:room.game.winnerTeam, items:room.game.items, safeRadius:room.game.safeRadius, zoneScore:room.game.zoneScore, survivalTime, wave:room.game.wave, botCount, arena:ARENA, survivalLeaders }; }
+function meta(room) { const mode = MODES[room.mode], survivalTime = room.mode === "survival" ? Math.floor(((room.game.endedAt || Date.now()) - room.game.startedAt) / 1000) : 0, winner = room.players.has(room.game.winner) ? publicPlayer(room.players.get(room.game.winner)) : room.game.winner, botCount = [...room.players.values()].filter(p => p.bot).length; return { mode:room.mode, modeName:mode.name, objective:mode.objective, target:mode.target, winner, winnerTeam:room.game.winnerTeam, items:room.game.items, projectiles:room.game.projectiles.map(({ id, x, y, vx, vy, type, color }) => ({ id, x, y, vx, vy, type, color })), safeRadius:room.game.safeRadius, zoneScore:room.game.zoneScore, survivalTime, wave:room.game.wave, botCount, arena:ARENA, survivalLeaders }; }
 function broadcast(room) { io.to(room.code).emit("game:state", players(room)); io.to(room.code).emit("game:meta", meta(room)); }
 function recordSurvivalLeaders(room) {
   const survived = Math.floor((room.game.endedAt - room.game.startedAt) / 1000);
@@ -145,7 +162,7 @@ function joinPlayer(socket, roomCode, playerId, name, character, ack) {
       p.character = character; p.maxHealth = stats.hp; p.health = Math.min(stats.hp, Math.max(1, Math.round(stats.hp * ratio)));
     }
   }
-  else { const c = PLAYABLE_CHARACTERS.has(character) ? character : "blaze", stats = CHARACTERS[c], spot = randomSpot(), redCount=[...room.players.values()].filter(p=>p.team==="red").length, blueCount=[...room.players.values()].filter(p=>p.team==="blue").length, team=room.mode==="zone"?(redCount<=blueCount?"red":"blue"):null, defaultName=`Player ${humanPlayers(room).length + 1}`, displayName=String(name || "").trim().slice(0, 14) || defaultName; p = { id, socketId:socket.id, name:displayName, character:c, color:COLORS[room.players.size % COLORS.length], team, x:spot.x, y:spot.y, maxHealth:stats.hp, health:stats.hp, alive:true, score:0, gems:0, coins:0, input:{x:0,y:0,attack:false,special:false}, lastAttack:0, lastSpecial:false, specialCharge:0, shieldUntil:0, connected:true }; room.players.set(id, p); }
+  else { const c = PLAYABLE_CHARACTERS.has(character) ? character : "blaze", stats = CHARACTERS[c], spot = randomSpot(), redCount=[...room.players.values()].filter(p=>p.team==="red").length, blueCount=[...room.players.values()].filter(p=>p.team==="blue").length, team=room.mode==="zone"?(redCount<=blueCount?"red":"blue"):null, defaultName=`Player ${humanPlayers(room).length + 1}`, displayName=String(name || "").trim().slice(0, 14) || defaultName; p = { id, socketId:socket.id, name:displayName, character:c, color:COLORS[room.players.size % COLORS.length], team, x:spot.x, y:spot.y, aimX:1, aimY:0, maxHealth:stats.hp, health:stats.hp, alive:true, score:0, gems:0, coins:0, input:{x:0,y:0,attack:false,special:false}, lastAttack:0, lastSpecial:false, specialCharge:0, shieldUntil:0, connected:true }; room.players.set(id, p); }
   socketIndex.set(socket.id, { code:roomCode, playerId:id }); socket.join(roomCode); ack({ ok:true, code:roomCode, player:publicPlayer(p), players:players(room), meta:meta(room) }); broadcast(room);
 }
 function end(room, winner) { if (room.game.winner || !winner) return; room.game.winner = winner.id; broadcast(room); }
@@ -165,7 +182,7 @@ function kill(room, victim, killer) {
   victim.ghostItem = false;
   victim.nextGhostItemAt = victim.ghost ? victim.diedAt + 30_000 : 0;
   if (killer && killer.id !== victim.id) killer.score += 1;
-  if (room.mode === "gems" && victim.gems) { for (let i=0;i<victim.gems;i++) room.game.items.push({ x:clamp(victim.x+(Math.random()-.5)*45,25,775), y:clamp(victim.y+(Math.random()-.5)*45,25,575), type:"gem" }); victim.gems=0; }
+  if (room.mode === "gems" && victim.gems) { for (let i=0;i<victim.gems;i++) room.game.items.push({ x:clamp(victim.x+(Math.random()-.5)*45,25,ARENA.width-25), y:clamp(victim.y+(Math.random()-.5)*45,25,ARENA.height-25), type:"gem" }); victim.gems=0; }
   if (room.mode === "showdown" || room.mode === "brawl") { const alive = [...room.players.values()].filter(p => p.alive); if (alive.length === 1) end(room, alive[0]); }
   if (room.mode === "survival" && ![...room.players.values()].some(p => !p.bot && p.alive) && !room.game.endedAt) {
     room.game.winner = "survival-ended";
@@ -175,15 +192,42 @@ function kill(room, victim, killer) {
 }
 function attack(room, attacker, now) {
   const stats = CHARACTERS[attacker.character]; if (now - attacker.lastAttack < stats.rate) return; attacker.lastAttack = now;
-  let victim, distance = Infinity; for (const p of room.players.values()) { const d=Math.hypot(p.x-attacker.x,p.y-attacker.y); if (p.id!==attacker.id && p.alive && p.connected && !(room.mode==="zone" && p.team===attacker.team) && !(room.mode==="survival" && Boolean(p.bot)===Boolean(attacker.bot)) && d < distance && !lineBlocked(attacker.x,attacker.y,p.x,p.y)) { victim=p; distance=d; } }
-  if (!victim || distance > stats.range) return; const damage = stats.damage * (now < victim.shieldUntil ? .35 : 1); victim.health -= damage; victim.hitUntil = now + 150; if (!attacker.bot && PLAYABLE_CHARACTERS.has(attacker.character)) attacker.specialCharge = Math.min(SPECIAL_HITS, (attacker.specialCharge || 0) + 1); if (victim.health <= 0) kill(room, victim, attacker);
+  const aim = aimDirection(attacker), dx = aim.x, dy = aim.y;
+  room.game.projectiles.push({ id:`${room.code}-${room.game.nextProjectileId++}`, ownerId:attacker.id, bot:Boolean(attacker.bot), team:attacker.team, character:attacker.character, type:attacker.character==="blaze"?"rocket":"shot", color:attacker.color, x:attacker.x+dx*26, y:attacker.y+dy*26, vx:dx*PROJECTILE_SPEED, vy:dy*PROJECTILE_SPEED, damage:stats.damage, remaining:stats.range, radius:attacker.character==="blaze"?10:7 });
 }
 function special(room, p, now) { if (p.lastSpecial || (p.specialCharge || 0) < SPECIAL_HITS) return; p.specialCharge = 0; p.lastSpecialAt = now; const stats = CHARACTERS[p.character]; if (p.character === "tank") p.shieldUntil = now + 2600; else if (p.character === "medic") p.health = Math.min(stats.hp, p.health + 42); else { const len=Math.hypot(p.input.x,p.input.y)||1; dashPlayer(p,p.input.x/len*105,p.input.y/len*105); } }
+function projectileCanHit(room, projectile, target) {
+  return target.id !== projectile.ownerId && target.alive && target.connected && !(room.mode === "zone" && target.team && target.team === projectile.team) && !(room.mode === "survival" && Boolean(target.bot) === projectile.bot);
+}
+function hitWithProjectile(room, projectile, victim) {
+  const attacker = room.players.get(projectile.ownerId);
+  const damage = projectile.damage * (Date.now() < victim.shieldUntil ? .35 : 1);
+  victim.health -= damage;
+  victim.hitUntil = Date.now() + 150;
+  if (attacker && !attacker.bot && PLAYABLE_CHARACTERS.has(attacker.character)) attacker.specialCharge = Math.min(SPECIAL_HITS, (attacker.specialCharge || 0) + 1);
+  if (victim.health <= 0) kill(room, victim, attacker || null);
+}
+function updateProjectiles(room) {
+  for (let i=room.game.projectiles.length-1;i>=0;i--) {
+    const projectile = room.game.projectiles[i], nextX = projectile.x + projectile.vx, nextY = projectile.y + projectile.vy;
+    projectile.remaining -= Math.hypot(projectile.vx, projectile.vy);
+    if (projectile.remaining <= 0 || nextX < 0 || nextX > ARENA.width || nextY < 0 || nextY > ARENA.height || lineBlocked(projectile.x, projectile.y, nextX, nextY)) {
+      room.game.projectiles.splice(i, 1);
+      continue;
+    }
+    projectile.x = nextX; projectile.y = nextY;
+    const victim = [...room.players.values()].find(p => projectileCanHit(room, projectile, p) && Math.hypot(p.x-projectile.x,p.y-projectile.y) < playerRadius(p) + projectile.radius);
+    if (victim) {
+      hitWithProjectile(room, projectile, victim);
+      room.game.projectiles.splice(i, 1);
+    }
+  }
+}
 function spawnBot(room, now) {
   const count = [...room.players.values()].filter(p => p.bot).length;
   const cap = Math.min(9, 2 + Math.floor(room.game.wave / 2));
   if (count >= cap) return;
-  const edge = Math.floor(Math.random() * 4), spot = edge === 0 ? { x: 30, y: 80 + Math.random() * 440 } : edge === 1 ? { x: 770, y: 80 + Math.random() * 440 } : edge === 2 ? { x: 90 + Math.random() * 620, y: 30 } : { x: 90 + Math.random() * 620, y: 570 };
+  const edge = Math.floor(Math.random() * 4), spot = edge === 0 ? { x: 30, y: 80 + Math.random() * (ARENA.height-160) } : edge === 1 ? { x: ARENA.width-30, y: 80 + Math.random() * (ARENA.height-160) } : edge === 2 ? { x: 90 + Math.random() * (ARENA.width-180), y: 30 } : { x: 90 + Math.random() * (ARENA.width-180), y: ARENA.height-30 };
   const hp = CHARACTERS.grunt.hp + Math.min(45, room.game.wave * 3), id = `bot-${room.code}-${room.game.botSerial++}`;
   room.players.set(id, { id, socketId:null, name:`Bot ${room.game.botSerial}`, character:"grunt", bot:true, color:"#f07167", team:null, x:spot.x, y:spot.y, maxHealth:hp, health:hp, alive:true, score:0, gems:0, coins:0, input:{x:0,y:0,attack:false,special:false}, lastAttack:0, lastSpecial:false, shieldUntil:0, connected:true });
   room.game.nextBotAt = now + Math.max(900, 2300 - room.game.wave * 95);
@@ -199,13 +243,17 @@ function updateSurvival(room, now) {
     const len = Math.hypot(target.x - bot.x, target.y - bot.y) || 1;
     bot.input.x = (target.x - bot.x) / len;
     bot.input.y = (target.y - bot.y) / len;
+    bot.aimX = bot.input.x;
+    bot.aimY = bot.input.y;
     bot.input.attack = distance < CHARACTERS[bot.character].range;
   }
 }
 function updateRoom(room, now) {
   if (room.game.winner || room.game.winnerTeam) return;
   if (room.mode === "survival") updateSurvival(room, now);
-  if (room.mode === "showdown") room.game.safeRadius = Math.max(80, 350 - (now-room.game.startedAt)/420);
+  const center = arenaCenter();
+  if (room.mode === "showdown") room.game.safeRadius = Math.max(90, arenaSafeRadius() - (now-room.game.startedAt)/520);
+  updateProjectiles(room);
   for (const p of room.players.values()) {
     if (!p.connected) continue;
     if (!p.alive && p.ghost) {
@@ -235,13 +283,13 @@ function updateRoom(room, now) {
     const stats=CHARACTERS[p.character], moveScale=now < (p.wallUntil||0) ? 0 : now < (p.hauntedUntil||0) ? .58 : 1;
     movePlayer(p, p.input.x*stats.speed*moveScale, p.input.y*stats.speed*moveScale);
     if (p.input.attack) attack(room,p,now); if (p.input.special) special(room,p,now); p.lastSpecial=p.input.special;
-    if (room.mode === "showdown" && Math.hypot(p.x-400,p.y-300) > room.game.safeRadius) { p.health -= .55; if (p.health<=0) kill(room,p,null); }
+    if (room.mode === "showdown" && Math.hypot(p.x-center.x,p.y-center.y) > room.game.safeRadius) { p.health -= .55; if (p.health<=0) kill(room,p,null); }
     for (let i=room.game.items.length-1;i>=0;i--) { const item=room.game.items[i]; if (Math.hypot(item.x-p.x,item.y-p.y)<32) { room.game.items.splice(i,1); if(item.type==="gem")p.gems++; else p.coins++; } }
     if ((room.mode === "gems" && p.gems >= 10) || (room.mode === "coins" && p.coins >= 15)) end(room,p);
-    if (room.mode === "soloZone" && Math.hypot(p.x-400,p.y-300)<70) { room.game.zoneScore[p.id]=(room.game.zoneScore[p.id]||0)+1/30; if(room.game.zoneScore[p.id]>=15) end(room,p); }
+    if (room.mode === "soloZone" && Math.hypot(p.x-center.x,p.y-center.y)<ARENA.zoneRadius) { room.game.zoneScore[p.id]=(room.game.zoneScore[p.id]||0)+1/30; if(room.game.zoneScore[p.id]>=15) end(room,p); }
   }
   if (room.mode === "zone") {
-    const inside = [...room.players.values()].filter(p=>p.alive&&Math.hypot(p.x-400,p.y-300)<70);
+    const inside = [...room.players.values()].filter(p=>p.alive&&Math.hypot(p.x-center.x,p.y-center.y)<ARENA.zoneRadius);
     const red = inside.some(p=>p.team==="red"), blue = inside.some(p=>p.team==="blue");
     if (red !== blue) room.game.zoneScore[red?"red":"blue"] += 1/30;
     if (room.game.zoneScore.red >= 35) endTeam(room,"red");
@@ -255,7 +303,7 @@ io.on("connection", socket => {
   socket.on("player:create", ({playerId,name,character,mode}={}, ack=()=>{}) => { const room=createRoom(null,mode); joinPlayer(socket,room.code,playerId,name,character,ack); });
   socket.on("player:autoJoin", ({playerId,name,character,mode}={}, ack=()=>{}) => { const selectedMode=MODES[mode]?mode:"survival", room=findOpenRoom(selectedMode)||createRoom(null,selectedMode); joinPlayer(socket,room.code,playerId,name,character,ack); });
   socket.on("player:join", ({code:roomCode,playerId,name,character}={}, ack=()=>{}) => joinPlayer(socket,String(roomCode||"").trim().toUpperCase(),playerId,name,character,ack));
-  socket.on("player:input", payload => { const ref=socketIndex.get(socket.id), room=ref&&rooms.get(ref.code), p=room&&room.players.get(ref.playerId); if(!p||!Array.isArray(payload))return; p.input={x:clamp(Number(payload[0])||0,-1,1),y:clamp(Number(payload[1])||0,-1,1),attack:Boolean(payload[2]),special:Boolean(payload[3])}; });
+  socket.on("player:input", payload => { const ref=socketIndex.get(socket.id), room=ref&&rooms.get(ref.code), p=room&&room.players.get(ref.playerId); if(!p||!Array.isArray(payload))return; const x=clamp(Number(payload[0])||0,-1,1), y=clamp(Number(payload[1])||0,-1,1); p.input={x,y,attack:Boolean(payload[2]),special:Boolean(payload[3])}; if(Math.hypot(x,y)>.12){p.aimX=x;p.aimY=y;} });
   socket.on("ghost:target", ({ targetId } = {}) => { const ref=socketIndex.get(socket.id), room=ref&&rooms.get(ref.code), ghost=room&&room.players.get(ref.playerId), target=room&&room.players.get(String(targetId||"")); if (!ghost?.ghost || !target?.alive || ghost.id===target.id) return; ghost.ghostTargetId=target.id; });
   socket.on("disconnect", () => { const host=socket.data.hostRoom; if(host&&rooms.get(host)?.hostSocketId===socket.id){io.to(host).emit("room:closed");rooms.delete(host);} const ref=socketIndex.get(socket.id);socketIndex.delete(socket.id);const room=ref&&rooms.get(ref.code),p=room&&room.players.get(ref.playerId);if(p&&p.socketId===socket.id){p.connected=false;p.input={x:0,y:0,attack:false,special:false};p.removeTimer=setTimeout(()=>removePlayer(room,ref.playerId),RECONNECT_MS);broadcast(room);} });
 });

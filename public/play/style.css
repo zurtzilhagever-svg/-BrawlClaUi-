@@ -146,13 +146,22 @@ select {
   content: "B";
 }
 
+.portrait.boomer {
+  background: linear-gradient(145deg, #ff6a3d, #f7c84a);
+  border-radius: 50%;
+}
+
+.portrait.boomer:before {
+  content: "B";
+}
+
 .portrait.tank {
   background: linear-gradient(145deg, #778999, #324252);
   border-radius: 7px;
 }
 
 .portrait.tank:before {
-  content: "T";
+  content: "A";
 }
 
 .portrait.spark {
@@ -579,5 +588,125 @@ canvas {
 
   .hud:after {
     content: " - Rotate for better controls";
+  }
+}
+
+@media (hover: hover) and (pointer: fine) and (min-width: 900px) {
+  body {
+    overflow: auto;
+  }
+
+  .lobby {
+    width: min(94vw, 1180px);
+    max-height: none;
+    margin: 4svh auto;
+    padding: 32px;
+    display: grid;
+    grid-template-columns: minmax(360px, 1.05fr) minmax(360px, .95fr);
+    gap: 14px 24px;
+    align-items: start;
+  }
+
+  .brand,
+  .lobby h1,
+  .lobby > p,
+  .lobby > input,
+  .lobby > label[for="language"],
+  .lobby > #language,
+  .lobby > label[data-i18n="brawlerLabel"],
+  .choice-grid {
+    grid-column: 1;
+  }
+
+  .lobby > label[data-i18n="modeLabel"],
+  #mode,
+  .lobby > label[data-i18n="controlsLabel"],
+  #control-mode,
+  .key-panel,
+  .room-preview,
+  .survival-panel,
+  #create,
+  .divider,
+  .join-row,
+  #error,
+  #install {
+    grid-column: 2;
+  }
+
+  .lobby h1 {
+    font-size: clamp(2.5rem, 4vw, 4.4rem);
+    line-height: .95;
+    margin: .25rem 0 .15rem;
+  }
+
+  .lobby > p:not(.brand) {
+    font-size: 1.05rem;
+    margin: 0 0 8px;
+  }
+
+  .choice-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
+
+  .choice-grid button {
+    min-height: 138px;
+    grid-template-columns: 96px 1fr;
+    column-gap: 16px;
+    padding: 14px;
+  }
+
+  .choice-grid .portrait,
+  .choice-grid .char-img {
+    width: 90px;
+  }
+
+  .room-preview,
+  .survival-panel {
+    margin: 0;
+  }
+
+  .room-preview strong {
+    font-size: 3rem;
+  }
+
+  .phone-connect {
+    grid-template-columns: 112px 1fr;
+  }
+
+  .phone-connect img {
+    width: 112px;
+  }
+
+  #create {
+    min-height: 54px;
+    font-size: 1.05rem;
+  }
+
+  #game {
+    height: 100svh;
+    padding: 18px clamp(32px, 5vw, 84px);
+    grid-template-rows: auto minmax(0, 1fr) auto;
+  }
+
+  header {
+    max-width: 1280px;
+    width: 100%;
+    justify-self: center;
+    font-size: .9rem;
+  }
+
+  canvas {
+    width: min(100%, calc((100svh - 170px) * 1.333));
+    max-width: 1280px;
+    border-radius: 14px;
+  }
+
+  .hud {
+    font-size: .9rem;
+  }
+
+  .controls {
+    max-width: 1280px;
   }
 }
