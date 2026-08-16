@@ -1,0 +1,7 @@
+{
+  "appId": "com.brawlclaui.app",
+  "appName": "BrawlClaUi",
+  "webDir": "public",
+  "bundledWebRuntime": false,
+  "server": { "androidScheme": "https", "allowNavigation": ["*"], "cleartext": false }
+}
