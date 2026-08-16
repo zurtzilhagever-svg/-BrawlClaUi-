@@ -1,4 +1,4 @@
-# CouchBrawl native store release
+# BrawlClaUi native store release
 
 The game UI in `public/play` is packaged directly into the native app. It opens at `/play/`; users do not see a browser address bar or a TV/controller selection screen.
 

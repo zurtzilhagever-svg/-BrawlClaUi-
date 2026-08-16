@@ -1,4 +1,4 @@
-package com.couchbrawl.app;
+package com.brawlclaui.app;
 
 import com.getcapacitor.BridgeActivity;
 

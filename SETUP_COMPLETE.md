@@ -3,7 +3,7 @@
 ## 📁 מבנה הפרויקט שנוצר:
 
 ```
-couchbrawl/
+brawlclaui/
 ├── 📄 package.json                    ✅ תלויות וסקריפטים
 ├── 🖥️  server.js                      ✅ שרת Node.js + Socket.io
 ├── 📘 README.md                       ✅ דוקומנטציה מלאה
@@ -32,7 +32,7 @@ couchbrawl/
 
 ### 1️⃣ התקנת תלויות (פעם אחת)
 ```bash
-cd couchbrawl
+cd brawlclaui
 npm install
 ```
 
@@ -213,7 +213,7 @@ NODE_ENV=development
 ## ✅ מוכן להתחיל!
 
 ```bash
-cd couchbrawl
+cd brawlclaui
 npm install
 npm start
 ```

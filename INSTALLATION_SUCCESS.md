@@ -1,9 +1,9 @@
-# 🎉 CouchBrawl - Setup Complete!
+# 🎉 BrawlClaUi - Setup Complete!
 
 ## ✅ כל הקבצים נוצרו בהצלחה!
 
 ```
-couchbrawl/
+brawlclaui/
 │
 ├─ 📋 Configuration Files
 │  ├─ package.json                 ✅ Node.js תלויות וסקריפטים
@@ -39,7 +39,7 @@ couchbrawl/
 
 ### שלב 1: התקנת תלויות
 ```bash
-cd couchbrawl
+cd brawlclaui
 npm install
 ```
 
@@ -359,7 +359,7 @@ npm start
 **אתה קראת עד הסוף - זה אומר שאתה מוכן ללהיות Multiplayer Game Developer!**
 
 ```
-    🎮 CouchBrawl 🎮
+    🎮 BrawlClaUi 🎮
     
     שחק עם חברים!
     Build amazing games!

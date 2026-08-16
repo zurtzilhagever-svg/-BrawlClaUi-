@@ -7,6 +7,8 @@ const error = document.querySelector("#error");
 const canvas = document.querySelector("#arena");
 const ctx = canvas.getContext("2d");
 const lobbyRoomCode = document.querySelector("#lobby-room-code");
+const serverJoinCodeEl = document.querySelector("#server-join-code");
+const serverLabel = document.querySelector("#server-label");
 const matchStatus = document.querySelector("#match-status");
 const phoneConnect = document.querySelector("#phone-connect");
 const phoneLink = document.querySelector("#phone-link");
@@ -21,6 +23,26 @@ const languageSelect = document.querySelector("#language");
 const controlModeSelect = document.querySelector("#control-mode");
 const keyboardPanel = document.querySelector("#keyboard-panel");
 const controls = document.querySelector(".controls");
+const accountStatus = document.querySelector("#account-status");
+const googleSignIn = document.querySelector("#google-sign-in");
+const googleSignOut = document.querySelector("#google-sign-out");
+const newLocalPlayer = document.querySelector("#new-local-player");
+const adminToggle = document.querySelector("#admin-toggle");
+const adminPanel = document.querySelector("#admin-panel");
+const adminPlayerSelect = document.querySelector("#admin-player");
+const adminCharacterSelect = document.querySelector("#admin-character");
+const adminGoogleAccount = document.querySelector("#admin-google-account");
+const adminFindGoogle = document.querySelector("#admin-add-google");
+const adminEmailInput = document.querySelector("#admin-email");
+const adminListSelect = document.querySelector("#admin-list");
+const adminAddAdmin = document.querySelector("#admin-add-admin");
+const adminRemoveAdmin = document.querySelector("#admin-remove-admin");
+const adminGrant = document.querySelector("#admin-grant");
+const adminRevoke = document.querySelector("#admin-revoke");
+const adminResetProgress = document.querySelector("#admin-reset-progress");
+const adminBan = document.querySelector("#admin-ban");
+const adminRestart = document.querySelector("#admin-restart");
+const adminStatus = document.querySelector("#admin-status");
 const input = { x: 0, y: 0, attack: false, special: false };
 const keyboardState = new Set();
 const keyboardBindings = {
@@ -32,12 +54,30 @@ const keyboardBindings = {
   special: "KeyK"
 };
 const playerKey = "brawlclaui-player-id";
-const playerId = sessionStorage.getItem(playerKey) || crypto.randomUUID();
+const localAccountKey = "brawlclaui-local-account";
+let playerId = sessionStorage.getItem(playerKey) || crypto.randomUUID();
 sessionStorage.setItem(playerKey, playerId);
 const languageKey = "brawlclaui-language";
 const survivalBestKey = "brawlclaui-survival-best";
 const unlockedCharactersKey = "brawlclaui-unlocked-characters";
-const lockedCharacters = new Set(["boomer", "tank", "spark", "medic"]);
+const lockedCharacters = new Set(["boomer", "fangli", "pixel", "tank", "bazaar"]);
+const adminGrantCharacters = ["boomer", "fangli", "pixel", "tank", "bazaar"];
+const adminEmails = new Set(["zurtzilhagever@gmail.com"]);
+const adminTogglePositionKey = "brawlclaui-admin-toggle-position";
+let adminVerified = false;
+let adminPanelOpen = false;
+let adminToggleDrag = null;
+let adminListRequestAt = 0;
+let progressStorageSuffix = "";
+function progressKey(baseKey) {
+  return `${baseKey}${progressStorageSuffix}`;
+}
+function loadStoredPersonalBest() {
+  return Number(localStorage.getItem(progressKey(survivalBestKey))) || 0;
+}
+function isAdminUser(user = activeCloudUser()) {
+  return adminVerified || adminEmails.has((user?.email || "").toLowerCase());
+}
 const translations = {
   en: {
     title: "Brawl anywhere.",
@@ -45,18 +85,58 @@ const translations = {
     languageLabel: "LANGUAGE",
     languageSystem: "Use device language",
     namePlaceholder: "Your name",
+    accountLabel: "GOOGLE ACCOUNT",
+    cloudGuest: "Not signed in",
+    cloudSignedIn: "Signed in as",
+    cloudSyncing: "Syncing progress...",
+    cloudSaved: "Progress saved",
+    cloudError: "Google save is unavailable",
+    adminLabel: "Admin",
+    adminPanelTitle: "ADMIN PANEL",
+    adminGrant: "Give character",
+    adminRevoke: "Remove character",
+    adminResetProgress: "Reset progress",
+    adminBan: "Ban player",
+    adminRestart: "Restart game",
+    adminFindGoogle: "Find player",
+    adminGooglePlaceholder: "Google account to search",
+    adminEmailPlaceholder: "Admin Google account",
+    adminAddAdmin: "Add admin",
+    adminRemoveAdmin: "Remove admin",
+    adminOwnerLocked: "Main admin cannot be removed",
+    adminListEmpty: "No admins",
+    adminNoRoom: "No active room",
+    adminNoPlayers: "No other players",
+    adminPickPlayer: "Choose a player",
+    adminDone: "Done",
+    adminFailed: "Admin action failed",
+    adminPlayerFound: "Player selected",
+    adminPlayerNotFound: "Player not found",
+    adminInvalidEmail: "Enter a valid Google account",
+    adminGrantedNotice: "Character unlocked by admin",
+    adminRevokedNotice: "Character removed by admin",
+    adminProgressResetNotice: "Progress reset by admin",
+    adminBannedNotice: "You were banned from this room",
+    signInGoogle: "Sign in with Google",
+    signOut: "Sign out",
+    newLocalPlayer: "New local player",
+    localPlayerCreated: "New local player created",
     brawlerLabel: "YOUR BRAWLER",
     bobName: "Bob",
     boomerName: "Boomer",
+    fangliName: "Fangli",
+    pixelName: "Pixel",
     auroraName: "\u05d0\u05d5\u05e8\u05e8\u05d4",
-    blazeDesc: "Starting Character",
-    boomerDesc: "",
+    bazaarName: "Bazaar",
+    blazeDesc: "3 tennis-ball volley",
+    boomerDesc: "Boomerang - waits for return",
+    fangliDesc: "Long bone shot, stronger when hurt",
+    pixelDesc: "Fast ricochet laser",
     unlockBoomer: "Beat wave 10 with Bob",
     boomerUnlocked: "Boomer unlocked",
     lockedCharacter: "Locked",
-    tankDesc: "Snow Princess",
-    sparkDesc: "Fast striker",
-    medicDesc: "Self heal",
+    tankDesc: "Snowstorm + ice field",
+    bazaarDesc: "Coin chain + buff box",
     modeLabel: "GAME MODE",
     modeSurvival: "Survival - bot waves",
     modeBrawl: "Solo Brawl - last alive",
@@ -71,21 +151,23 @@ const translations = {
     controlGamepad: "Bluetooth / USB controller",
     keysMove: "ARROWS",
     keysAttack: "J ATTACK",
-    keysSpecial: "K SPECIAL",
+    keysSpecial: "K SUPER",
     create: "CREATE A GAME",
     playNow: "PLAY NOW",
     roomCodeLabel: "ROOM CODE",
+    serverCodeLabel: "SERVER CODE",
     findingPlayers: "Finding players...",
     readyRoom: "Ready - share this code or press Play",
     joinDivider: "OR JOIN A FRIEND",
-    codePlaceholder: "CODE",
+    codePlaceholder: "ROOM OR SERVER CODE",
     join: "JOIN",
     install: "INSTALL APP",
     leaveAria: "Leave game",
     initialObjective: "Share the room code to play together",
     attack: "ATTACK",
-    special: "SPECIAL",
+    special: "SUPER",
     useItem: "USE ITEM",
+    useBuff: "USE BUFF",
     ping: "PING",
     survivalEnded: "Survival ended",
     createAgain: "Create a new game to play again",
@@ -120,18 +202,58 @@ const translations = {
     languageLabel: "\u05e9\u05e4\u05d4",
     languageSystem: "\u05dc\u05e4\u05d9 \u05e9\u05e4\u05ea \u05d4\u05de\u05db\u05e9\u05d9\u05e8",
     namePlaceholder: "\u05d4\u05e9\u05dd \u05e9\u05dc\u05da",
+    accountLabel: "\u05d7\u05e9\u05d1\u05d5\u05df Google",
+    cloudGuest: "\u05dc\u05d0 \u05de\u05d7\u05d5\u05d1\u05e8",
+    cloudSignedIn: "\u05de\u05d7\u05d5\u05d1\u05e8 \u05db\u05de\u05d5",
+    cloudSyncing: "\u05de\u05e1\u05e0\u05db\u05e8\u05df \u05d4\u05ea\u05e7\u05d3\u05de\u05d5\u05ea...",
+    cloudSaved: "\u05d4\u05d4\u05ea\u05e7\u05d3\u05de\u05d5\u05ea \u05e0\u05e9\u05de\u05e8\u05d4",
+    cloudError: "\u05e9\u05de\u05d9\u05e8\u05ea Google \u05dc\u05d0 \u05d6\u05de\u05d9\u05e0\u05d4",
+    adminLabel: "\u05d0\u05d3\u05de\u05d9\u05df",
+    adminPanelTitle: "\u05e4\u05d0\u05e0\u05dc \u05d0\u05d3\u05de\u05d9\u05df",
+    adminGrant: "\u05ea\u05df \u05d3\u05de\u05d5\u05ea",
+    adminRevoke: "\u05d4\u05e1\u05e8 \u05d3\u05de\u05d5\u05ea",
+    adminResetProgress: "\u05d0\u05e4\u05e1 \u05d4\u05ea\u05e7\u05d3\u05de\u05d5\u05ea",
+    adminBan: "\u05d1\u05d0\u05df \u05dc\u05e9\u05d7\u05e7\u05df",
+    adminRestart: "\u05d4\u05ea\u05d7\u05dc \u05de\u05d7\u05d3\u05e9",
+    adminFindGoogle: "\u05d7\u05e4\u05e9 \u05e9\u05d7\u05e7\u05df",
+    adminGooglePlaceholder: "\u05d7\u05e9\u05d1\u05d5\u05df Google \u05dc\u05d7\u05d9\u05e4\u05d5\u05e9",
+    adminEmailPlaceholder: "\u05d7\u05e9\u05d1\u05d5\u05df Google \u05dc\u05d0\u05d3\u05de\u05d9\u05df",
+    adminAddAdmin: "\u05d4\u05d5\u05e1\u05e3 \u05d0\u05d3\u05de\u05d9\u05df",
+    adminRemoveAdmin: "\u05d4\u05e1\u05e8 \u05d0\u05d3\u05de\u05d9\u05df",
+    adminOwnerLocked: "\u05d0\u05d9 \u05d0\u05e4\u05e9\u05e8 \u05dc\u05d4\u05e1\u05d9\u05e8 \u05d0\u05ea \u05d4\u05d0\u05d3\u05de\u05d9\u05df \u05d4\u05e8\u05d0\u05e9\u05d9",
+    adminListEmpty: "\u05d0\u05d9\u05df \u05d0\u05d3\u05de\u05d9\u05e0\u05d9\u05dd",
+    adminNoRoom: "\u05d0\u05d9\u05df \u05d7\u05d3\u05e8 \u05e4\u05e2\u05d9\u05dc",
+    adminNoPlayers: "\u05d0\u05d9\u05df \u05e9\u05d7\u05e7\u05e0\u05d9\u05dd \u05d0\u05d7\u05e8\u05d9\u05dd",
+    adminPickPlayer: "\u05d1\u05d7\u05e8 \u05e9\u05d7\u05e7\u05df",
+    adminDone: "\u05d1\u05d5\u05e6\u05e2",
+    adminFailed: "\u05e4\u05e2\u05d5\u05dc\u05ea \u05d0\u05d3\u05de\u05d9\u05df \u05e0\u05db\u05e9\u05dc\u05d4",
+    adminPlayerFound: "\u05e9\u05d7\u05e7\u05df \u05e0\u05d1\u05d7\u05e8",
+    adminPlayerNotFound: "\u05e9\u05d7\u05e7\u05df \u05dc\u05d0 \u05e0\u05de\u05e6\u05d0",
+    adminInvalidEmail: "\u05d4\u05db\u05e0\u05e1 \u05d7\u05e9\u05d1\u05d5\u05df Google \u05ea\u05e7\u05d9\u05df",
+    adminGrantedNotice: "\u05d3\u05de\u05d5\u05ea \u05e0\u05e4\u05ea\u05d7\u05d4 \u05e2\u05dc \u05d9\u05d3\u05d9 \u05d0\u05d3\u05de\u05d9\u05df",
+    adminRevokedNotice: "\u05d3\u05de\u05d5\u05ea \u05d4\u05d5\u05e1\u05e8\u05d4 \u05e2\u05dc \u05d9\u05d3\u05d9 \u05d0\u05d3\u05de\u05d9\u05df",
+    adminProgressResetNotice: "\u05d4\u05d4\u05ea\u05e7\u05d3\u05de\u05d5\u05ea \u05d0\u05d5\u05e4\u05e1\u05d4 \u05e2\u05dc \u05d9\u05d3\u05d9 \u05d0\u05d3\u05de\u05d9\u05df",
+    adminBannedNotice: "\u05e7\u05d9\u05d1\u05dc\u05ea \u05d1\u05d0\u05df \u05de\u05d4\u05d7\u05d3\u05e8",
+    signInGoogle: "\u05d4\u05ea\u05d7\u05d1\u05e8 \u05e2\u05dd Google",
+    signOut: "\u05d4\u05ea\u05e0\u05ea\u05e7",
+    newLocalPlayer: "\u05e9\u05d7\u05e7\u05df \u05de\u05e7\u05d5\u05de\u05d9 \u05d7\u05d3\u05e9",
+    localPlayerCreated: "\u05e0\u05d5\u05e6\u05e8 \u05e9\u05d7\u05e7\u05df \u05de\u05e7\u05d5\u05de\u05d9 \u05d7\u05d3\u05e9",
     brawlerLabel: "\u05d3\u05de\u05d5\u05ea",
     bobName: "\u05d1\u05d5\u05d1",
     boomerName: "\u05d1\u05d5\u05de\u05e8",
+    fangliName: "\u05e4\u05d0\u05e0\u05d2\u05dc\u05d9",
+    pixelName: "\u05e4\u05d9\u05e7\u05e1\u05dc",
     auroraName: "\u05d0\u05d5\u05e8\u05e8\u05d4",
-    blazeDesc: "\u05d4\u05d3\u05de\u05d5\u05ea \u05d4\u05d4\u05ea\u05d7\u05dc\u05ea\u05d9\u05ea",
-    boomerDesc: "",
+    bazaarName: "\u05d1\u05d0\u05d6\u05d0\u05e8",
+    blazeDesc: "\u05de\u05d8\u05d7 3 \u05db\u05d3\u05d5\u05e8\u05d9 \u05d8\u05e0\u05d9\u05e1",
+    boomerDesc: "\u05d1\u05d5\u05de\u05e8\u05e0\u05d2 - \u05de\u05d7\u05db\u05d4 \u05e9\u05d9\u05d7\u05d6\u05d5\u05e8",
+    fangliDesc: "\u05d9\u05e8\u05d9\u05d9\u05ea \u05e2\u05e6\u05dd \u05e8\u05d7\u05d5\u05e7\u05d4, \u05de\u05ea\u05d7\u05d6\u05e7\u05ea \u05db\u05e9\u05e0\u05e4\u05d2\u05e2",
+    pixelDesc: "\u05dc\u05d9\u05d9\u05d6\u05e8 \u05de\u05d4\u05d9\u05e8 \u05e2\u05dd \u05d4\u05d7\u05d6\u05e8\u05d4 \u05de\u05e7\u05d9\u05e8\u05d5\u05ea",
     unlockBoomer: "\u05e0\u05e6\u05d7 \u05d0\u05ea \u05d2\u05dc 10 \u05e2\u05dd \u05d1\u05d5\u05d1",
     boomerUnlocked: "\u05d1\u05d5\u05de\u05e8 \u05e0\u05e4\u05ea\u05d7",
     lockedCharacter: "\u05e0\u05e2\u05d5\u05dc",
-    tankDesc: "\u05e0\u05e1\u05d9\u05db\u05ea \u05d4\u05e9\u05dc\u05d2",
-    sparkDesc: "\u05de\u05d4\u05d9\u05e8 \u05de\u05d0\u05d5\u05d3",
-    medicDesc: "\u05e8\u05d9\u05e4\u05d5\u05d9 \u05e2\u05e6\u05de\u05d9",
+    tankDesc: "\u05e1\u05e2\u05e8\u05ea \u05e9\u05dc\u05d2 + \u05de\u05e9\u05d8\u05d7 \u05e7\u05e8\u05d7",
+    bazaarDesc: "\u05e9\u05e8\u05e9\u05e8\u05ea \u05de\u05d8\u05d1\u05e2\u05d5\u05ea + \u05ea\u05d9\u05d1\u05ea Buff",
     modeLabel: "\u05de\u05e6\u05d1 \u05de\u05e9\u05d7\u05e7",
     modeSurvival: "\u05d4\u05d9\u05e9\u05e8\u05d3\u05d5\u05ea - \u05d2\u05dc\u05d9 \u05d1\u05d5\u05d8\u05d9\u05dd",
     modeBrawl: "\u05e7\u05e8\u05d1 \u05d9\u05d7\u05d9\u05d3 - \u05d4\u05d0\u05d7\u05e8\u05d5\u05df \u05e9\u05e0\u05e9\u05d0\u05e8",
@@ -146,21 +268,23 @@ const translations = {
     controlGamepad: "\u05e9\u05dc\u05d8 Bluetooth / USB",
     keysMove: "\u05d7\u05e6\u05d9\u05dd",
     keysAttack: "J \u05d4\u05ea\u05e7\u05e4\u05d4",
-    keysSpecial: "K \u05de\u05d9\u05d5\u05d7\u05d3",
+    keysSpecial: "K \u05e1\u05d5\u05e4\u05e8",
     create: "\u05e6\u05d5\u05e8 \u05de\u05e9\u05d7\u05e7",
     playNow: "\u05e9\u05d7\u05e7 \u05e2\u05db\u05e9\u05d9\u05d5",
     roomCodeLabel: "\u05e7\u05d5\u05d3 \u05d7\u05d3\u05e8",
+    serverCodeLabel: "\u05e7\u05d5\u05d3 \u05e9\u05e8\u05ea",
     findingPlayers: "\u05de\u05d7\u05e4\u05e9 \u05e9\u05d7\u05e7\u05e0\u05d9\u05dd...",
     readyRoom: "\u05de\u05d5\u05db\u05df - \u05e9\u05ea\u05e3 \u05d0\u05ea \u05d4\u05e7\u05d5\u05d3 \u05d0\u05d5 \u05dc\u05d7\u05e5 \u05e9\u05d7\u05e7",
     joinDivider: "\u05d0\u05d5 \u05d4\u05e6\u05d8\u05e8\u05e3 \u05dc\u05d7\u05d1\u05e8",
-    codePlaceholder: "\u05e7\u05d5\u05d3",
+    codePlaceholder: "\u05e7\u05d5\u05d3 \u05d7\u05d3\u05e8 \u05d0\u05d5 \u05e9\u05e8\u05ea",
     join: "\u05d4\u05e6\u05d8\u05e8\u05e3",
     install: "\u05d4\u05ea\u05e7\u05df \u05d0\u05e4\u05dc\u05d9\u05e7\u05e6\u05d9\u05d4",
     leaveAria: "\u05e6\u05d0 \u05de\u05d4\u05de\u05e9\u05d7\u05e7",
     initialObjective: "\u05e9\u05ea\u05e3 \u05d0\u05ea \u05e7\u05d5\u05d3 \u05d4\u05d7\u05d3\u05e8 \u05db\u05d3\u05d9 \u05dc\u05e9\u05d7\u05e7 \u05d9\u05d7\u05d3",
     attack: "\u05d4\u05ea\u05e7\u05e4\u05d4",
-    special: "\u05de\u05d9\u05d5\u05d7\u05d3",
+    special: "\u05e1\u05d5\u05e4\u05e8",
     useItem: "\u05d4\u05e9\u05ea\u05de\u05e9",
+    useBuff: "\u05d4\u05e4\u05e2\u05dc Buff",
     ping: "\u05e1\u05d9\u05de\u05d5\u05df",
     survivalEnded: "\u05d4\u05d4\u05d9\u05e9\u05e8\u05d3\u05d5\u05ea \u05d4\u05e1\u05ea\u05d9\u05d9\u05de\u05d4",
     createAgain: "\u05e6\u05d5\u05e8 \u05de\u05e9\u05d7\u05e7 \u05d7\u05d3\u05e9 \u05db\u05d3\u05d9 \u05dc\u05e9\u05d7\u05e7 \u05e9\u05d5\u05d1",
@@ -194,8 +318,8 @@ function deviceLanguage() {
   return (navigator.language || "").toLowerCase().startsWith("he") ? "he" : "en";
 }
 function selectedLanguage() {
-  const saved = localStorage.getItem(languageKey) || "system";
-  return saved === "system" ? deviceLanguage() : saved;
+  const saved = localStorage.getItem(languageKey);
+  return saved && saved !== "system" ? saved : "he";
 }
 function t(key) {
   return translations[selectedLanguage()]?.[key] || translations.en[key] || key;
@@ -206,11 +330,18 @@ function formatSeconds(value) {
 function escapeHtml(value) {
   return String(value).replace(/[&<>"']/g, char => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[char]));
 }
+function normalizeEmail(value) {
+  return String(value || "").trim().toLowerCase();
+}
+function isValidEmail(value) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizeEmail(value));
+}
 function renderSurvivalStats() {
   const current = gameMeta.mode === "survival" ? gameMeta.survivalTime || 0 : 0;
   if (gameMeta.mode === "survival" && gameMeta.winner && current > personalBest) {
     personalBest = current;
-    localStorage.setItem(survivalBestKey, String(personalBest));
+    localStorage.setItem(progressKey(survivalBestKey), String(personalBest));
+    queueCloudSave();
   }
   const globalBest = gameMeta.survivalLeaders?.[0]?.time || 0;
   if (personalBestEl) personalBestEl.textContent = formatSeconds(personalBest);
@@ -226,21 +357,47 @@ function renderSurvivalStats() {
 }
 function unlockedCharacters() {
   try {
-    return new Set(JSON.parse(localStorage.getItem(unlockedCharactersKey) || "[]"));
+    return new Set(JSON.parse(localStorage.getItem(progressKey(unlockedCharactersKey)) || "[]"));
   } catch {
     return new Set();
   }
 }
+function saveUnlockedCharacters(unlocked) {
+  localStorage.setItem(progressKey(unlockedCharactersKey), JSON.stringify([...unlocked].sort()));
+}
 function isCharacterUnlocked(character) {
+  if (isAdminUser()) return true;
   return !lockedCharacters.has(character) || unlockedCharacters().has(character);
 }
 function unlockCharacter(character) {
   const unlocked = unlockedCharacters();
   if (unlocked.has(character)) return false;
   unlocked.add(character);
-  localStorage.setItem(unlockedCharactersKey, JSON.stringify([...unlocked]));
+  saveUnlockedCharacters(unlocked);
   renderCharacterLocks();
+  queueCloudSave();
   return true;
+}
+
+function revokeCharacter(character) {
+  const unlocked = unlockedCharacters();
+  if (!unlocked.delete(character)) return false;
+  saveUnlockedCharacters(unlocked);
+  if (selectedCharacter === character) selectedCharacter = "blaze";
+  renderCharacterLocks();
+  queueCloudSave();
+  return true;
+}
+
+function resetProgress() {
+  saveUnlockedCharacters(new Set());
+  personalBest = 0;
+  localStorage.removeItem(progressKey(survivalBestKey));
+  selectedCharacter = "blaze";
+  document.querySelectorAll("[data-character]").forEach(button => button.classList.toggle("selected", button.dataset.character === selectedCharacter));
+  renderSurvivalStats();
+  renderCharacterLocks();
+  queueCloudSave();
 }
 function renderCharacterLocks() {
   document.querySelectorAll("[data-character]").forEach(button => {
@@ -269,19 +426,29 @@ function applyLanguage() {
   renderSurvivalStats();
   updateMeta();
   renderCharacterLocks();
+  renderAccountStatus();
+  renderAdminPanel();
 }
 let roomCode = "";
+let adminTargetRoomCode = "";
+let adminFoundTarget = null;
 let players = [];
 let wasPlaying = false;
 let selectedCharacter = "blaze";
 let gameMeta = { items: [], zoneScore: {} };
-let controlMode = localStorage.getItem("brawlclaui-control-mode") || "touch";
+let controlMode = localStorage.getItem("brawlclaui-control-mode") || (matchMedia("(hover: hover) and (pointer: fine)").matches ? "keyboard" : "touch");
 let autoJoinTimer = 0;
 let phoneOrigin = location.origin;
-let personalBest = Number(localStorage.getItem(survivalBestKey)) || 0;
-const characterImages = Object.fromEntries(["blaze", "boomer", "tank", "spark", "medic"].map(id => {
+let personalBest = loadStoredPersonalBest();
+let cloudApi = null;
+let cloudUser = null;
+let localAccountMode = sessionStorage.getItem(localAccountKey) === "1";
+let cloudSaveTimer = 0;
+let lastCloudSnapshot = "";
+let pendingJoinCode = (new URLSearchParams(location.search).get("join") || "").trim().toUpperCase();
+const characterImages = Object.fromEntries(["blaze", "boomer", "fangli", "pixel", "tank", "bazaar"].map(id => {
   const image = new Image();
-  image.src = `/characters/${id}.png`;
+  image.src = `/characters/${id}.png?v=43`;
   return [id, image];
 }));
 const motionState = new Map();
@@ -292,12 +459,18 @@ function clamp(n, min, max) {
 }
 
 nameInput.value = localStorage.getItem("brawlclaui-name") || "";
-languageSelect.value = localStorage.getItem(languageKey) || "system";
+{
+  const savedLanguage = localStorage.getItem(languageKey);
+  languageSelect.value = savedLanguage && savedLanguage !== "system" ? savedLanguage : "he";
+}
 controlModeSelect.value = controlMode;
+setupAdminToggle();
 applyLanguage();
 applyControlMode();
+setLocalAccountMode(localAccountMode);
 renderSurvivalStats();
 loadPhoneOrigin();
+setupCloudProgress();
 
 function name() {
   return nameInput.value.trim().slice(0, 14);
@@ -325,15 +498,47 @@ function enter(reply) {
   document.body.classList.add("playing");
   window.scrollTo(0, 0);
   document.querySelector("#room-label").textContent = `${t("room")} ${roomCode}`;
+  updateServerJoinCode();
   applyControlMode();
   updateMeta();
+  identifyAdminInRoom();
+  renderAdminPanel();
 }
 
 function updateLobbyRoom() {
   if (!lobbyRoomCode || !matchStatus) return;
   lobbyRoomCode.textContent = roomCode || "----";
+  updateServerJoinCode();
   matchStatus.textContent = roomCode ? `${t("readyRoom")} - ${players.filter(p => !p.bot).length}/8` : t("initialObjective");
   updatePhoneConnect();
+}
+
+function updateServerJoinCode() {
+  const code = roomCode ? makeServerJoinCode() : "----";
+  if (serverJoinCodeEl) serverJoinCodeEl.textContent = code;
+  if (serverLabel) serverLabel.textContent = roomCode ? code : "";
+}
+
+function makeServerJoinCode() {
+  if (!roomCode) return "----";
+  try {
+    const url = new URL(phoneOrigin);
+    const parts = url.hostname.split(".").map(part => Number(part));
+    if (parts.length !== 4 || parts.some(part => !Number.isInteger(part) || part < 0 || part > 255)) return roomCode;
+    const port = Number(url.port || (url.protocol === "https:" ? 443 : 80));
+    return `S-${parts.join("-")}-${port}-${roomCode}`;
+  } catch {
+    return roomCode;
+  }
+}
+
+function parseServerJoinCode(value) {
+  const match = String(value || "").trim().toUpperCase().match(/^S-(\d{1,3})-(\d{1,3})-(\d{1,3})-(\d{1,3})-(\d{1,5})-([A-Z0-9]{4})$/);
+  if (!match) return null;
+  const ip = match.slice(1, 5).map(Number);
+  const port = Number(match[5]);
+  if (ip.some(part => part < 0 || part > 255) || port < 1 || port > 65535) return null;
+  return { origin: `http://${ip.join(".")}:${port}`, room: match[6] };
 }
 
 async function loadPhoneOrigin() {
@@ -350,6 +555,7 @@ async function loadPhoneOrigin() {
 
 function updatePhoneConnect() {
   if (!phoneConnect || !phoneLink || !phoneQr) return;
+  updateServerJoinCode();
   phoneConnect.hidden = !roomCode;
   if (!roomCode) return;
   const url = `${phoneOrigin}/mobile/?room=${encodeURIComponent(roomCode)}`;
@@ -361,6 +567,421 @@ function updatePhoneConnect() {
 function queueAutoJoin() {
   window.clearTimeout(autoJoinTimer);
   autoJoinTimer = window.setTimeout(updateLobbyRoom, 120);
+}
+
+function progressSnapshot() {
+  return {
+    bestSurvival: personalBest,
+    unlockedCharacters: isAdminUser() ? [...lockedCharacters].sort() : [...unlockedCharacters()].sort(),
+    role: isAdminUser() ? "admin" : "player",
+    preferredName: name(),
+    language: localStorage.getItem(languageKey) || "he"
+  };
+}
+
+function renderAccountStatus(message) {
+  if (!accountStatus || !googleSignIn || !googleSignOut) return;
+  const user = activeCloudUser();
+  googleSignIn.hidden = Boolean(user);
+  googleSignOut.hidden = !user;
+  if (message) {
+    accountStatus.textContent = message;
+  } else if (user) {
+    const role = isAdminUser() ? ` (${t("adminLabel")})` : "";
+    accountStatus.textContent = `${t("cloudSignedIn")} ${user.displayName || user.email || "Google"}${role}`;
+  } else {
+    accountStatus.textContent = t("cloudGuest");
+  }
+}
+
+function characterLabel(character) {
+  if (character === "blaze") return t("bobName");
+  if (character === "boomer") return t("boomerName");
+  if (character === "fangli") return t("fangliName");
+  if (character === "pixel") return t("pixelName");
+  if (character === "tank") return t("auroraName");
+  if (character === "bazaar") return t("bazaarName");
+  return character.charAt(0).toUpperCase() + character.slice(1);
+}
+
+function setAdminStatus(message) {
+  if (adminStatus) adminStatus.textContent = message || "";
+}
+
+function readAdminTogglePosition() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(adminTogglePositionKey) || "null");
+    if (Number.isFinite(saved?.x) && Number.isFinite(saved?.y)) return saved;
+  } catch {}
+  return { x: window.innerWidth - 72, y: 14 };
+}
+
+function clampAdminTogglePosition(position) {
+  const size = 54;
+  const margin = 8;
+  return {
+    x: clamp(Number(position?.x) || 0, margin, Math.max(margin, window.innerWidth - size - margin)),
+    y: clamp(Number(position?.y) || 0, margin, Math.max(margin, window.innerHeight - size - margin))
+  };
+}
+
+function placeAdminControls(position = readAdminTogglePosition()) {
+  if (!adminToggle) return null;
+  const next = clampAdminTogglePosition(position);
+  adminToggle.style.left = `${next.x}px`;
+  adminToggle.style.top = `${next.y}px`;
+  adminToggle.style.right = "auto";
+  if (adminPanel) {
+    const panelWidth = Math.min(340, Math.max(220, window.innerWidth - 24));
+    const panelLeft = clamp(next.x, 8, Math.max(8, window.innerWidth - panelWidth - 8));
+    const panelTop = clamp(next.y + 62, 8, Math.max(8, window.innerHeight - 170));
+    adminPanel.style.left = `${panelLeft}px`;
+    adminPanel.style.top = `${panelTop}px`;
+    adminPanel.style.right = "auto";
+    adminPanel.style.maxHeight = `${Math.max(140, window.innerHeight - panelTop - 8)}px`;
+  }
+  return next;
+}
+
+function updateAdminPanelVisibility(active = isAdminUser()) {
+  if (adminToggle) {
+    adminToggle.hidden = !active;
+    adminToggle.classList.toggle("open", active && adminPanelOpen);
+    adminToggle.setAttribute("aria-expanded", String(active && adminPanelOpen));
+  }
+  if (!active) adminPanelOpen = false;
+  if (adminPanel) adminPanel.hidden = !active || !adminPanelOpen;
+  placeAdminControls();
+}
+
+function setupAdminToggle() {
+  if (!adminToggle) return;
+  placeAdminControls();
+  adminToggle.addEventListener("pointerdown", event => {
+    if (event.button && event.button !== 0) return;
+    const origin = readAdminTogglePosition();
+    adminToggleDrag = { pointerId: event.pointerId, startX: event.clientX, startY: event.clientY, origin, moved: false };
+    adminToggle.setPointerCapture?.(event.pointerId);
+    event.preventDefault();
+  });
+  adminToggle.addEventListener("pointermove", event => {
+    if (!adminToggleDrag || adminToggleDrag.pointerId !== event.pointerId) return;
+    const dx = event.clientX - adminToggleDrag.startX;
+    const dy = event.clientY - adminToggleDrag.startY;
+    if (Math.hypot(dx, dy) > 4) adminToggleDrag.moved = true;
+    const next = placeAdminControls({ x: adminToggleDrag.origin.x + dx, y: adminToggleDrag.origin.y + dy });
+    if (adminToggleDrag.moved && next) localStorage.setItem(adminTogglePositionKey, JSON.stringify(next));
+    event.preventDefault();
+  });
+  adminToggle.addEventListener("pointerup", event => {
+    if (!adminToggleDrag || adminToggleDrag.pointerId !== event.pointerId) return;
+    const moved = adminToggleDrag.moved;
+    adminToggle.releasePointerCapture?.(event.pointerId);
+    adminToggleDrag = null;
+    if (!moved) {
+      adminPanelOpen = !adminPanelOpen;
+      updateAdminPanelVisibility();
+    }
+    event.preventDefault();
+  });
+  adminToggle.addEventListener("pointercancel", () => { adminToggleDrag = null; });
+  adminToggle.addEventListener("keydown", event => {
+    if (event.key !== "Enter" && event.key !== " ") return;
+    event.preventDefault();
+    adminPanelOpen = !adminPanelOpen;
+    updateAdminPanelVisibility();
+  });
+  window.addEventListener("resize", () => {
+    const next = placeAdminControls();
+    if (next) localStorage.setItem(adminTogglePositionKey, JSON.stringify(next));
+  });
+}
+
+function activeCloudUser() {
+  return localAccountMode ? null : cloudUser;
+}
+
+function setLocalAccountMode(active) {
+  localAccountMode = Boolean(active);
+  if (localAccountMode) sessionStorage.setItem(localAccountKey, "1");
+  else sessionStorage.removeItem(localAccountKey);
+  adminVerified = false;
+  progressStorageSuffix = activeCloudUser() ? `:${activeCloudUser().uid}` : `:local:${playerId}`;
+  personalBest = loadStoredPersonalBest();
+}
+
+function adminPayload(extra = {}) {
+  return { roomCode: adminTargetRoomCode || roomCode, playerId, accountEmail: activeCloudUser()?.email || "", ...extra };
+}
+
+function applyAdminList(admins = []) {
+  adminEmails.clear();
+  for (const admin of admins) {
+    const email = normalizeEmail(typeof admin === "string" ? admin : admin?.email);
+    if (email) adminEmails.add(email);
+  }
+  adminEmails.add("zurtzilhagever@gmail.com");
+  adminVerified = isAdminUser();
+  renderAdminList();
+}
+
+function renderAdminList() {
+  if (!adminListSelect) return;
+  const selected = adminListSelect.value;
+  const entries = [...adminEmails].sort();
+  adminListSelect.innerHTML = entries.length
+    ? entries.map(email => `<option value="${escapeHtml(email)}">${escapeHtml(email)}${email === "zurtzilhagever@gmail.com" ? " OWNER" : ""}</option>`).join("")
+    : `<option value="">${t("adminListEmpty")}</option>`;
+  if (entries.includes(selected)) adminListSelect.value = selected;
+  if (adminRemoveAdmin) adminRemoveAdmin.disabled = !adminListSelect.value || adminListSelect.value === "zurtzilhagever@gmail.com";
+}
+
+function syncAdminState(force = false) {
+  const email = activeCloudUser()?.email || "";
+  if (!email || (!socket.connected && !force)) return renderAdminPanel();
+  if (!force && Date.now() - adminListRequestAt < 1200) return;
+  adminListRequestAt = Date.now();
+  socket.emit("admin:check", { accountEmail: email }, reply => {
+    if (reply?.admins) applyAdminList(reply.admins);
+    adminVerified = Boolean(reply?.admin);
+    renderAccountStatus();
+    renderCharacterLocks();
+    renderAdminPanel();
+  });
+}
+
+function requestAdminList() {
+  if (!isAdminUser() || !socket.connected || Date.now() - adminListRequestAt < 1200) return;
+  adminListRequestAt = Date.now();
+  socket.emit("admin:list", adminPayload(), reply => {
+    if (!reply?.ok) return;
+    applyAdminList(reply.admins);
+    renderAdminPanel();
+  });
+}
+
+function identifyAdminInRoom() {
+  if (!roomCode || !activeCloudUser()) return;
+  socket.emit("admin:identify", adminPayload(), reply => {
+    adminVerified = Boolean(reply?.admin);
+    if (reply?.admins) applyAdminList(reply.admins);
+    renderAccountStatus();
+    renderCharacterLocks();
+    renderAdminPanel();
+  });
+}
+
+function renderAdminPanel() {
+  if (!adminPanel || !adminPlayerSelect || !adminCharacterSelect) return;
+  const active = isAdminUser();
+  updateAdminPanelVisibility(active);
+  if (!active) return;
+  renderAdminList();
+  requestAdminList();
+  const previousPlayer = adminPlayerSelect.value;
+  const selectablePlayers = players.filter(player => !player.bot && player.id !== playerId);
+  const remoteTarget = adminFoundTarget && adminFoundTarget.roomCode !== roomCode ? adminFoundTarget : null;
+  const playerOptions = selectablePlayers.map(player => `<option value="${escapeHtml(player.id)}">${escapeHtml(player.name)}${player.admin ? ` (${t("adminLabel")})` : ""}</option>`);
+  if (remoteTarget && !selectablePlayers.some(player => player.id === remoteTarget.id)) {
+    playerOptions.push(`<option value="${escapeHtml(remoteTarget.id)}">${escapeHtml(remoteTarget.name)} (${escapeHtml(remoteTarget.roomCode)})</option>`);
+  }
+  adminPlayerSelect.innerHTML = playerOptions.length
+    ? playerOptions.join("")
+    : `<option value="">${roomCode ? t("adminNoPlayers") : t("adminNoRoom")}</option>`;
+  if (selectablePlayers.some(player => player.id === previousPlayer) || remoteTarget?.id === previousPlayer) adminPlayerSelect.value = previousPlayer;
+  else {
+    adminTargetRoomCode = "";
+    adminFoundTarget = null;
+  }
+  const previousCharacter = adminCharacterSelect.value;
+  adminCharacterSelect.innerHTML = adminGrantCharacters
+    .map(character => `<option value="${character}">${escapeHtml(characterLabel(character))}</option>`)
+    .join("");
+  if (adminGrantCharacters.includes(previousCharacter)) adminCharacterSelect.value = previousCharacter;
+  const hasTarget = Boolean((adminTargetRoomCode || roomCode) && adminPlayerSelect.value);
+  if (adminGrant) adminGrant.disabled = !hasTarget;
+  if (adminRevoke) adminRevoke.disabled = !hasTarget || adminCharacterSelect.value === "blaze";
+  if (adminResetProgress) adminResetProgress.disabled = !hasTarget;
+  if (adminBan) adminBan.disabled = !hasTarget;
+  if (adminRestart) adminRestart.disabled = !(adminTargetRoomCode || roomCode);
+  if (adminFindGoogle) adminFindGoogle.disabled = false;
+  if (adminAddAdmin) adminAddAdmin.disabled = false;
+  if (adminRemoveAdmin) adminRemoveAdmin.disabled = !adminListSelect?.value || adminListSelect.value === "zurtzilhagever@gmail.com";
+  if (!roomCode && !adminTargetRoomCode) setAdminStatus(t("adminNoRoom"));
+  else if (adminStatus?.textContent === t("adminNoRoom")) setAdminStatus("");
+}
+
+function runAdminCommand(event, payload = {}) {
+  if (!isAdminUser()) return setAdminStatus(t("adminFailed"));
+  socket.emit(event, adminPayload(payload), reply => {
+    setAdminStatus(reply?.ok ? t("adminDone") : reply?.error || t("adminFailed"));
+    window.setTimeout(() => setAdminStatus(""), 1400);
+  });
+}
+
+function findPlayerByGoogleAccount() {
+  const email = normalizeEmail(adminGoogleAccount?.value);
+  if (!email || !isValidEmail(email)) return setAdminStatus(t("adminInvalidEmail"));
+  if (!isAdminUser()) return setAdminStatus(t("adminFailed"));
+  socket.emit("admin:findPlayer", adminPayload({ email }), reply => {
+    if (reply?.ok && reply.targetId && reply.roomCode) {
+      adminTargetRoomCode = reply.roomCode;
+      adminFoundTarget = { id: reply.targetId, name: reply.name || email, roomCode: reply.roomCode };
+      renderAdminPanel();
+      adminPlayerSelect.value = reply.targetId;
+      setAdminStatus(`${t("adminPlayerFound")}: ${reply.name || email}`);
+    } else {
+      setAdminStatus(reply?.error === "Player not found" ? t("adminPlayerNotFound") : reply?.error || t("adminFailed"));
+    }
+    window.setTimeout(() => setAdminStatus(""), 1800);
+  });
+}
+
+function addAdminByEmail() {
+  const email = normalizeEmail(adminEmailInput?.value);
+  if (!email || !isValidEmail(email)) return setAdminStatus(t("adminInvalidEmail"));
+  if (!isAdminUser()) return setAdminStatus(t("adminFailed"));
+  socket.emit("admin:addAdmin", adminPayload({ email }), reply => {
+    if (reply?.ok) {
+      if (reply.admins) applyAdminList(reply.admins);
+      if (adminEmailInput) adminEmailInput.value = "";
+      setAdminStatus(t("adminDone"));
+      renderAdminPanel();
+    } else {
+      setAdminStatus(reply?.error || t("adminFailed"));
+    }
+    window.setTimeout(() => setAdminStatus(""), 1600);
+  });
+}
+
+function removeSelectedAdmin() {
+  const email = normalizeEmail(adminListSelect?.value);
+  if (!email || !isValidEmail(email)) return setAdminStatus(t("adminInvalidEmail"));
+  if (email === "zurtzilhagever@gmail.com") return setAdminStatus(t("adminOwnerLocked"));
+  if (!isAdminUser()) return setAdminStatus(t("adminFailed"));
+  socket.emit("admin:removeAdmin", adminPayload({ email }), reply => {
+    if (reply?.ok) {
+      if (reply.admins) applyAdminList(reply.admins);
+      setAdminStatus(t("adminDone"));
+      renderAdminPanel();
+    } else {
+      setAdminStatus(reply?.error === "Owner admin cannot be removed" ? t("adminOwnerLocked") : reply?.error || t("adminFailed"));
+    }
+    window.setTimeout(() => setAdminStatus(""), 1600);
+  });
+}
+
+function applyCloudProgress(progress) {
+  if (!progress) return;
+  const cloudBest = Number(progress.bestSurvival) || 0;
+  if (cloudBest > personalBest) {
+    personalBest = cloudBest;
+    localStorage.setItem(progressKey(survivalBestKey), String(personalBest));
+  }
+  if (Array.isArray(progress.unlockedCharacters)) {
+    const merged = unlockedCharacters();
+    for (const character of progress.unlockedCharacters) {
+      if (lockedCharacters.has(character)) merged.add(character);
+    }
+    saveUnlockedCharacters(merged);
+  }
+  if (!nameInput.value && progress.preferredName) {
+    nameInput.value = String(progress.preferredName).slice(0, 14);
+    localStorage.setItem("brawlclaui-name", name());
+  }
+  renderSurvivalStats();
+  renderCharacterLocks();
+}
+
+function queueCloudSave() {
+  if (!cloudApi || !activeCloudUser()) return;
+  window.clearTimeout(cloudSaveTimer);
+  cloudSaveTimer = window.setTimeout(saveCloudProgress, 500);
+}
+
+async function saveCloudProgress() {
+  const user = activeCloudUser();
+  if (!cloudApi || !user) return;
+  const snapshot = progressSnapshot();
+  const serialized = JSON.stringify(snapshot);
+  if (serialized === lastCloudSnapshot) return;
+  try {
+    renderAccountStatus(t("cloudSyncing"));
+    await cloudApi.saveProgress(user, snapshot);
+    lastCloudSnapshot = serialized;
+    renderAccountStatus(t("cloudSaved"));
+    window.setTimeout(() => renderAccountStatus(), 1200);
+  } catch {
+    renderAccountStatus(t("cloudError"));
+  }
+}
+
+async function setupCloudProgress() {
+  try {
+    cloudApi = await import("/shared/firebase-progress.js?v=52");
+    googleSignIn.onclick = async () => {
+      try {
+        setLocalAccountMode(false);
+        renderAccountStatus(t("cloudSyncing"));
+        const result = await cloudApi.signIn();
+        cloudUser = result?.user || cloudApi.currentUser?.() || cloudUser;
+        progressStorageSuffix = activeCloudUser() ? `:${activeCloudUser().uid}` : `:local:${playerId}`;
+        personalBest = loadStoredPersonalBest();
+        lastCloudSnapshot = "";
+        syncAdminState(true);
+        identifyAdminInRoom();
+        renderSurvivalStats();
+        renderCharacterLocks();
+        renderAccountStatus();
+        renderAdminPanel();
+        if (activeCloudUser()) {
+          const progress = await cloudApi.loadProgress(activeCloudUser());
+          applyCloudProgress(progress);
+          lastCloudSnapshot = JSON.stringify(progressSnapshot());
+          queueCloudSave();
+        }
+      } catch {
+        renderAccountStatus(t("cloudError"));
+      }
+    };
+    googleSignOut.onclick = () => {
+      setLocalAccountMode(true);
+      lastCloudSnapshot = "";
+      syncAdminState(true);
+      renderSurvivalStats();
+      renderCharacterLocks();
+      renderAccountStatus();
+      renderAdminPanel();
+      if (roomCode) socket.emit("admin:identify", { roomCode, playerId, accountEmail: "" }, () => {});
+    };
+    cloudApi.onUserChanged(async user => {
+      cloudUser = user;
+      const activeUser = activeCloudUser();
+      adminVerified = false;
+      progressStorageSuffix = activeUser ? `:${activeUser.uid}` : `:local:${playerId}`;
+      personalBest = loadStoredPersonalBest();
+      lastCloudSnapshot = "";
+      syncAdminState(true);
+      renderSurvivalStats();
+      renderCharacterLocks();
+      renderAccountStatus(activeUser ? t("cloudSyncing") : null);
+      identifyAdminInRoom();
+      renderAdminPanel();
+      if (!activeUser) return;
+      try {
+        const progress = await cloudApi.loadProgress(activeUser);
+        applyCloudProgress(progress);
+        lastCloudSnapshot = JSON.stringify(progressSnapshot());
+        queueCloudSave();
+        renderAccountStatus();
+        renderAdminPanel();
+      } catch {
+        renderAccountStatus(t("cloudError"));
+      }
+    });
+  } catch {
+    renderAccountStatus(t("cloudError"));
+  }
 }
 
 function updateMeta() {
@@ -417,20 +1038,130 @@ document.querySelectorAll("[data-character]").forEach(button => {
 });
 document.querySelector("#mode").addEventListener("change", queueAutoJoin);
 nameInput.addEventListener("change", queueAutoJoin);
+nameInput.addEventListener("change", queueCloudSave);
+function joinByCode(value, requestFullscreenForJoin = true) {
+  if (requestFullscreenForJoin) requestAppFullscreen();
+  const joinValue = String(value || "").trim();
+  if (!joinValue) return error.textContent = t("codePlaceholder");
+  const remote = parseServerJoinCode(joinValue);
+  if (remote && remote.origin !== location.origin) {
+    location.href = `${remote.origin}/play/?join=${encodeURIComponent(remote.room)}&fresh=server`;
+    return;
+  }
+  const joinCode = remote ? remote.room : joinValue.toUpperCase();
+  error.textContent = t("reconnecting");
+  socket.emit("player:join", { code: joinCode, playerId, name: name(), character: selectedCharacter, accountEmail: activeCloudUser()?.email || "" }, reply => {
+    pendingJoinCode = "";
+    if (!reply?.ok) {
+      error.textContent = reply?.error || t("adminFailed");
+      return;
+    }
+    enter(reply);
+  });
+}
 document.querySelector("#create").onclick = () => {
   requestAppFullscreen();
-  if (roomCode) return enter({ ok: true, code: roomCode, players, meta: gameMeta });
-  socket.emit("player:autoJoin", { playerId, name: name(), character: selectedCharacter, mode: document.querySelector("#mode").value }, enter);
+  if (roomCode) return socket.emit("player:join", { code: roomCode, playerId, name: name(), character: selectedCharacter, accountEmail: activeCloudUser()?.email || "" }, enter);
+  socket.emit("player:autoJoin", { playerId, name: name(), character: selectedCharacter, mode: document.querySelector("#mode").value, accountEmail: activeCloudUser()?.email || "" }, enter);
 };
 document.querySelector("#join").onclick = () => {
-  requestAppFullscreen();
-  socket.emit("player:join", { code: codeInput.value.trim().toUpperCase(), playerId, name: name(), character: selectedCharacter }, enter);
+  joinByCode(codeInput.value, true);
 };
 codeInput.addEventListener("input", () => codeInput.value = codeInput.value.toUpperCase());
-document.querySelector("#leave").onclick = () => { location.reload(); };
+if (pendingJoinCode && /^[A-Z0-9]{4}$/.test(pendingJoinCode)) codeInput.value = pendingJoinCode;
+else pendingJoinCode = "";
+function leaveGame() {
+  const leavingRoom = roomCode;
+  if (leavingRoom) socket.emit("player:leave", { code: leavingRoom, playerId });
+  roomCode = "";
+  players = [];
+  gameMeta = { items: [], zoneScore: {} };
+  wasPlaying = false;
+  input.x = 0;
+  input.y = 0;
+  input.attack = false;
+  input.special = false;
+  keyboardState.clear();
+  document.querySelector("#stick-knob").style.transform = "";
+  localStorage.removeItem("brawlclaui-room");
+  document.documentElement.classList.remove("playing");
+  document.body.classList.remove("playing");
+  game.hidden = true;
+  lobby.hidden = false;
+  error.textContent = "";
+  updateLobbyRoom();
+  updateMeta();
+  renderAdminPanel();
+  window.scrollTo(0, 0);
+  if (document.fullscreenElement) document.exitFullscreen?.().catch(() => {});
+}
+
+function createNewLocalPlayer() {
+  if (roomCode) leaveGame();
+  playerId = crypto.randomUUID();
+  sessionStorage.setItem(playerKey, playerId);
+  setLocalAccountMode(true);
+  nameInput.value = "";
+  localStorage.removeItem("brawlclaui-name");
+  selectedCharacter = "blaze";
+  document.querySelectorAll("[data-character]").forEach(button => button.classList.toggle("selected", button.dataset.character === selectedCharacter));
+  error.textContent = t("localPlayerCreated");
+  renderAccountStatus();
+  renderSurvivalStats();
+  renderCharacterLocks();
+  renderAdminPanel();
+}
+
+newLocalPlayer?.addEventListener("click", createNewLocalPlayer);
+
+const leaveButton = document.querySelector("#leave");
+leaveButton.addEventListener("click", leaveGame);
+leaveButton.addEventListener("pointerdown", event => {
+  event.preventDefault();
+  leaveGame();
+});
+
+adminGrant?.addEventListener("click", () => {
+  if (!adminPlayerSelect.value) return setAdminStatus(t("adminPickPlayer"));
+  runAdminCommand("admin:grantCharacter", { targetId: adminPlayerSelect.value, character: adminCharacterSelect.value });
+});
+adminRevoke?.addEventListener("click", () => {
+  if (!adminPlayerSelect.value) return setAdminStatus(t("adminPickPlayer"));
+  runAdminCommand("admin:revokeCharacter", { targetId: adminPlayerSelect.value, character: adminCharacterSelect.value });
+});
+adminResetProgress?.addEventListener("click", () => {
+  if (!adminPlayerSelect.value) return setAdminStatus(t("adminPickPlayer"));
+  runAdminCommand("admin:resetProgress", { targetId: adminPlayerSelect.value });
+});
+adminBan?.addEventListener("click", () => {
+  if (!adminPlayerSelect.value) return setAdminStatus(t("adminPickPlayer"));
+  runAdminCommand("admin:banPlayer", { targetId: adminPlayerSelect.value });
+});
+adminRestart?.addEventListener("click", () => runAdminCommand("admin:restartGame"));
+adminPlayerSelect?.addEventListener("change", () => {
+  adminTargetRoomCode = adminFoundTarget?.id === adminPlayerSelect.value ? adminFoundTarget.roomCode : "";
+  if (!adminTargetRoomCode) adminFoundTarget = null;
+});
+adminFindGoogle?.addEventListener("click", findPlayerByGoogleAccount);
+adminGoogleAccount?.addEventListener("keydown", event => {
+  if (event.key !== "Enter") return;
+  event.preventDefault();
+  findPlayerByGoogleAccount();
+});
+adminAddAdmin?.addEventListener("click", addAdminByEmail);
+adminRemoveAdmin?.addEventListener("click", removeSelectedAdmin);
+adminListSelect?.addEventListener("change", () => {
+  if (adminRemoveAdmin) adminRemoveAdmin.disabled = !adminListSelect.value || adminListSelect.value === "zurtzilhagever@gmail.com";
+});
+adminEmailInput?.addEventListener("keydown", event => {
+  if (event.key !== "Enter") return;
+  event.preventDefault();
+  addAdminByEmail();
+});
 
 socket.on("game:state", next => {
   players = next;
+  renderAdminPanel();
   const humans = next.filter(p => !p.bot);
   const bots = next.filter(p => p.bot);
   document.querySelector("#count").textContent = gameMeta.mode === "survival"
@@ -450,9 +1181,10 @@ socket.on("game:state", next => {
   } else {
     const charge = Math.min(me?.specialCharge || 0, me?.specialRequired || 5);
     const required = me?.specialRequired || 5;
-    special.textContent = charge >= required ? t("special") : `${t("special")} ${charge}/${required}`;
-    special.classList.toggle("charging", charge < required);
-    special.classList.toggle("ready", charge >= required);
+    const hasBuff = Boolean(me?.bazaarBuff);
+    special.textContent = hasBuff ? t("useBuff") : charge >= required ? t("special") : `${t("special")} ${charge}/${required}`;
+    special.classList.toggle("charging", !hasBuff && charge < required);
+    special.classList.toggle("ready", hasBuff || charge >= required);
   }
 });
 socket.on("game:meta", next => {
@@ -460,15 +1192,49 @@ socket.on("game:meta", next => {
   if (next.mode === "survival" && next.rewardCharacter === "boomer" && next.winner?.id === playerId) unlockCharacter("boomer");
   updateMeta();
   if (next.mode === "survival") document.querySelector("#count").textContent = `${t("wave")} ${next.wave || 1} - ${next.survivalTime || 0}s`;
+  if (next.mode === "gems") document.querySelector("#count").textContent = `${t("red")} ${Math.floor(next.gemScore?.red || 0)} - ${Math.floor(next.gemScore?.blue || 0)} ${t("blue")}`;
   if (next.mode === "zone") document.querySelector("#count").textContent = `${t("red")} ${Math.floor(next.zoneScore?.red || 0)} - ${Math.floor(next.zoneScore?.blue || 0)} ${t("blue")}`;
   if (next.mode === "soloZone") document.querySelector("#count").textContent = `${t("control")} ${Math.floor(next.zoneScore?.[playerId] || 0)} / 15`;
 });
+socket.on("admin:verified", () => {
+  adminVerified = true;
+  renderAccountStatus();
+  renderCharacterLocks();
+  renderAdminPanel();
+});
+socket.on("admin:updated", ({ admins } = {}) => {
+  if (admins) applyAdminList(admins);
+  syncAdminState(true);
+});
+socket.on("admin:characterGranted", ({ character } = {}) => {
+  if (!lockedCharacters.has(character)) return;
+  unlockCharacter(character);
+  error.textContent = `${t("adminGrantedNotice")}: ${characterLabel(character)}`;
+});
+socket.on("admin:characterRevoked", ({ character } = {}) => {
+  revokeCharacter(character);
+  error.textContent = `${t("adminRevokedNotice")}: ${characterLabel(character)}`;
+});
+socket.on("admin:progressReset", () => {
+  resetProgress();
+  error.textContent = t("adminProgressResetNotice");
+});
+socket.on("admin:banned", () => {
+  error.textContent = t("adminBannedNotice");
+  const help = document.querySelector("#help");
+  if (help) help.textContent = t("adminBannedNotice");
+  window.setTimeout(() => location.reload(), 900);
+});
 socket.on("disconnect", () => { if (wasPlaying) document.querySelector("#help").textContent = t("reconnecting"); });
 socket.on("connect", () => {
-  if (wasPlaying && roomCode) socket.emit("player:join", { code: roomCode, playerId, name: name(), character: selectedCharacter }, enter);
+  syncAdminState(true);
+  if (pendingJoinCode && !wasPlaying) {
+    joinByCode(pendingJoinCode, false);
+  } else if (wasPlaying && roomCode) socket.emit("player:join", { code: roomCode, playerId, name: name(), character: selectedCharacter, accountEmail: activeCloudUser()?.email || "" }, enter);
   else updateLobbyRoom();
 });
 updateLobbyRoom();
+if (pendingJoinCode && socket.connected) window.setTimeout(() => joinByCode(pendingJoinCode, false), 150);
 
 const zone = document.querySelector("#stick-zone");
 const knob = document.querySelector("#stick-knob");
@@ -519,6 +1285,21 @@ function updateKeyboardInput() {
   input.special = keyboardState.has(keyboardBindings.special);
 }
 
+function autoAimAtNearestBot() {
+  if (controlMode !== "keyboard" || !input.attack) return null;
+  const me = players.find(p => p.id === playerId && p.alive);
+  if (!me) return null;
+  let target = null, distance = Infinity;
+  for (const bot of players) {
+    if (!bot.bot || !bot.alive) continue;
+    const d = Math.hypot(bot.x - me.x, bot.y - me.y);
+    if (d < distance) { target = bot; distance = d; }
+  }
+  if (!target) return null;
+  const len = Math.hypot(target.x - me.x, target.y - me.y) || 1;
+  return [(target.x - me.x) / len, (target.y - me.y) / len];
+}
+
 window.addEventListener("keydown", event => {
   if (controlMode !== "keyboard" || event.repeat) return;
   if (!Object.values(keyboardBindings).includes(event.code)) return;
@@ -563,7 +1344,10 @@ canvas.addEventListener("pointerdown", event => {
 });
 setInterval(() => {
   updateKeyboardInput();
-  if (socket.connected && wasPlaying) socket.emit("player:input", [input.x, input.y, input.attack ? 1 : 0, input.special ? 1 : 0]);
+  if (socket.connected && wasPlaying) {
+    const autoAim = autoAimAtNearestBot();
+    socket.emit("player:input", [input.x, input.y, input.attack ? 1 : 0, input.special ? 1 : 0, autoAim?.[0] || 0, autoAim?.[1] || 0]);
+  }
 }, 1000 / 60);
 GamepadController.onInput(next => {
   if (controlMode === "gamepad") Object.assign(input, next);
@@ -599,14 +1383,6 @@ function drawCharacter(p, motion) {
   ctx.beginPath();
   if (p.character === "tank") {
     ctx.rect(-23, -22, 46, 42);
-  } else if (p.character === "spark") {
-    ctx.moveTo(0, -27);
-    ctx.lineTo(24, 0);
-    ctx.lineTo(0, 27);
-    ctx.lineTo(-24, 0);
-    ctx.closePath();
-  } else if (p.character === "medic") {
-    ctx.arc(0, 0, 22, 0, Math.PI * 2);
   } else if (p.character === "grunt") {
     ctx.arc(0, 0, 17, 0, Math.PI * 2);
   } else {
@@ -619,19 +1395,6 @@ function drawCharacter(p, motion) {
   if (p.character === "tank") {
     ctx.fillStyle = "#dce7f2";
     ctx.fillRect(-12, -7, 24, 8);
-  } else if (p.character === "spark") {
-    ctx.strokeStyle = "#fff176";
-    ctx.lineWidth = 4;
-    ctx.beginPath();
-    ctx.moveTo(-4, -14);
-    ctx.lineTo(7, -2);
-    ctx.lineTo(-2, 0);
-    ctx.lineTo(8, 15);
-    ctx.stroke();
-  } else if (p.character === "medic") {
-    ctx.fillStyle = "#fff";
-    ctx.fillRect(-4, -14, 8, 28);
-    ctx.fillRect(-14, -4, 28, 8);
   }
   return false;
 }
@@ -752,6 +1515,51 @@ function drawArena(now) {
     ctx.arc(centerX, centerY, gameMeta.safeRadius || Math.min(arena.width, arena.height) * .58, 0, Math.PI * 2);
     ctx.stroke();
   }
+  for (const zone of gameMeta.iceZones || []) {
+    const radius = zone.radius || 170;
+    const shimmer = Math.sin(now / 180) * 3;
+    ctx.fillStyle = "#bdf6ff36";
+    ctx.strokeStyle = "#eefcffcc";
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.ellipse(zone.x, zone.y, radius + shimmer, radius * .68 + shimmer, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.strokeStyle = "#73d8ff99";
+    ctx.lineWidth = 2;
+    for (let i = -2; i <= 2; i++) {
+      ctx.beginPath();
+      ctx.moveTo(zone.x - radius * .72, zone.y + i * 24);
+      ctx.lineTo(zone.x + radius * .72, zone.y + i * 18);
+      ctx.stroke();
+    }
+  }
+  for (const zone of gameMeta.pixelZones || []) {
+    const landed = Date.now() >= zone.landsAt;
+    const radius = zone.radius || 92;
+    const pulse = landed ? Math.sin(now / 90) * 4 : 0;
+    ctx.fillStyle = landed ? "#65f7ff28" : "#ffffff18";
+    ctx.strokeStyle = landed ? "#f7ff5dcc" : "#ffffffaa";
+    ctx.lineWidth = landed ? 4 : 2;
+    ctx.beginPath();
+    ctx.arc(zone.x, zone.y, radius + pulse, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    if (!landed) {
+      ctx.fillStyle = "#f7ff5d";
+      ctx.fillRect(zone.x - 14, zone.y - 62, 28, 28);
+      ctx.fillStyle = "#65f7ff";
+      ctx.fillRect(zone.x - 9, zone.y - 55, 8, 8);
+      ctx.fillRect(zone.x + 3, zone.y - 45, 8, 8);
+    } else {
+      ctx.fillStyle = "#65f7ff99";
+      for (let i = 0; i < 14; i++) {
+        const angle = i * 2.399 + now / 360;
+        const dist = (i % 5 + 1) * radius / 6;
+        ctx.fillRect(zone.x + Math.cos(angle) * dist, zone.y + Math.sin(angle) * dist, 10, 10);
+      }
+    }
+  }
   ctx.restore();
 }
 
@@ -764,7 +1572,93 @@ function drawProjectile(projectile, now) {
   ctx.beginPath();
   ctx.ellipse(-3, 9, 14, 4, 0, 0, Math.PI * 2);
   ctx.fill();
-  if (projectile.type === "rocket") {
+  if (projectile.type === "tennis") {
+    ctx.fillStyle = "#caff3f";
+    ctx.beginPath();
+    ctx.arc(0, 0, 8, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = "#f7ffe0";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(-2, 0, 5, -Math.PI / 2, Math.PI / 2);
+    ctx.arc(2, 0, 5, Math.PI / 2, Math.PI * 1.5);
+    ctx.stroke();
+  } else if (projectile.type === "bone") {
+    ctx.fillStyle = "#ead9bf";
+    ctx.strokeStyle = "#7c5d44";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(24, 0);
+    ctx.lineTo(5, -6);
+    ctx.lineTo(-18, -5);
+    ctx.lineTo(-25, 0);
+    ctx.lineTo(-18, 5);
+    ctx.lineTo(5, 6);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = "#fff4df";
+    ctx.beginPath();
+    ctx.arc(-18, -5, 5, 0, Math.PI * 2);
+    ctx.arc(-18, 5, 5, 0, Math.PI * 2);
+    ctx.fill();
+  } else if (projectile.type === "laser") {
+    ctx.fillStyle = projectile.color || "#75f7ff";
+    ctx.shadowColor = projectile.color || "#75f7ff";
+    ctx.shadowBlur = 14;
+    drawRoundedRect(-20, -4, 40, 8, 4);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = "#ffffff";
+    drawRoundedRect(4, -2, 14, 4, 2);
+    ctx.fill();
+  } else if (projectile.type === "snowflake") {
+    ctx.strokeStyle = projectile.color || "#dff8ff";
+    ctx.shadowColor = "#bdf6ff";
+    ctx.shadowBlur = 10;
+    ctx.lineWidth = 3;
+    ctx.lineCap = "round";
+    for (let i = 0; i < 3; i++) {
+      ctx.rotate(Math.PI / 3);
+      ctx.beginPath();
+      ctx.moveTo(-11, 0);
+      ctx.lineTo(11, 0);
+      ctx.moveTo(4, -4);
+      ctx.lineTo(11, 0);
+      ctx.lineTo(4, 4);
+      ctx.stroke();
+    }
+    ctx.shadowBlur = 0;
+  } else if (projectile.type === "coin") {
+    const size = Math.max(7, projectile.radius || 8);
+    ctx.fillStyle = "#ffd54a";
+    ctx.strokeStyle = "#9f6519";
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.ellipse(0, 0, size, size * .78, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = "#fff1a8";
+    ctx.font = `bold ${Math.max(10, size)}px sans-serif`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText("$", 0, 1);
+  } else if (projectile.type === "boomerang") {
+    ctx.rotate(now / 95);
+    ctx.strokeStyle = projectile.returning ? "#8ff0ff" : "#ffd15c";
+    ctx.lineWidth = 7;
+    ctx.lineCap = "round";
+    ctx.beginPath();
+    ctx.arc(0, 0, 16, -2.35, -.25);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(0, 0, 16, .75, 2.85);
+    ctx.stroke();
+    ctx.fillStyle = "#ffffffcc";
+    ctx.beginPath();
+    ctx.arc(0, 0, 4, 0, Math.PI * 2);
+    ctx.fill();
+  } else if (projectile.type === "rocket") {
     const flicker = Math.sin(now / 55 + projectile.x) * 2;
     ctx.fillStyle = "#ff7b35";
     ctx.beginPath();
@@ -835,6 +1729,30 @@ function draw() {
     }
     ctx.restore();
   }
+  for (const box of gameMeta.bazaarBoxes || []) {
+    ctx.save();
+    ctx.translate(box.x, box.y);
+    ctx.fillStyle = "#00000035";
+    ctx.beginPath();
+    ctx.ellipse(4, 16, 22, 7, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#9b5a2a";
+    drawRoundedRect(-20, -18, 40, 34, 6);
+    ctx.fill();
+    ctx.strokeStyle = "#ffd86a";
+    ctx.lineWidth = 3;
+    drawRoundedRect(-20, -18, 40, 34, 6);
+    ctx.stroke();
+    ctx.fillStyle = "#ffd54a";
+    ctx.fillRect(-4, -18, 8, 34);
+    ctx.fillRect(-20, -3, 40, 7);
+    ctx.fillStyle = "#fff4b8";
+    ctx.font = "bold 18px sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText("?", 0, -1);
+    ctx.restore();
+  }
   for (const projectile of gameMeta.projectiles || []) drawProjectile(projectile, now);
   for (const p of players) {
     const motion = motionFor(p, now);
@@ -876,7 +1794,22 @@ function draw() {
       ctx.arc(0, 0, 36, 0, Math.PI * 2);
       ctx.stroke();
     }
-    if (p.shield) {
+    if (p.cardboardShield) {
+      ctx.fillStyle = "#b9824e55";
+      ctx.strokeStyle = "#efc28b";
+      ctx.lineWidth = 5;
+      drawRoundedRect(-37, -35, 74, 70, 7);
+      ctx.fill();
+      ctx.stroke();
+      ctx.strokeStyle = "#7b5131";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(-26, -35);
+      ctx.lineTo(-8, -48);
+      ctx.lineTo(8, -35);
+      ctx.lineTo(26, -48);
+      ctx.stroke();
+    } else if (p.shield) {
       ctx.strokeStyle = "#d8ecff";
       ctx.lineWidth = 4;
       ctx.beginPath();
@@ -890,6 +1823,29 @@ function draw() {
       ctx.arc(0, 0, 32, 0, Math.PI * 2);
       ctx.stroke();
     }
+    if (p.damageBoost) {
+      ctx.strokeStyle = "#ffd54a";
+      ctx.lineWidth = 4;
+      ctx.setLineDash([5, 4]);
+      ctx.beginPath();
+      ctx.arc(0, 0, 37, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+    if (p.bazaarBuff) {
+      ctx.fillStyle = "#8d5524";
+      drawRoundedRect(16, -45, 18, 16, 4);
+      ctx.fill();
+      ctx.strokeStyle = "#ffd54a";
+      ctx.lineWidth = 2;
+      drawRoundedRect(16, -45, 18, 16, 4);
+      ctx.stroke();
+      ctx.fillStyle = "#fff1a8";
+      ctx.font = "bold 12px sans-serif";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText("?", 25, -37);
+    }
     if (!imageCharacter) {
       ctx.fillStyle = "#fff";
       ctx.beginPath();
@@ -902,6 +1858,12 @@ function draw() {
       ctx.fillRect(-22, -34, 44, 5);
       ctx.fillStyle = "#63eb83";
       ctx.fillRect(-22, -34, 44 * (p.health / p.maxHealth), 5);
+      if (p.freezeMeter > 0) {
+        ctx.fillStyle = "#102c42";
+        ctx.fillRect(-22, -27, 44, 4);
+        ctx.fillStyle = "#9eeeff";
+        ctx.fillRect(-22, -27, 44 * Math.min(1, p.freezeMeter / 100), 4);
+      }
     }
     ctx.fillStyle = "#fff";
     ctx.font = "bold 13px sans-serif";
@@ -918,6 +1880,14 @@ function draw() {
     ctx.font = "bold 32px sans-serif";
     ctx.textAlign = "center";
     ctx.fillText("INKED!", canvas.width / 2, canvas.height / 2);
+  }
+  if (me?.confused) {
+    ctx.fillStyle = "#65f7ff24";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = "#f7ff5d";
+    ctx.font = "bold 30px sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText("GAME OVER!", canvas.width / 2, canvas.height / 2 + 42);
   }
   requestAnimationFrame(draw);
 }

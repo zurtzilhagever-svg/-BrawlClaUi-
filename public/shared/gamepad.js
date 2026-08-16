@@ -1,7 +1,7 @@
 /* Lightweight Bluetooth/USB controller adapter. Nintendo layouts can swap A/B. */
 window.GamepadController = (() => {
   let callback = () => {};
-  let swapAB = JSON.parse(localStorage.getItem("couchbrawl-swap-ab") || "false");
+  let swapAB = JSON.parse(localStorage.getItem("brawlclaui-swap-ab") || "false");
   function deadzone(value) { return Math.abs(value) < 0.16 ? 0 : Math.max(-1, Math.min(1, value)); }
   function tick() {
     const gamepad = [...navigator.getGamepads()].find(Boolean);
@@ -16,6 +16,6 @@ window.GamepadController = (() => {
   return {
     onInput(fn) { callback = typeof fn === "function" ? fn : () => {}; },
     get swapAB() { return swapAB; },
-    setSwapAB(value) { swapAB = Boolean(value); localStorage.setItem("couchbrawl-swap-ab", JSON.stringify(swapAB)); }
+    setSwapAB(value) { swapAB = Boolean(value); localStorage.setItem("brawlclaui-swap-ab", JSON.stringify(swapAB)); }
   };
 })();

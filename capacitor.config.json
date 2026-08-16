@@ -1,6 +1,6 @@
 {
-  "appId": "com.couchbrawl.app",
-  "appName": "CouchBrawl",
+  "appId": "com.brawlclaui.app",
+  "appName": "BrawlClaUi",
   "webDir": "public",
   "bundledWebRuntime": false,
   "server": { "androidScheme": "https", "allowNavigation": ["*"], "cleartext": false }

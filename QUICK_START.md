@@ -1,4 +1,4 @@
-# 🚀 CouchBrawl - Quick Start Guide
+# 🚀 BrawlClaUi - Quick Start Guide
 
 ## ⚡ התחלה מהירה (5 דקות)
 
@@ -8,7 +8,7 @@
 ### שלב 2: התקנת תלויות
 ```bash
 # נווט לתיקיית הפרויקט
-cd couchbrawl
+cd brawlclaui
 
 # התקן תלויות
 npm install
@@ -22,7 +22,7 @@ npm start
 יראה:
 ```
 ╔════════════════════════════════════════╗
-║        🎮 CouchBrawl Server 🎮         ║
+║        🎮 BrawlClaUi Server 🎮         ║
 ║                                        ║
 ║  Server is running on port 3000        ║
 ║  Open: http://localhost:3000           ║

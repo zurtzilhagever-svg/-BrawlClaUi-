@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="he" dir="rtl">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
@@ -7,7 +7,7 @@
   <link rel="manifest" href="/manifest.webmanifest">
   <link rel="apple-touch-icon" href="/icons/icon.svg">
   <title>BrawlClaUi</title>
-  <link rel="stylesheet" href="style.css?v=20">
+  <link rel="stylesheet" href="style.css?v=55">
 </head>
 <body>
   <section id="lobby" class="lobby">
@@ -22,14 +22,23 @@
     </select>
     <input id="name" maxlength="14" placeholder="Your name" autocomplete="nickname" data-i18n-placeholder="namePlaceholder">
     <button id="create" data-i18n="playNow">PLAY NOW</button>
-
+    <section id="account-panel" class="account-panel" aria-live="polite">
+      <div>
+        <span data-i18n="accountLabel">GOOGLE ACCOUNT</span>
+        <strong id="account-status" data-i18n="cloudGuest">Not signed in</strong>
+      </div>
+      <button id="google-sign-in" type="button" data-i18n="signInGoogle">Sign in with Google</button>
+      <button id="google-sign-out" type="button" hidden data-i18n="signOut">Sign out</button>
+      <button id="new-local-player" type="button" data-i18n="newLocalPlayer">New local player</button>
+    </section>
     <label data-i18n="brawlerLabel">YOUR BRAWLER</label>
     <div id="characters" class="choice-grid">
-      <button data-character="blaze" class="selected"><span class="portrait blaze"></span><img class="char-img" src="/characters/blaze.png" alt="" onerror="this.hidden=true"><span data-i18n="bobName">Bob</span><small data-i18n="blazeDesc"></small></button>
-      <button data-character="boomer" class="locked"><span class="portrait boomer"></span><img class="char-img" src="/characters/boomer.png" alt="" onerror="this.hidden=true"><span data-i18n="boomerName">Boomer</span><small data-i18n="boomerDesc"></small></button>
-      <button data-character="tank" class="locked"><span class="portrait tank"></span><img class="char-img" src="/characters/tank.png" alt="" onerror="this.hidden=true"><span data-i18n="auroraName">Aurora</span><small data-i18n="tankDesc">Snow Princess</small></button>
-      <button data-character="spark" class="locked"><span class="portrait spark"></span><img class="char-img" src="/characters/spark.png" alt="" onerror="this.hidden=true"><span>Spark</span><small data-i18n="sparkDesc">Fast striker</small></button>
-      <button data-character="medic" class="locked"><span class="portrait medic"></span><img class="char-img" src="/characters/medic.png" alt="" onerror="this.hidden=true"><span>Medic</span><small data-i18n="medicDesc">Self heal</small></button>
+      <button data-character="blaze" class="selected"><span class="portrait blaze"></span><img class="char-img" src="/characters/blaze.png?v=43" alt="" onerror="this.hidden=true"><span data-i18n="bobName">Bob</span><small data-i18n="blazeDesc"></small></button>
+      <button data-character="boomer" class="locked"><span class="portrait boomer"></span><img class="char-img" src="/characters/boomer.png?v=43" alt="" onerror="this.hidden=true"><span data-i18n="boomerName">Boomer</span><small data-i18n="boomerDesc"></small></button>
+      <button data-character="fangli" class="locked"><span class="portrait fangli"></span><img class="char-img" src="/characters/fangli.png?v=43" alt="" onerror="this.hidden=true"><span data-i18n="fangliName">Fangli</span><small data-i18n="fangliDesc">Long bone shot</small></button>
+      <button data-character="pixel"><span class="portrait pixel"></span><img class="char-img" src="/characters/pixel.png?v=43" alt="" onerror="this.hidden=true"><span data-i18n="pixelName">Pixel</span><small data-i18n="pixelDesc">Ricochet laser</small></button>
+      <button data-character="tank" class="locked"><span class="portrait tank"></span><img class="char-img" src="/characters/tank.png?v=43" alt="" onerror="this.hidden=true"><span data-i18n="auroraName">Aurora</span><small data-i18n="tankDesc">Snowstorm + ice field</small></button>
+      <button data-character="bazaar"><span class="portrait bazaar"></span><img class="char-img" src="/characters/bazaar.png?v=43" alt="" onerror="this.hidden=true"><span data-i18n="bazaarName">Bazaar</span><small data-i18n="bazaarDesc">Coin chain + buff box</small></button>
     </div>
 
     <label data-i18n="modeLabel">GAME MODE</label>
@@ -58,6 +67,10 @@
     <section class="room-preview" aria-live="polite">
       <span data-i18n="roomCodeLabel">ROOM CODE</span>
       <strong id="lobby-room-code">----</strong>
+      <div class="server-code">
+        <span data-i18n="serverCodeLabel">SERVER CODE</span>
+        <code id="server-join-code">----</code>
+      </div>
       <small id="match-status" data-i18n="findingPlayers">Finding players...</small>
       <div id="phone-connect" class="phone-connect" hidden>
         <img id="phone-qr" alt="QR code for phone controller">
@@ -82,17 +95,41 @@
 
     <div class="divider" data-i18n="joinDivider">OR JOIN A FRIEND</div>
     <div class="join-row">
-      <input id="code" maxlength="4" placeholder="CODE" data-i18n-placeholder="codePlaceholder">
+      <input id="code" maxlength="80" placeholder="CODE" data-i18n-placeholder="codePlaceholder">
       <button id="join" data-i18n="join">JOIN</button>
     </div>
     <p id="error" role="alert"></p>
     <button id="install" hidden data-i18n="install">INSTALL APP</button>
   </section>
 
+  <button id="admin-toggle" class="admin-toggle" type="button" aria-controls="admin-panel" aria-expanded="false" hidden>ADMIN</button>
+  <section id="admin-panel" class="admin-panel" hidden>
+    <label for="admin-player" data-i18n="adminPanelTitle">ADMIN PANEL</label>
+    <input id="admin-google-account" type="email" autocomplete="email" placeholder="Google account" data-i18n-placeholder="adminGooglePlaceholder">
+    <button id="admin-add-google" type="button" data-i18n="adminFindGoogle">Find player</button>
+    <input id="admin-email" type="email" autocomplete="email" placeholder="Admin email" data-i18n-placeholder="adminEmailPlaceholder">
+    <select id="admin-list"></select>
+    <div class="admin-actions">
+      <button id="admin-add-admin" type="button" data-i18n="adminAddAdmin">Add admin</button>
+      <button id="admin-remove-admin" type="button" data-i18n="adminRemoveAdmin">Remove admin</button>
+    </div>
+    <select id="admin-player"></select>
+    <select id="admin-character"></select>
+    <div class="admin-actions">
+      <button id="admin-grant" type="button" data-i18n="adminGrant">Give character</button>
+      <button id="admin-revoke" type="button" data-i18n="adminRevoke">Remove character</button>
+      <button id="admin-reset-progress" type="button" data-i18n="adminResetProgress">Reset progress</button>
+      <button id="admin-ban" type="button" data-i18n="adminBan">Ban player</button>
+      <button id="admin-restart" type="button" data-i18n="adminRestart">Restart game</button>
+    </div>
+    <small id="admin-status"></small>
+  </section>
+
   <main id="game" hidden>
     <header>
-      <button id="leave" aria-label="Leave game" data-i18n-aria-label="leaveAria">x</button>
+      <button id="leave" type="button" aria-label="Leave game" data-i18n-aria-label="leaveAria">x</button>
       <span id="room-label">ROOM ----</span>
+      <span id="server-label" class="server-label"></span>
       <span id="count">1 PLAYER</span>
     </header>
     <canvas id="arena" width="1200" height="900"></canvas>
@@ -120,6 +157,6 @@
   <script src="/socket.io/socket.io.js"></script>
   <script src="/shared/gamepad.js"></script>
   <script src="/shared/qr-generator.js"></script>
-  <script src="play.js?v=20"></script>
+  <script src="play.js?v=55"></script>
 </body>
 </html>

@@ -1,4 +1,4 @@
-# 🎮 CouchBrawl - Multiplayer Party Game
+# 🎮 BrawlClaUi - Multiplayer Party Game
 
 משחק מרובה משתתפים בסגנון **Brawl Stars** עם ארכיטקטורה מודרנית מבוססת רשת. המשחק מורכב משלוש שכבות: מסך טלוויזיה (Host Display), בקר נייד (Mobile Controller), ושרת Node.js בזמן אמת.
 
@@ -75,7 +75,7 @@ npm start
 ## 🛠️ מבנה הקבצים
 
 ```
-couchbrawl/
+brawlclaui/
 ├── package.json                      # תלויות ואינפורמציה פרויקט
 ├── server.js                         # שרת Node.js + Socket.io
 ├── public/
@@ -188,7 +188,7 @@ couchbrawl/
 
 ## 🎮 תמיכה בשלטים חומרה
 
-CouchBrawl תומך ב-**Gamepad API** עבור שלטים פיזיים:
+BrawlClaUi תומך ב-**Gamepad API** עבור שלטים פיזיים:
 
 ### שלטים תומכים:
 - ✅ Xbox Controllers (Series X/S, Xbox One)
