@@ -889,6 +889,48 @@ function renderAdminTargetInfo(target) {
   ].join("");
 }
 
+function adminCommandText(element) {
+  return [
+    element.textContent,
+    element.getAttribute("data-admin-command"),
+    element.getAttribute("placeholder")
+  ].filter(Boolean).join(" ").toLowerCase();
+}
+
+function filterAdminCommands() {
+  if (!adminPanel || !adminCommandSearch) return;
+  const query = adminCommandSearch.value.trim().toLowerCase();
+  const sections = [...adminPanel.querySelectorAll(".admin-section:not(.admin-command-section)")];
+  let matches = 0;
+  let firstRunnable = null;
+  for (const section of sections) {
+    const sectionText = section.querySelector("label")?.textContent.toLowerCase() || "";
+    const sectionMatches = Boolean(query && sectionText.includes(query));
+    const commands = [...section.querySelectorAll("[data-admin-command]")];
+    let visibleInSection = !query;
+    for (const command of commands) {
+      const commandMatches = !query || sectionMatches || adminCommandText(command).includes(query);
+      if (command.tagName === "BUTTON") {
+        command.hidden = !commandMatches;
+        if (commandMatches) {
+          matches += 1;
+          if (!firstRunnable && !command.disabled) firstRunnable = command;
+        }
+      }
+      if (commandMatches) visibleInSection = true;
+    }
+    section.hidden = !visibleInSection;
+  }
+  if (adminCommandHint) {
+    adminCommandHint.textContent = !query
+      ? t("adminCommandEnterHint")
+      : matches
+        ? `${matches} ${t("adminCommandMatches")}`
+        : t("adminCommandNoMatches");
+  }
+  adminCommandSearch.dataset.firstCommand = firstRunnable?.id || "";
+}
+
 function syncAdminState(force = false) {
   const email = activeCloudUser()?.email || "";
   if (!email || (!socket.connected && !force)) return renderAdminPanel();
@@ -993,6 +1035,7 @@ function renderAdminPanel() {
   if (adminRemoveAdmin) adminRemoveAdmin.disabled = !adminListSelect?.value || adminListSelect.value === "zurtzilhagever@gmail.com";
   if (!roomCode && !adminTargetRoomCode) setAdminStatus(t("adminNoRoom"));
   else if (adminStatus?.textContent === t("adminNoRoom")) setAdminStatus("");
+  filterAdminCommands();
 }
 
 function runAdminCommand(event, payload = {}) {
@@ -1356,6 +1399,15 @@ adminEmailInput?.addEventListener("keydown", event => {
   if (event.key !== "Enter") return;
   event.preventDefault();
   addAdminByEmail();
+});
+adminCommandSearch?.addEventListener("input", filterAdminCommands);
+adminCommandSearch?.addEventListener("keydown", event => {
+  if (event.key !== "Enter") return;
+  event.preventDefault();
+  const firstCommand = adminCommandSearch.dataset.firstCommand
+    ? document.getElementById(adminCommandSearch.dataset.firstCommand)
+    : null;
+  if (firstCommand && !firstCommand.disabled && !firstCommand.hidden) firstCommand.click();
 });
 
 socket.on("game:state", next => {

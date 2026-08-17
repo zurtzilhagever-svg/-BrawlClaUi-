@@ -271,6 +271,24 @@ select {
   background: #2a1d2b;
 }
 
+.admin-command-section {
+  background: #111a31;
+  border-color: #70d7ff44;
+}
+
+.admin-command-section input {
+  min-height: 42px;
+  border: 1px solid #70d7ff33;
+  background: #081126;
+}
+
+#admin-command-hint {
+  min-height: 1.1em;
+  color: #9fb0d4;
+  font-size: .72rem;
+  font-weight: 800;
+}
+
 .admin-inline {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
