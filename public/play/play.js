@@ -168,6 +168,7 @@ const translations = {
     special: "SUPER",
     useItem: "USE ITEM",
     useBuff: "USE BUFF",
+    gotBuff: "Buff received",
     ping: "PING",
     survivalEnded: "Survival ended",
     createAgain: "Create a new game to play again",
@@ -285,6 +286,7 @@ const translations = {
     special: "\u05e1\u05d5\u05e4\u05e8",
     useItem: "\u05d4\u05e9\u05ea\u05de\u05e9",
     useBuff: "\u05d4\u05e4\u05e2\u05dc Buff",
+    gotBuff: "\u05e7\u05d9\u05d1\u05dc\u05ea Buff",
     ping: "\u05e1\u05d9\u05de\u05d5\u05df",
     survivalEnded: "\u05d4\u05d4\u05d9\u05e9\u05e8\u05d3\u05d5\u05ea \u05d4\u05e1\u05ea\u05d9\u05d9\u05de\u05d4",
     createAgain: "\u05e6\u05d5\u05e8 \u05de\u05e9\u05d7\u05e7 \u05d7\u05d3\u05e9 \u05db\u05d3\u05d9 \u05dc\u05e9\u05d7\u05e7 \u05e9\u05d5\u05d1",
@@ -436,6 +438,7 @@ let players = [];
 let wasPlaying = false;
 let selectedCharacter = "blaze";
 let gameMeta = { items: [], zoneScore: {} };
+let lastBazaarBuff = "";
 let controlMode = localStorage.getItem("brawlclaui-control-mode") || (matchMedia("(hover: hover) and (pointer: fine)").matches ? "keyboard" : "touch");
 let autoJoinTimer = 0;
 let phoneOrigin = location.origin;
@@ -446,9 +449,9 @@ let localAccountMode = sessionStorage.getItem(localAccountKey) === "1";
 let cloudSaveTimer = 0;
 let lastCloudSnapshot = "";
 let pendingJoinCode = (new URLSearchParams(location.search).get("join") || "").trim().toUpperCase();
-const characterImages = Object.fromEntries(["blaze", "boomer", "fangli", "pixel", "tank", "bazaar"].map(id => {
+const characterImages = Object.fromEntries(["blaze", "boomer", "fangli", "pixel", "tank", "bazaar", "mash"].map(id => {
   const image = new Image();
-  image.src = `/characters/${id}.png?v=43`;
+  image.src = `/characters/${id}.png?v=57`;
   return [id, image];
 }));
 const motionState = new Map();
@@ -489,6 +492,7 @@ function enter(reply) {
   roomCode = reply.code;
   players = reply.players;
   gameMeta = reply.meta || gameMeta;
+  lastBazaarBuff = players.find(p => p.id === playerId)?.bazaarBuff || "";
   wasPlaying = true;
   localStorage.setItem("brawlclaui-name", name());
   localStorage.setItem("brawlclaui-room", roomCode);
@@ -602,6 +606,22 @@ function characterLabel(character) {
   if (character === "tank") return t("auroraName");
   if (character === "bazaar") return t("bazaarName");
   return character.charAt(0).toUpperCase() + character.slice(1);
+}
+
+function bazaarBuffLabel(buff) {
+  const labels = {
+    coinMagnet: "\u05de\u05d2\u05e0\u05d8 \u05d4\u05de\u05d8\u05d1\u05e2\u05d5\u05ea",
+    desertSpice: "\u05ea\u05d1\u05dc\u05d9\u05df \u05de\u05d3\u05d1\u05e8\u05d9",
+    goldenArmor: "\u05e9\u05e8\u05d9\u05d5\u05df \u05d6\u05d4\u05d1",
+    mirageMirror: "\u05de\u05e8\u05d0\u05ea \u05d4\u05d0\u05e9\u05dc\u05d9\u05d5\u05ea",
+    sandglass: "\u05e9\u05e2\u05d5\u05df \u05d7\u05d5\u05dc \u05e2\u05ea\u05d9\u05e7",
+    hermes: "\u05e0\u05e2\u05dc\u05d9 \u05db\u05e0\u05e4\u05d9\u05d9\u05dd",
+    bouncyBoots: "\u05e1\u05d5\u05dc\u05d9\u05d9\u05ea \u05d2\u05d5\u05de\u05d9",
+    giantElixir: "\u05e9\u05d9\u05e7\u05d5\u05d9 \u05e6\u05de\u05d9\u05d7\u05d4",
+    smokeBomb: "\u05e4\u05e6\u05e6\u05ea \u05e2\u05e9\u05df \u05d5\u05d0\u05d1\u05e7",
+    luckyCharm: "\u05e7\u05de\u05d9\u05e2 \u05d4\u05de\u05d6\u05dc"
+  };
+  return labels[buff] || buff || "";
 }
 
 function setAdminStatus(message) {
@@ -1077,6 +1097,7 @@ function leaveGame() {
   players = [];
   gameMeta = { items: [], zoneScore: {} };
   wasPlaying = false;
+  lastBazaarBuff = "";
   input.x = 0;
   input.y = 0;
   input.attack = false;
@@ -1172,6 +1193,12 @@ socket.on("game:state", next => {
         ? `${t("control")} ${Math.floor(gameMeta.zoneScore?.[playerId] || 0)} / 15`
         : `${humans.length} ${humans.length === 1 ? t("playerSingular") : t("playerPlural")}`;
   const me = next.find(p => p.id === playerId);
+  if (me?.bazaarBuff && me.bazaarBuff !== lastBazaarBuff) {
+    const message = `${t("gotBuff")}: ${bazaarBuffLabel(me.bazaarBuff)}`;
+    document.querySelector("#help").textContent = message;
+    error.textContent = message;
+  }
+  lastBazaarBuff = me?.bazaarBuff || "";
   if (!wasPlaying) updateLobbyRoom();
   const special = document.querySelector("#special");
   if (me?.ghost) {
@@ -1369,11 +1396,12 @@ function motionFor(p, now) {
 function drawCharacter(p, motion) {
   const image = characterImages[p.character];
   if (image?.complete && image.naturalWidth) {
+    const size = p.giant ? 58 : 48;
     ctx.save();
     ctx.beginPath();
-    ctx.arc(0, 0, 24, 0, Math.PI * 2);
+    ctx.arc(0, 0, size / 2, 0, Math.PI * 2);
     ctx.clip();
-    ctx.drawImage(image, -24, -24, 48, 48);
+    ctx.drawImage(image, -size / 2, -size / 2, size, size);
     ctx.restore();
     return true;
   }
@@ -1643,6 +1671,18 @@ function drawProjectile(projectile, now) {
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     ctx.fillText("$", 0, 1);
+  } else if (projectile.type === "plasma") {
+    ctx.fillStyle = projectile.color || "#6eeaff";
+    ctx.shadowColor = projectile.color || "#6eeaff";
+    ctx.shadowBlur = 16;
+    ctx.beginPath();
+    ctx.ellipse(0, 0, 13, 7, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = "#e7fbff";
+    ctx.beginPath();
+    ctx.arc(5, -1, 4, 0, Math.PI * 2);
+    ctx.fill();
   } else if (projectile.type === "boomerang") {
     ctx.rotate(now / 95);
     ctx.strokeStyle = projectile.returning ? "#8ff0ff" : "#ffd15c";
@@ -1753,12 +1793,47 @@ function draw() {
     ctx.fillText("?", 0, -1);
     ctx.restore();
   }
+  for (const trail of gameMeta.fireTrails || []) {
+    ctx.save();
+    ctx.translate(trail.x, trail.y);
+    ctx.fillStyle = "#ff7a2f66";
+    ctx.beginPath();
+    ctx.arc(0, 0, trail.radius || 22, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#ffd35a88";
+    ctx.beginPath();
+    ctx.arc(0, 0, (trail.radius || 22) * .45, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+  for (const decoy of gameMeta.decoys || []) {
+    ctx.save();
+    ctx.translate(decoy.x, decoy.y);
+    ctx.globalAlpha = .55;
+    ctx.strokeStyle = "#ffe9a6";
+    ctx.lineWidth = 3;
+    ctx.setLineDash([5, 5]);
+    ctx.beginPath();
+    ctx.arc(0, 0, 25, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = "#ffd54a";
+    ctx.beginPath();
+    ctx.arc(0, 0, 16, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#5f3a12";
+    ctx.font = "bold 16px sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText("?", 0, 1);
+    ctx.restore();
+  }
   for (const projectile of gameMeta.projectiles || []) drawProjectile(projectile, now);
   for (const p of players) {
     const motion = motionFor(p, now);
     ctx.save();
     ctx.translate(p.x, p.y);
-    ctx.globalAlpha = p.alive ? 1 : .38;
+    ctx.globalAlpha = p.alive ? p.invisible ? .24 : 1 : .38;
     ctx.fillStyle = "#0005";
     ctx.beginPath();
     ctx.ellipse(4, 18, 24, 8, 0, 0, Math.PI * 2);
@@ -1829,6 +1904,22 @@ function draw() {
       ctx.setLineDash([5, 4]);
       ctx.beginPath();
       ctx.arc(0, 0, 37, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+    if (p.goldenArmor) {
+      ctx.strokeStyle = "#ffd54a";
+      ctx.lineWidth = 6;
+      ctx.beginPath();
+      ctx.arc(0, 0, 40, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+    if (p.phase) {
+      ctx.strokeStyle = "#ffffffaa";
+      ctx.lineWidth = 3;
+      ctx.setLineDash([3, 6]);
+      ctx.beginPath();
+      ctx.arc(0, 0, 42, 0, Math.PI * 2);
       ctx.stroke();
       ctx.setLineDash([]);
     }
