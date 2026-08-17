@@ -62,12 +62,16 @@ const survivalBestKey = "brawlclaui-survival-best";
 const unlockedCharactersKey = "brawlclaui-unlocked-characters";
 const lockedCharacters = new Set(["boomer", "fangli", "pixel", "tank", "bazaar"]);
 const adminGrantCharacters = ["boomer", "fangli", "pixel", "tank", "bazaar"];
+const ownerAdminEmail = "zurtzilhagever@gmail.com";
 const adminEmails = new Set(["zurtzilhagever@gmail.com"]);
 const adminTogglePositionKey = "brawlclaui-admin-toggle-position";
+const adminInvincibleKey = "brawlclaui-admin-invincible";
 let adminVerified = false;
 let adminPanelOpen = false;
 let adminToggleDrag = null;
 let adminListRequestAt = 0;
+let adminInvincibleMode = localStorage.getItem(adminInvincibleKey) === "1";
+let adminInvincibleAsked = false;
 let progressStorageSuffix = "";
 function progressKey(baseKey) {
   return `${baseKey}${progressStorageSuffix}`;
@@ -77,6 +81,9 @@ function loadStoredPersonalBest() {
 }
 function isAdminUser(user = activeCloudUser()) {
   return adminVerified || adminEmails.has((user?.email || "").toLowerCase());
+}
+function isOwnerUser(user = activeCloudUser()) {
+  return (user?.email || "").toLowerCase() === ownerAdminEmail;
 }
 const translations = {
   en: {
@@ -164,6 +171,9 @@ const translations = {
     install: "INSTALL APP",
     leaveAria: "Leave game",
     initialObjective: "Share the room code to play together",
+    adminInvinciblePrompt: "Admin mode: press OK to be invincible, or Cancel to play normally.",
+    adminInvincibleOn: "Admin invincible mode",
+    adminInvincibleOff: "Admin normal mode",
     attack: "ATTACK",
     special: "SUPER",
     useItem: "USE ITEM",
@@ -282,6 +292,9 @@ const translations = {
     install: "\u05d4\u05ea\u05e7\u05df \u05d0\u05e4\u05dc\u05d9\u05e7\u05e6\u05d9\u05d4",
     leaveAria: "\u05e6\u05d0 \u05de\u05d4\u05de\u05e9\u05d7\u05e7",
     initialObjective: "\u05e9\u05ea\u05e3 \u05d0\u05ea \u05e7\u05d5\u05d3 \u05d4\u05d7\u05d3\u05e8 \u05db\u05d3\u05d9 \u05dc\u05e9\u05d7\u05e7 \u05d9\u05d7\u05d3",
+    adminInvinciblePrompt: "\u05de\u05e6\u05d1 \u05d0\u05d3\u05de\u05d9\u05df: \u05dc\u05d7\u05e5 \u05d0\u05d9\u05e9\u05d5\u05e8 \u05db\u05d3\u05d9 \u05dc\u05d4\u05d9\u05d5\u05ea \u05d1\u05dc\u05ea\u05d9 \u05e4\u05d2\u05d9\u05e2, \u05d0\u05d5 \u05d1\u05d9\u05d8\u05d5\u05dc \u05db\u05d3\u05d9 \u05dc\u05e9\u05d7\u05e7 \u05e8\u05d2\u05d9\u05dc.",
+    adminInvincibleOn: "\u05de\u05e6\u05d1 \u05d0\u05d3\u05de\u05d9\u05df \u05d1\u05dc\u05ea\u05d9 \u05e4\u05d2\u05d9\u05e2",
+    adminInvincibleOff: "\u05de\u05e6\u05d1 \u05d0\u05d3\u05de\u05d9\u05df \u05e8\u05d2\u05d9\u05dc",
     attack: "\u05d4\u05ea\u05e7\u05e4\u05d4",
     special: "\u05e1\u05d5\u05e4\u05e8",
     useItem: "\u05d4\u05e9\u05ea\u05de\u05e9",
@@ -477,6 +490,24 @@ setupCloudProgress();
 
 function name() {
   return nameInput.value.trim().slice(0, 14);
+}
+
+function playerJoinPayload(extra = {}, options = {}) {
+  const user = activeCloudUser();
+  if (options.askAdmin && isOwnerUser(user) && !adminInvincibleAsked) {
+    adminInvincibleMode = window.confirm(t("adminInvinciblePrompt"));
+    localStorage.setItem(adminInvincibleKey, adminInvincibleMode ? "1" : "0");
+    adminInvincibleAsked = true;
+    error.textContent = adminInvincibleMode ? t("adminInvincibleOn") : t("adminInvincibleOff");
+  }
+  return {
+    playerId,
+    name: name(),
+    character: selectedCharacter,
+    accountEmail: user?.email || "",
+    invincibleMode: adminInvincibleMode,
+    ...extra
+  };
 }
 
 function requestAppFullscreen() {
@@ -945,6 +976,7 @@ async function setupCloudProgress() {
         renderAccountStatus(t("cloudSyncing"));
         const result = await cloudApi.signIn();
         cloudUser = result?.user || cloudApi.currentUser?.() || cloudUser;
+        adminInvincibleAsked = false;
         progressStorageSuffix = activeCloudUser() ? `:${activeCloudUser().uid}` : `:local:${playerId}`;
         personalBest = loadStoredPersonalBest();
         lastCloudSnapshot = "";
@@ -966,6 +998,7 @@ async function setupCloudProgress() {
     };
     googleSignOut.onclick = () => {
       setLocalAccountMode(true);
+      adminInvincibleAsked = false;
       lastCloudSnapshot = "";
       syncAdminState(true);
       renderSurvivalStats();
@@ -976,6 +1009,7 @@ async function setupCloudProgress() {
     };
     cloudApi.onUserChanged(async user => {
       cloudUser = user;
+      adminInvincibleAsked = false;
       const activeUser = activeCloudUser();
       adminVerified = false;
       progressStorageSuffix = activeUser ? `:${activeUser.uid}` : `:local:${playerId}`;
@@ -1070,7 +1104,7 @@ function joinByCode(value, requestFullscreenForJoin = true) {
   }
   const joinCode = remote ? remote.room : joinValue.toUpperCase();
   error.textContent = t("reconnecting");
-  socket.emit("player:join", { code: joinCode, playerId, name: name(), character: selectedCharacter, accountEmail: activeCloudUser()?.email || "" }, reply => {
+  socket.emit("player:join", playerJoinPayload({ code: joinCode }, { askAdmin: true }), reply => {
     pendingJoinCode = "";
     if (!reply?.ok) {
       error.textContent = reply?.error || t("adminFailed");
@@ -1081,8 +1115,8 @@ function joinByCode(value, requestFullscreenForJoin = true) {
 }
 document.querySelector("#create").onclick = () => {
   requestAppFullscreen();
-  if (roomCode) return socket.emit("player:join", { code: roomCode, playerId, name: name(), character: selectedCharacter, accountEmail: activeCloudUser()?.email || "" }, enter);
-  socket.emit("player:autoJoin", { playerId, name: name(), character: selectedCharacter, mode: document.querySelector("#mode").value, accountEmail: activeCloudUser()?.email || "" }, enter);
+  if (roomCode) return socket.emit("player:join", playerJoinPayload({ code: roomCode }, { askAdmin: true }), enter);
+  socket.emit("player:autoJoin", playerJoinPayload({ mode: document.querySelector("#mode").value }, { askAdmin: true }), enter);
 };
 document.querySelector("#join").onclick = () => {
   joinByCode(codeInput.value, true);
@@ -1200,6 +1234,13 @@ socket.on("game:state", next => {
   }
   lastBazaarBuff = me?.bazaarBuff || "";
   if (!wasPlaying) updateLobbyRoom();
+  const attack = document.querySelector("#attack");
+  if (attack) {
+    const ammo = Number.isFinite(me?.ammo) ? me.ammo : me?.ammoMax || 5;
+    const ammoMax = me?.ammoMax || 5;
+    attack.textContent = `${t("attack")} ${ammo}/${ammoMax}`;
+    attack.classList.toggle("charging", ammo <= 0);
+  }
   const special = document.querySelector("#special");
   if (me?.ghost) {
     special.textContent = me.ghostItem ? t("useItem") : t("ping");
@@ -1257,7 +1298,7 @@ socket.on("connect", () => {
   syncAdminState(true);
   if (pendingJoinCode && !wasPlaying) {
     joinByCode(pendingJoinCode, false);
-  } else if (wasPlaying && roomCode) socket.emit("player:join", { code: roomCode, playerId, name: name(), character: selectedCharacter, accountEmail: activeCloudUser()?.email || "" }, enter);
+  } else if (wasPlaying && roomCode) socket.emit("player:join", playerJoinPayload({ code: roomCode }), enter);
   else updateLobbyRoom();
 });
 updateLobbyRoom();

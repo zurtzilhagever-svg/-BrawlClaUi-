@@ -2,7 +2,7 @@
 const express = require("express"), http = require("http"), os = require("os"), fs = require("fs"), path = require("path"), QRCode = require("qrcode");
 const { Server } = require("socket.io");
 const app = express(), server = http.createServer(app), io = new Server(server, { cors: { origin: "*" } });
-const PORT = Number(process.env.PORT) || 3000, RECONNECT_MS = 30_000, MAX_PLAYERS = 8, SPECIAL_HITS = 5, PROJECTILE_SPEED = 12, BOB_UNLOCK_WAVE = 10;
+const PORT = Number(process.env.PORT) || 3000, RECONNECT_MS = 30_000, MAX_PLAYERS = 8, SPECIAL_HITS = 5, AMMO_MAX = 5, PROJECTILE_SPEED = 12, BOB_UNLOCK_WAVE = 10;
 const rooms = new Map(), socketIndex = new Map();
 const survivalLeaders = [];
 const COLORS = ["#ff5964", "#36c8ff", "#ffd54a", "#a875ff", "#52e084", "#ff8e4f", "#fa73bd", "#80a7ff"];
@@ -28,6 +28,16 @@ const CHARACTERS = {
   grunt: { name: "Grunt", hp: 70, speed: 2.35, damage: 8, range: 44, rate: 760, special: "None" }
 };
 const PLAYABLE_CHARACTERS = new Set(["blaze", "boomer", "fangli", "pixel", "tank", "bazaar"]);
+const AMMO_RELOAD_MS = {
+  blaze: 900,
+  bazaar: 1050,
+  mash: 1125,
+  fangli: 1250,
+  boomer: 1450,
+  pixel: 1600,
+  tank: 1850,
+  grunt: 1300
+};
 const MODES = {
   survival: { name: "Survival", objective: "Survive bot waves as long as you can", target: 0 },
   brawl: { name: "Solo Brawl", objective: "Be the last brawler alive", target: 1 },
@@ -172,7 +182,7 @@ function isAdminActor(socket, data = {}) {
   return isAdminEmail(actor?.accountEmail) || isAdminEmail(data.accountEmail);
 }
 function protectInvinciblePlayer(player) {
-  if (!isOwnerAdminEmail(player?.accountEmail)) return false;
+  if (!isOwnerAdminEmail(player?.accountEmail) || !player.invincibleMode) return false;
   player.health = player.maxHealth;
   player.alive = true;
   player.ghost = false;
@@ -185,6 +195,38 @@ function protectInvinciblePlayer(player) {
   player.invisibleUntil = 0;
   player.goldenArmorUntil = 0;
   player.hitUntil = 0;
+  return true;
+}
+function ammoReloadMs(player, now = Date.now()) {
+  const base = AMMO_RELOAD_MS[player?.character] || 1200;
+  return Math.max(220, base * (now < (player?.reloadBoostUntil || 0) ? .5 : 1));
+}
+function resetAmmo(player, now = Date.now()) {
+  player.ammo = AMMO_MAX;
+  player.nextAmmoAt = now + ammoReloadMs(player, now);
+}
+function updateAmmo(player, now = Date.now()) {
+  if (!player) return;
+  if (!Number.isFinite(player.ammo)) player.ammo = AMMO_MAX;
+  player.ammo = clamp(player.ammo, 0, AMMO_MAX);
+  if (player.ammo >= AMMO_MAX) {
+    player.nextAmmoAt = now + ammoReloadMs(player, now);
+    return;
+  }
+  if (!Number.isFinite(player.nextAmmoAt)) player.nextAmmoAt = now + ammoReloadMs(player, now);
+  while (player.ammo < AMMO_MAX && now >= player.nextAmmoAt) {
+    player.ammo += 1;
+    player.nextAmmoAt += ammoReloadMs(player, player.nextAmmoAt);
+  }
+  if (player.ammo >= AMMO_MAX) player.nextAmmoAt = now + ammoReloadMs(player, now);
+}
+function consumeAmmo(player, now) {
+  updateAmmo(player, now);
+  if (player.ammo <= 0) return false;
+  player.ammo -= 1;
+  if (player.ammo < AMMO_MAX && (!Number.isFinite(player.nextAmmoAt) || player.nextAmmoAt <= now)) {
+    player.nextAmmoAt = now + ammoReloadMs(player, now);
+  }
   return true;
 }
 function arenaCenter(arena) { return { x:arena.width / 2, y:arena.height / 2 }; }
@@ -276,7 +318,7 @@ function firstWallPoint(arena, x, y, dx, dy, range) {
   }
   return null;
 }
-function publicPlayer(p) { const now = Date.now(); return { id:p.id, name:p.name, color:p.color, team:p.team, character:p.character, characterName:CHARACTERS[p.character]?.name || p.character, bot:p.bot, admin:isAdminEmail(p.accountEmail), invincible:isOwnerAdminEmail(p.accountEmail), x:p.x, y:p.y, health:Math.ceil(p.health), maxHealth:p.maxHealth, alive:p.alive, ghost:p.ghost, ghostItem:p.ghostItem, ghostItemName:p.ghostItem && GHOST_ITEM_NAMES[p.ghostItem], ghostPing:now < (p.pingUntil || 0), haunted:now < (p.hauntedUntil || 0), walled:now < (p.wallUntil || 0), inked:now < (p.inkUntil || 0), confused:now < (p.confusedUntil || 0), freezeMeter:Math.round(p.freezeMeter || 0), bazaarBuff:p.bazaarBuff || "", damageBoost:now < (p.damageBoostUntil || 0), goldenArmor:now < (p.goldenArmorUntil || 0), invisible:now < (p.invisibleUntil || 0), giant:now < (p.giantUntil || 0), phase:now < (p.phaseUntil || 0), hit:now < (p.hitUntil || 0), score:p.score, gems:p.gems, coins:p.coins, connected:p.connected, shield:now < p.shieldUntil || now < (p.goldenArmorUntil || 0), cardboardShield:now < (p.cardboardShieldUntil || 0) && (p.cardboardShieldHp || 0) > 0, specialCharge:p.specialCharge || 0, specialRequired:SPECIAL_HITS, specialReady:(p.specialCharge || 0) >= SPECIAL_HITS }; }
+function publicPlayer(p) { const now = Date.now(); updateAmmo(p, now); return { id:p.id, name:p.name, color:p.color, team:p.team, character:p.character, characterName:CHARACTERS[p.character]?.name || p.character, bot:p.bot, admin:isAdminEmail(p.accountEmail), invincible:isOwnerAdminEmail(p.accountEmail) && Boolean(p.invincibleMode), x:p.x, y:p.y, health:Math.ceil(p.health), maxHealth:p.maxHealth, alive:p.alive, ghost:p.ghost, ghostItem:p.ghostItem, ghostItemName:p.ghostItem && GHOST_ITEM_NAMES[p.ghostItem], ghostPing:now < (p.pingUntil || 0), haunted:now < (p.hauntedUntil || 0), walled:now < (p.wallUntil || 0), inked:now < (p.inkUntil || 0), confused:now < (p.confusedUntil || 0), freezeMeter:Math.round(p.freezeMeter || 0), bazaarBuff:p.bazaarBuff || "", damageBoost:now < (p.damageBoostUntil || 0), goldenArmor:now < (p.goldenArmorUntil || 0), invisible:now < (p.invisibleUntil || 0), giant:now < (p.giantUntil || 0), phase:now < (p.phaseUntil || 0), hit:now < (p.hitUntil || 0), score:p.score, gems:p.gems, coins:p.coins, connected:p.connected, shield:now < p.shieldUntil || now < (p.goldenArmorUntil || 0), cardboardShield:now < (p.cardboardShieldUntil || 0) && (p.cardboardShieldHp || 0) > 0, ammo:p.ammo, ammoMax:AMMO_MAX, ammoReloadMs:ammoReloadMs(p, now), ammoReadyAt:p.nextAmmoAt || now, specialCharge:p.specialCharge || 0, specialRequired:SPECIAL_HITS, specialReady:(p.specialCharge || 0) >= SPECIAL_HITS }; }
 function players(room) { return [...room.players.values()].map(publicPlayer); }
 function humanPlayers(room) { return [...room.players.values()].filter(player => !player.bot); }
 function teamGems(room, team) { return [...room.players.values()].filter(p => p.team === team).reduce((sum, p) => sum + (p.gems || 0), 0); }
@@ -310,7 +352,7 @@ function detachSocket(socket, nextRoomCode) {
   removePlayer(room, ref.playerId);
   socketIndex.delete(socket.id);
 }
-function joinPlayer(socket, roomCode, playerId, name, character, accountEmail, ack) {
+function joinPlayer(socket, roomCode, playerId, name, character, accountEmail, invincibleMode, ack) {
   const room = rooms.get(roomCode), id = String(playerId || "").replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 48);
   if (!room) return ack({ ok:false, error:"Room not found" }); if (!id) return ack({ ok:false, error:"Invalid player" });
   const cleanEmail = normalizeEmail(accountEmail);
@@ -323,12 +365,14 @@ function joinPlayer(socket, roomCode, playerId, name, character, accountEmail, a
   if (!p && humanPlayers(room).length >= maxHumans) return ack({ ok:false, error:"Room is full" });
   if (p) {
     clearTimeout(p.removeTimer); socketIndex.delete(p.socketId); p.socketId = socket.id; p.connected = true; p.accountEmail = cleanEmail || p.accountEmail || "";
+    p.invincibleMode = isOwnerAdminEmail(p.accountEmail) && Boolean(invincibleMode);
     if (p.character !== selectedCharacter) {
       const ratio = p.maxHealth ? p.health / p.maxHealth : 1, stats = CHARACTERS[selectedCharacter];
       p.character = selectedCharacter; p.maxHealth = stats.hp; p.health = Math.min(stats.hp, Math.max(1, Math.round(stats.hp * ratio)));
+      resetAmmo(p);
     }
   }
-  else { const c = selectedCharacter, stats = CHARACTERS[c], spot = randomSpot(room.arena), team=chooseTeam(room), defaultName=`Player ${humanPlayers(room).length + 1}`, displayName=String(name || "").trim().slice(0, 14) || defaultName; p = { id, socketId:socket.id, accountEmail:cleanEmail, name:displayName, character:c, color:COLORS[room.players.size % COLORS.length], team, x:spot.x, y:spot.y, aimX:1, aimY:0, maxHealth:stats.hp, health:stats.hp, alive:true, score:0, gems:0, coins:0, input:{x:0,y:0,attack:false,special:false}, lastAttack:0, lastSpecial:false, specialCharge:0, shieldUntil:0, bazaarBuff:"", damageBoostUntil:0, connected:true }; room.players.set(id, p); }
+  else { const c = selectedCharacter, stats = CHARACTERS[c], spot = randomSpot(room.arena), team=chooseTeam(room), defaultName=`Player ${humanPlayers(room).length + 1}`, displayName=String(name || "").trim().slice(0, 14) || defaultName; p = { id, socketId:socket.id, accountEmail:cleanEmail, invincibleMode:isOwnerAdminEmail(cleanEmail) && Boolean(invincibleMode), name:displayName, character:c, color:COLORS[room.players.size % COLORS.length], team, x:spot.x, y:spot.y, aimX:1, aimY:0, maxHealth:stats.hp, health:stats.hp, alive:true, score:0, gems:0, coins:0, input:{x:0,y:0,attack:false,special:false}, lastAttack:0, lastSpecial:false, specialCharge:0, shieldUntil:0, bazaarBuff:"", damageBoostUntil:0, connected:true }; resetAmmo(p); room.players.set(id, p); }
   socketIndex.set(socket.id, { code:roomCode, playerId:id }); socket.join(roomCode); ack({ ok:true, code:roomCode, player:publicPlayer(p), players:players(room), meta:meta(room) }); broadcast(room);
 }
 function adminRoom(socket, data = {}, ack = () => {}) {
@@ -349,6 +393,7 @@ function resetHumanForGame(room, player) {
     shieldUntil:0, cardboardShieldUntil:0, cardboardShieldHp:0, hauntedUntil:0, wallUntil:0,
     inkUntil:0, confusedUntil:0, freezeMeter:0, freezeUntil:0, bazaarBuff:"", damageBoostUntil:0, coinMagnetUntil:0, desertSpiceUntil:0, goldenArmorUntil:0, reloadBoostUntil:0, phaseUntil:0, bouncyUntil:0, giantUntil:0, giantBonusHp:0, giantDamageUntil:0, invisibleUntil:0, iceVx:0, iceVy:0, hitUntil:0, input:{x:0,y:0,attack:false,special:false}
   });
+  resetAmmo(player);
 }
 function end(room, winner) { if (room.game.winner || !winner) return; room.game.winner = winner.id; broadcast(room); }
 function endTeam(room, team) { if (room.game.winner || room.game.winnerTeam) return; room.game.winnerTeam = team; broadcast(room); }
@@ -407,7 +452,7 @@ function pushProjectile(room, attacker, dx, dy, stats, options = {}) {
   if (options.lockOwnerUntilReturn) attacker.boomerangActive = projectile.id;
 }
 function attack(room, attacker, now) {
-  const stats = CHARACTERS[attacker.character], rate = stats.rate * (now < (attacker.reloadBoostUntil || 0) ? .5 : 1); if (attacker.character === "boomer" && attacker.boomerangActive) return; if (now - attacker.lastAttack < rate) return; attacker.lastAttack = now;
+  const stats = CHARACTERS[attacker.character], rate = stats.rate * (now < (attacker.reloadBoostUntil || 0) ? .5 : 1); if (attacker.character === "boomer" && attacker.boomerangActive) return; if (now - attacker.lastAttack < rate) return; if (!consumeAmmo(attacker, now)) return; attacker.lastAttack = now;
   const aim = aimDirection(attacker), dx = aim.x, dy = aim.y;
   if (attacker.character === "blaze") {
     for (const start of [26, 42, 58]) pushProjectile(room, attacker, dx, dy, stats, { type:"tennis", color:"#caff3f", start, radius:8 });
@@ -790,7 +835,9 @@ function spawnBot(room, now, team = null) {
   if (count >= cap) return;
   const arena = room.arena, edge = Math.floor(Math.random() * 4), spot = edge === 0 ? { x: 30, y: 80 + Math.random() * (arena.height-160) } : edge === 1 ? { x: arena.width-30, y: 80 + Math.random() * (arena.height-160) } : edge === 2 ? { x: 90 + Math.random() * (arena.width-180), y: 30 } : { x: 90 + Math.random() * (arena.width-180), y: arena.height-30 };
   const character = "mash", hp = CHARACTERS[character].hp + Math.min(45, room.game.wave * 3), id = `bot-${room.code}-${room.game.botSerial++}`;
-  room.players.set(id, { id, socketId:null, name:`\u05de\u05d0\u05e9 ${room.game.botSerial}`, character, bot:true, color:team === "blue" ? "#36c8ff" : "#f07167", team, x:spot.x, y:spot.y, maxHealth:hp, health:hp, alive:true, score:0, gems:0, coins:0, input:{x:0,y:0,attack:false,special:false}, lastAttack:0, lastSpecial:false, lastSpecialAt:0, shieldUntil:0, connected:true });
+  const bot = { id, socketId:null, name:`\u05de\u05d0\u05e9 ${room.game.botSerial}`, character, bot:true, color:team === "blue" ? "#36c8ff" : "#f07167", team, x:spot.x, y:spot.y, maxHealth:hp, health:hp, alive:true, score:0, gems:0, coins:0, input:{x:0,y:0,attack:false,special:false}, lastAttack:0, lastSpecial:false, lastSpecialAt:0, shieldUntil:0, connected:true };
+  resetAmmo(bot, now);
+  room.players.set(id, bot);
   room.game.nextBotAt = now + Math.max(900, 2300 - room.game.wave * 95);
 }
 function updateBots(room) {
@@ -861,6 +908,7 @@ function updateRoom(room, now) {
   updateGiantStatus(room, now);
   for (const p of room.players.values()) {
     if (!p.connected) continue;
+    updateAmmo(p, now);
     protectInvinciblePlayer(p);
     if (!p.alive && p.ghost) {
       // Dead players remain as non-combat ghosts. SPECIAL becomes a visible warning ping.
@@ -883,7 +931,7 @@ function updateRoom(room, now) {
       continue;
     }
     if (!p.alive) { // Non-elimination modes keep their fast respawn behavior.
-      if (now-p.diedAt > 2200) { const spot=randomSpot(room.arena), s=CHARACTERS[p.character]; Object.assign(p,{x:spot.x,y:spot.y,health:s.hp,alive:true,ghost:false}); }
+      if (now-p.diedAt > 2200) { const spot=randomSpot(room.arena), s=CHARACTERS[p.character]; Object.assign(p,{x:spot.x,y:spot.y,health:s.hp,alive:true,ghost:false}); resetAmmo(p, now); }
       continue;
     }
     if ((p.freezeMeter || 0) > 0 && now > (p.freezeUntil || 0)) p.freezeMeter = Math.max(0, p.freezeMeter - 0.9);
@@ -928,13 +976,13 @@ function updateRoom(room, now) {
 }
 io.on("connection", socket => {
   socket.on("host:create", (data={}, ack=()=>{}) => { if (typeof data === "function") { ack=data; data={}; } const room=createRoom(socket.id,data.mode); socket.join(room.code); socket.data.hostRoom=room.code; ack({ok:true,code:room.code,players:[],meta:meta(room)}); });
-  socket.on("player:create", ({playerId,name,character,mode,accountEmail}={}, ack=()=>{}) => { const room=createRoom(null,mode); joinPlayer(socket,room.code,playerId,name,character,accountEmail,ack); });
-  socket.on("player:autoJoin", ({playerId,name,character,mode,accountEmail}={}, ack=()=>{}) => {
+  socket.on("player:create", ({playerId,name,character,mode,accountEmail,invincibleMode}={}, ack=()=>{}) => { const room=createRoom(null,mode); joinPlayer(socket,room.code,playerId,name,character,accountEmail,invincibleMode,ack); });
+  socket.on("player:autoJoin", ({playerId,name,character,mode,accountEmail,invincibleMode}={}, ack=()=>{}) => {
     const selectedMode = MODES[mode] ? mode : "survival";
     const room = selectedMode === "survival" ? createRoom(null, selectedMode) : findOpenRoom(selectedMode) || createRoom(null, selectedMode);
-    joinPlayer(socket, room.code, playerId, name, character, accountEmail, ack);
+    joinPlayer(socket, room.code, playerId, name, character, accountEmail, invincibleMode, ack);
   });
-  socket.on("player:join", ({code:roomCode,playerId,name,character,accountEmail}={}, ack=()=>{}) => joinPlayer(socket,String(roomCode||"").trim().toUpperCase(),playerId,name,character,accountEmail,ack));
+  socket.on("player:join", ({code:roomCode,playerId,name,character,accountEmail,invincibleMode}={}, ack=()=>{}) => joinPlayer(socket,String(roomCode||"").trim().toUpperCase(),playerId,name,character,accountEmail,invincibleMode,ack));
   socket.on("player:leave", ({code:roomCode,playerId}={}, ack=()=>{}) => {
     const ref = socketIndex.get(socket.id);
     const code = String(roomCode || ref?.code || "").trim().toUpperCase();
