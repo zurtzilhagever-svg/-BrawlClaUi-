@@ -33,6 +33,8 @@ const adminRoleBadge = document.querySelector("#admin-role-badge");
 const adminRoomBadge = document.querySelector("#admin-room-badge");
 const adminPlayersBadge = document.querySelector("#admin-players-badge");
 const adminTargetInfo = document.querySelector("#admin-target-info");
+const adminCommandSearch = document.querySelector("#admin-command-search");
+const adminCommandHint = document.querySelector("#admin-command-hint");
 const adminPlayerSelect = document.querySelector("#admin-player");
 const adminCharacterSelect = document.querySelector("#admin-character");
 const adminGoogleAccount = document.querySelector("#admin-google-account");
@@ -79,6 +81,8 @@ let adminVerified = false;
 let adminPanelOpen = false;
 let adminToggleDrag = null;
 let adminListRequestAt = 0;
+let adminLobbyRequestAt = 0;
+let adminLobbyPlayers = [];
 let adminInvincibleMode = localStorage.getItem(adminInvincibleKey) === "1";
 let progressStorageSuffix = "";
 function progressKey(baseKey) {
@@ -108,6 +112,11 @@ const translations = {
     cloudError: "Google save is unavailable",
     adminLabel: "Admin",
     adminPanelTitle: "ADMIN PANEL",
+    adminCommandSearchLabel: "COMMAND SEARCH",
+    adminCommandSearchPlaceholder: "Search commands",
+    adminCommandMatches: "commands found",
+    adminCommandNoMatches: "No matching commands",
+    adminCommandEnterHint: "Press Enter to run the first available command",
     adminRoomLabel: "ROOM",
     adminPlayersLabel: "PLAYERS",
     adminFindSection: "FIND PLAYER",
@@ -251,6 +260,11 @@ const translations = {
     cloudError: "\u05e9\u05de\u05d9\u05e8\u05ea Google \u05dc\u05d0 \u05d6\u05de\u05d9\u05e0\u05d4",
     adminLabel: "\u05d0\u05d3\u05de\u05d9\u05df",
     adminPanelTitle: "\u05e4\u05d0\u05e0\u05dc \u05d0\u05d3\u05de\u05d9\u05df",
+    adminCommandSearchLabel: "\u05d7\u05d9\u05e4\u05d5\u05e9 \u05e4\u05e7\u05d5\u05d3\u05d4",
+    adminCommandSearchPlaceholder: "\u05d7\u05e4\u05e9 \u05e4\u05e7\u05d5\u05d3\u05d4",
+    adminCommandMatches: "\u05e4\u05e7\u05d5\u05d3\u05d5\u05ea \u05e0\u05de\u05e6\u05d0\u05d5",
+    adminCommandNoMatches: "\u05d0\u05d9\u05df \u05e4\u05e7\u05d5\u05d3\u05d5\u05ea \u05ea\u05d5\u05d0\u05de\u05d5\u05ea",
+    adminCommandEnterHint: "\u05d0\u05e0\u05d8\u05e8 \u05d9\u05e4\u05e2\u05d9\u05dc \u05d0\u05ea \u05d4\u05e4\u05e7\u05d5\u05d3\u05d4 \u05d4\u05e8\u05d0\u05e9\u05d5\u05e0\u05d4 \u05d4\u05d6\u05de\u05d9\u05e0\u05d4",
     adminRoomLabel: "\u05d7\u05d3\u05e8",
     adminPlayersLabel: "\u05e9\u05d7\u05e7\u05e0\u05d9\u05dd",
     adminFindSection: "\u05d7\u05d9\u05e4\u05d5\u05e9 \u05e9\u05d7\u05e7\u05df",
@@ -517,7 +531,7 @@ let lastCloudSnapshot = "";
 let pendingJoinCode = (new URLSearchParams(location.search).get("join") || "").trim().toUpperCase();
 const characterImages = Object.fromEntries(["blaze", "boomer", "fangli", "pixel", "tank", "bazaar", "mash"].map(id => {
   const image = new Image();
-  image.src = `/characters/${id}.png?v=57`;
+  image.src = `/characters/${id}.png?v=62`;
   return [id, image];
 }));
 const motionState = new Map();
@@ -899,6 +913,16 @@ function requestAdminList() {
   });
 }
 
+function requestAdminLobbyPlayers() {
+  if (!isAdminUser() || !socket.connected || Date.now() - adminLobbyRequestAt < 1200) return;
+  adminLobbyRequestAt = Date.now();
+  socket.emit("admin:listLobby", adminPayload(), reply => {
+    if (!reply?.ok) return;
+    adminLobbyPlayers = Array.isArray(reply.players) ? reply.players : [];
+    renderAdminPanel();
+  });
+}
+
 function identifyAdminInRoom() {
   if (!roomCode || !activeCloudUser()) return;
   socket.emit("admin:identify", adminPayload(), reply => {
@@ -917,6 +941,7 @@ function renderAdminPanel() {
   if (!active) return;
   renderAdminList();
   requestAdminList();
+  requestAdminLobbyPlayers();
   if (adminRoleBadge) adminRoleBadge.textContent = isOwnerUser() ? "OWNER" : t("adminLabel");
   if (adminRoomBadge) adminRoomBadge.textContent = adminTargetRoomCode || roomCode || "----";
   if (adminPlayersBadge) adminPlayersBadge.textContent = String(players.filter(player => !player.bot).length);
@@ -924,13 +949,18 @@ function renderAdminPanel() {
   const selectablePlayers = players.filter(player => !player.bot && player.id !== playerId);
   const remoteTarget = adminFoundTarget && adminFoundTarget.roomCode !== roomCode ? adminFoundTarget : null;
   const playerOptions = selectablePlayers.map(player => `<option value="${escapeHtml(player.id)}">${escapeHtml(player.name)}${player.admin ? ` (${t("adminLabel")})` : ""}</option>`);
-  if (remoteTarget && !selectablePlayers.some(player => player.id === remoteTarget.id)) {
+  for (const lobbyPlayer of adminLobbyPlayers) {
+    if (!playerOptions.some(option => option.includes(`value="${escapeHtml(lobbyPlayer.id)}"`))) {
+      playerOptions.push(`<option value="${escapeHtml(lobbyPlayer.id)}">${escapeHtml(lobbyPlayer.name)} (${escapeHtml(t("adminLobby"))})</option>`);
+    }
+  }
+  if (remoteTarget && !selectablePlayers.some(player => player.id === remoteTarget.id) && !adminLobbyPlayers.some(player => player.id === remoteTarget.id)) {
     playerOptions.push(`<option value="${escapeHtml(remoteTarget.id)}">${escapeHtml(remoteTarget.name)} (${escapeHtml(remoteTarget.lobby ? t("adminLobby") : remoteTarget.roomCode)})</option>`);
   }
   adminPlayerSelect.innerHTML = playerOptions.length
     ? playerOptions.join("")
     : `<option value="">${roomCode ? t("adminNoPlayers") : t("adminNoRoom")}</option>`;
-  if (selectablePlayers.some(player => player.id === previousPlayer) || remoteTarget?.id === previousPlayer) adminPlayerSelect.value = previousPlayer;
+  if (selectablePlayers.some(player => player.id === previousPlayer) || adminLobbyPlayers.some(player => player.id === previousPlayer) || remoteTarget?.id === previousPlayer) adminPlayerSelect.value = previousPlayer;
   else {
     adminTargetRoomCode = "";
     adminFoundTarget = null;
@@ -940,8 +970,12 @@ function renderAdminPanel() {
     .map(character => `<option value="${character}">${escapeHtml(characterLabel(character))}</option>`)
     .join("");
   if (adminGrantCharacters.includes(previousCharacter)) adminCharacterSelect.value = previousCharacter;
+  const selectedTarget = players.find(player => player.id === adminPlayerSelect.value) || adminLobbyPlayers.find(player => player.id === adminPlayerSelect.value) || remoteTarget || null;
+  if (selectedTarget?.lobby) adminTargetRoomCode = "LOBBY";
+  else if (adminFoundTarget?.id === adminPlayerSelect.value) adminTargetRoomCode = adminFoundTarget.roomCode;
+  else if (adminTargetRoomCode === "LOBBY") adminTargetRoomCode = "";
+  if (adminRoomBadge) adminRoomBadge.textContent = adminTargetRoomCode || roomCode || "----";
   const hasTarget = Boolean((adminTargetRoomCode || roomCode) && adminPlayerSelect.value);
-  const selectedTarget = players.find(player => player.id === adminPlayerSelect.value) || remoteTarget || null;
   const targetInLobby = Boolean(selectedTarget?.lobby || adminTargetRoomCode === "LOBBY");
   renderAdminTargetInfo(selectedTarget);
   if (adminGrant) adminGrant.disabled = !hasTarget;

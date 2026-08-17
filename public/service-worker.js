@@ -1,5 +1,5 @@
-const CACHE = "brawlclaui-v61";
-const ASSETS = ["/play/", "/play/style.css?v=61", "/play/play.js?v=61", "/characters/blaze.png?v=57", "/characters/boomer.png?v=57", "/characters/fangli.png?v=57", "/characters/pixel.png?v=57", "/characters/tank.png?v=57", "/characters/bazaar.png?v=57", "/characters/mash.png?v=57", "/mobile/", "/mobile/style.css?v=36", "/mobile/controller.js?v=37", "/shared/firebase-progress.js", "/shared/qr-generator.js", "/shared/runtime.js", "/native-config.js", "/manifest.webmanifest", "/icons/icon.svg"];
+const CACHE = "brawlclaui-v62";
+const ASSETS = ["/play/", "/play/style.css?v=62", "/play/play.js?v=62", "/characters/blaze.png?v=62", "/characters/boomer.png?v=62", "/characters/fangli.png?v=62", "/characters/pixel.png?v=62", "/characters/tank.png?v=62", "/characters/bazaar.png?v=62", "/characters/mash.png?v=62", "/mobile/", "/mobile/style.css?v=36", "/mobile/controller.js?v=37", "/shared/firebase-progress.js", "/shared/qr-generator.js", "/shared/runtime.js", "/native-config.js", "/manifest.webmanifest", "/icons/icon.svg"];
 self.addEventListener("install", event => event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(ASSETS)).then(() => self.skipWaiting())));
 self.addEventListener("activate", event => event.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(key => key !== CACHE).map(key => caches.delete(key)))).then(() => self.clients.claim())));
 self.addEventListener("fetch", event => {

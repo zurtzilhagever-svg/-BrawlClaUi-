@@ -363,7 +363,7 @@ function joinPlayer(socket, roomCode, playerId, name, character, accountEmail, i
   detachSocket(socket, roomCode);
   const selectedCharacter = PLAYABLE_CHARACTERS.has(character) ? character : "blaze";
   let p = room.players.get(id);
-  const maxHumans = room.mode === "gems" ? 6 : MAX_PLAYERS;
+  const maxHumans = isTeamCombatMode(room) ? 6 : MAX_PLAYERS;
   if (!p && humanPlayers(room).length >= maxHumans) return ack({ ok:false, error:"Room is full" });
   if (p) {
     clearTimeout(p.removeTimer); socketIndex.delete(p.socketId); p.socketId = socket.id; p.connected = true; p.accountEmail = cleanEmail || p.accountEmail || "";
@@ -855,7 +855,7 @@ function iceEffectFor(room, player) {
 }
 function spawnBot(room, now, team = null) {
   const count = [...room.players.values()].filter(p => p.bot).length;
-  const cap = room.mode === "gems" ? 6 : Math.min(9, 2 + Math.floor(room.game.wave / 2));
+  const cap = isTeamCombatMode(room) ? 6 : Math.min(9, 2 + Math.floor(room.game.wave / 2));
   if (count >= cap) return;
   const arena = room.arena, edge = Math.floor(Math.random() * 4), spot = edge === 0 ? { x: 30, y: 80 + Math.random() * (arena.height-160) } : edge === 1 ? { x: arena.width-30, y: 80 + Math.random() * (arena.height-160) } : edge === 2 ? { x: 90 + Math.random() * (arena.width-180), y: 30 } : { x: 90 + Math.random() * (arena.width-180), y: arena.height-30 };
   const character = "mash", hp = CHARACTERS[character].hp + Math.min(45, room.game.wave * 3), id = `bot-${room.code}-${room.game.botSerial++}`;
@@ -896,8 +896,8 @@ function updateSurvival(room, now) {
   }
   if (now >= room.game.nextBotAt) spawnBot(room, now);
 }
-function ensureGemTeams(room, now) {
-  if (room.mode !== "gems") return;
+function ensureTeamBots(room, now) {
+  if (!isTeamCombatMode(room)) return;
   if (!humanPlayers(room).some(p => p.connected)) return;
   const canSpawn = now >= room.game.nextBotAt;
   for (const team of ["red", "blue"]) {
@@ -918,7 +918,7 @@ function ensureGemTeams(room, now) {
 function updateRoom(room, now) {
   if (room.game.winner || room.game.winnerTeam) return;
   if (room.mode === "survival") updateSurvival(room, now);
-  else ensureGemTeams(room, now);
+  else ensureTeamBots(room, now);
   updateBots(room);
   const center = arenaCenter(room.arena);
   if (room.mode === "showdown") room.game.safeRadius = Math.max(90, arenaSafeRadius(room.arena) - (now-room.game.startedAt)/520);
@@ -1054,6 +1054,14 @@ io.on("connection", socket => {
   socket.on("admin:list", (data={}, ack=()=>{}) => {
     if (!isAdminActor(socket, data)) return ack({ ok:false, error:"Admin only" });
     ack({ ok:true, admins:adminList() });
+  });
+  socket.on("admin:listLobby", (data={}, ack=()=>{}) => {
+    if (!isAdminActor(socket, data)) return ack({ ok:false, error:"Admin only" });
+    const actorEmail = normalizeEmail(data.accountEmail);
+    const players = [...lobbyPlayers.values()]
+      .filter(player => normalizeEmail(player.accountEmail) !== actorEmail)
+      .map(player => ({ id:player.targetId, name:player.name, roomCode:"LOBBY", lobby:true, connected:true }));
+    ack({ ok:true, players });
   });
   socket.on("admin:addAdmin", (data={}, ack=()=>{}) => {
     if (!isAdminActor(socket, data)) return ack({ ok:false, error:"Admin only" });
