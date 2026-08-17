@@ -13,4 +13,3 @@ window.addEventListener("touchmove",event=>{if(!controller.hidden)event.preventD
 window.addEventListener("wheel",event=>{if(!controller.hidden)event.preventDefault()},{passive:false});
 function bindAction(id,key){const el=document.querySelector(id), set=on=>{input[key]=on;el.classList.toggle("pressed",on);if(on&&navigator.vibrate)navigator.vibrate(12)};el.addEventListener("pointerdown",e=>{e.preventDefault();set(true)});["pointerup","pointercancel","pointerleave"].forEach(type=>el.addEventListener(type,()=>set(false)))}bindAction("#attack","attack");bindAction("#special","special");
 setInterval(()=>socket.connected&&socket.emit("player:input",[input.x,input.y,input.attack?1:0,input.special?1:0]),1000/60);
-GamepadController.onInput(({x,y,attack,special})=>{input.x=x;input.y=y;input.attack=attack;input.special=special;});

@@ -4,7 +4,7 @@ const { Server } = require("socket.io");
 const app = express(), server = http.createServer(app), io = new Server(server, { cors: { origin: "*" } });
 const PORT = Number(process.env.PORT) || 3000, RECONNECT_MS = 30_000, MAX_PLAYERS = 8, SPECIAL_HITS = 5, AMMO_MAX = 5, PROJECTILE_SPEED = 12, BOB_UNLOCK_WAVE = 10;
 const BOT_DAMAGE_SCALE = 0.62, BOT_MOVE_SCALE = 0.82, BOT_RANGE_SCALE = 0.82;
-const rooms = new Map(), socketIndex = new Map();
+const rooms = new Map(), socketIndex = new Map(), lobbyPlayers = new Map();
 const survivalLeaders = [];
 const COLORS = ["#ff5964", "#36c8ff", "#ffd54a", "#a875ff", "#52e084", "#ff8e4f", "#fa73bd", "#80a7ff"];
 const OWNER_ADMIN_EMAIL = "zurtzilhagever@gmail.com";
@@ -354,6 +354,7 @@ function detachSocket(socket, nextRoomCode) {
   socketIndex.delete(socket.id);
 }
 function joinPlayer(socket, roomCode, playerId, name, character, accountEmail, invincibleMode, ack) {
+  lobbyPlayers.delete(socket.id);
   const room = rooms.get(roomCode), id = String(playerId || "").replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 48);
   if (!room) return ack({ ok:false, error:"Room not found" }); if (!id) return ack({ ok:false, error:"Invalid player" });
   const cleanEmail = normalizeEmail(accountEmail);
@@ -389,6 +390,20 @@ function adminRoom(socket, data = {}, ack = () => {}) {
 function adminTarget(room, data = {}, ack = () => {}) {
   const target = room.players.get(String(data.targetId || ""));
   if (!target || target.bot) {
+    ack({ ok:false, error:"Player not found" });
+    return null;
+  }
+  return target;
+}
+function adminLobbyTarget(socket, data = {}, ack = () => {}) {
+  if (String(data.roomCode || "").toUpperCase() !== "LOBBY") return null;
+  if (!isAdminActor(socket, data)) {
+    ack({ ok:false, error:"Admin only" });
+    return null;
+  }
+  const targetId = String(data.targetId || "");
+  const target = [...lobbyPlayers.values()].find(player => player.targetId === targetId);
+  if (!target) {
     ack({ ok:false, error:"Player not found" });
     return null;
   }
@@ -984,6 +999,25 @@ function updateRoom(room, now) {
   broadcast(room);
 }
 io.on("connection", socket => {
+  socket.on("lobby:present", (data={}) => {
+    if (data.active === false) {
+      lobbyPlayers.delete(socket.id);
+      return;
+    }
+    const email = normalizeEmail(data.accountEmail);
+    if (!isValidEmail(email)) {
+      lobbyPlayers.delete(socket.id);
+      return;
+    }
+    lobbyPlayers.set(socket.id, {
+      socketId:socket.id,
+      targetId:`lobby:${socket.id}`,
+      playerId:String(data.playerId || "").replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 48),
+      name:String(data.name || email).trim().slice(0, 14) || email,
+      accountEmail:email,
+      connected:true
+    });
+  });
   socket.on("host:create", (data={}, ack=()=>{}) => { if (typeof data === "function") { ack=data; data={}; } const room=createRoom(socket.id,data.mode); socket.join(room.code); socket.data.hostRoom=room.code; ack({ok:true,code:room.code,players:[],meta:meta(room)}); });
   socket.on("player:create", ({playerId,name,character,mode,accountEmail,invincibleMode}={}, ack=()=>{}) => { const room=createRoom(null,mode); joinPlayer(socket,room.code,playerId,name,character,accountEmail,invincibleMode,ack); });
   socket.on("player:autoJoin", ({playerId,name,character,mode,accountEmail,invincibleMode}={}, ack=()=>{}) => {
@@ -1050,10 +1084,20 @@ io.on("connection", socket => {
       const target = [...room.players.values()].find(player => !player.bot && normalizeEmail(player.accountEmail) === email);
       if (target) return ack({ ok:true, roomCode:room.code, targetId:target.id, name:target.name });
     }
+    const lobbyTarget = [...lobbyPlayers.values()].find(player => normalizeEmail(player.accountEmail) === email);
+    if (lobbyTarget) return ack({ ok:true, roomCode:"LOBBY", targetId:lobbyTarget.targetId, name:lobbyTarget.name, lobby:true });
     ack({ ok:false, error:"Player not found" });
   });
   socket.on("admin:grantCharacter", (data={}, ack=()=>{}) => {
-    const room = adminRoom(socket, data, ack), character = String(data.character || "");
+    const isLobbyTarget = String(data.roomCode || "").toUpperCase() === "LOBBY";
+    const lobbyTarget = isLobbyTarget ? adminLobbyTarget(socket, data, ack) : null, character = String(data.character || "");
+    if (isLobbyTarget) {
+      if (!lobbyTarget) return;
+      if (!PLAYABLE_CHARACTERS.has(character)) return ack({ ok:false, error:"Unknown character" });
+      io.to(lobbyTarget.socketId).emit("admin:characterGranted", { character });
+      return ack({ ok:true });
+    }
+    const room = adminRoom(socket, data, ack);
     if (!room) return;
     if (!PLAYABLE_CHARACTERS.has(character)) return ack({ ok:false, error:"Unknown character" });
     const target = room.players.get(String(data.targetId || ""));
@@ -1067,7 +1111,15 @@ io.on("connection", socket => {
     ack({ ok:true });
   });
   socket.on("admin:revokeCharacter", (data={}, ack=()=>{}) => {
-    const room = adminRoom(socket, data, ack), character = String(data.character || "");
+    const isLobbyTarget = String(data.roomCode || "").toUpperCase() === "LOBBY";
+    const lobbyTarget = isLobbyTarget ? adminLobbyTarget(socket, data, ack) : null, character = String(data.character || "");
+    if (isLobbyTarget) {
+      if (!lobbyTarget) return;
+      if (!PLAYABLE_CHARACTERS.has(character) || character === "blaze") return ack({ ok:false, error:"Unknown character" });
+      io.to(lobbyTarget.socketId).emit("admin:characterRevoked", { character });
+      return ack({ ok:true });
+    }
+    const room = adminRoom(socket, data, ack);
     if (!room) return;
     if (!PLAYABLE_CHARACTERS.has(character) || character === "blaze") return ack({ ok:false, error:"Unknown character" });
     const target = room.players.get(String(data.targetId || ""));
@@ -1133,6 +1185,13 @@ io.on("connection", socket => {
     ack({ ok:true });
   });
   socket.on("admin:resetProgress", (data={}, ack=()=>{}) => {
+    const isLobbyTarget = String(data.roomCode || "").toUpperCase() === "LOBBY";
+    const lobbyTarget = isLobbyTarget ? adminLobbyTarget(socket, data, ack) : null;
+    if (isLobbyTarget) {
+      if (!lobbyTarget) return;
+      io.to(lobbyTarget.socketId).emit("admin:progressReset");
+      return ack({ ok:true });
+    }
     const room = adminRoom(socket, data, ack), targetId = String(data.targetId || "");
     if (!room) return;
     const target = room.players.get(targetId);
@@ -1141,6 +1200,15 @@ io.on("connection", socket => {
     ack({ ok:true });
   });
   socket.on("admin:kickPlayer", (data={}, ack=()=>{}) => {
+    const isLobbyTarget = String(data.roomCode || "").toUpperCase() === "LOBBY";
+    const lobbyTarget = isLobbyTarget ? adminLobbyTarget(socket, data, ack) : null;
+    if (isLobbyTarget) {
+      if (!lobbyTarget) return;
+      if (isAdminEmail(lobbyTarget.accountEmail)) return ack({ ok:false, error:"Cannot kick admin" });
+      io.to(lobbyTarget.socketId).emit("admin:kicked");
+      lobbyPlayers.delete(lobbyTarget.socketId);
+      return ack({ ok:true });
+    }
     const room = adminRoom(socket, data, ack), targetId = String(data.targetId || "");
     if (!room) return;
     const target = adminTarget(room, data, ack);
@@ -1186,7 +1254,7 @@ io.on("connection", socket => {
   });
   socket.on("player:input", payload => { const ref=socketIndex.get(socket.id), room=ref&&rooms.get(ref.code), p=room&&room.players.get(ref.playerId); if(!p||!Array.isArray(payload))return; const x=clamp(Number(payload[0])||0,-1,1), y=clamp(Number(payload[1])||0,-1,1), aimX=clamp(Number(payload[4])||0,-1,1), aimY=clamp(Number(payload[5])||0,-1,1); p.input={x,y,attack:Boolean(payload[2]),special:Boolean(payload[3])}; if(Math.hypot(aimX,aimY)>.12){p.aimX=aimX;p.aimY=aimY;} else if(Math.hypot(x,y)>.12){p.aimX=x;p.aimY=y;} });
   socket.on("ghost:target", ({ targetId } = {}) => { const ref=socketIndex.get(socket.id), room=ref&&rooms.get(ref.code), ghost=room&&room.players.get(ref.playerId), target=room&&room.players.get(String(targetId||"")); if (!ghost?.ghost || !target?.alive || ghost.id===target.id) return; ghost.ghostTargetId=target.id; });
-  socket.on("disconnect", () => { const host=socket.data.hostRoom; if(host&&rooms.get(host)?.hostSocketId===socket.id){io.to(host).emit("room:closed");rooms.delete(host);} const ref=socketIndex.get(socket.id);socketIndex.delete(socket.id);const room=ref&&rooms.get(ref.code),p=room&&room.players.get(ref.playerId);if(p&&p.socketId===socket.id){p.connected=false;p.input={x:0,y:0,attack:false,special:false};p.removeTimer=setTimeout(()=>removePlayer(room,ref.playerId),RECONNECT_MS);broadcast(room);} });
+  socket.on("disconnect", () => { lobbyPlayers.delete(socket.id); const host=socket.data.hostRoom; if(host&&rooms.get(host)?.hostSocketId===socket.id){io.to(host).emit("room:closed");rooms.delete(host);} const ref=socketIndex.get(socket.id);socketIndex.delete(socket.id);const room=ref&&rooms.get(ref.code),p=room&&room.players.get(ref.playerId);if(p&&p.socketId===socket.id){p.connected=false;p.input={x:0,y:0,attack:false,special:false};p.removeTimer=setTimeout(()=>removePlayer(room,ref.playerId),RECONNECT_MS);broadcast(room);} });
 });
 setInterval(()=>{const now=Date.now();for(const room of rooms.values())updateRoom(room,now);},1000/30);
 server.listen(PORT,()=>console.log(`BrawlClaUi running at http://localhost:${PORT}/play/`));

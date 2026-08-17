@@ -95,7 +95,7 @@ function isOwnerUser(user = activeCloudUser()) {
 }
 const translations = {
   en: {
-    title: "Brawl anywhere.",
+    title: "BrawlClaUi",
     subtitle: "Choose a brawler, game mode, and controls.",
     languageLabel: "LANGUAGE",
     languageSystem: "Use device language",
@@ -124,6 +124,7 @@ const translations = {
     adminDown: "Down",
     adminConnected: "Online",
     adminDisconnected: "Offline",
+    adminLobby: "Lobby",
     adminGrant: "Give character",
     adminRevoke: "Remove character",
     adminHeal: "Heal",
@@ -185,7 +186,6 @@ const translations = {
     controlsLabel: "CONTROLS",
     controlTouch: "Phone / touch",
     controlKeyboard: "Computer keyboard",
-    controlGamepad: "Bluetooth / USB controller",
     keysMove: "ARROWS",
     keysAttack: "J ATTACK",
     keysSpecial: "K SUPER",
@@ -267,6 +267,7 @@ const translations = {
     adminDown: "\u05e0\u05e4\u05e1\u05dc",
     adminConnected: "\u05de\u05d7\u05d5\u05d1\u05e8",
     adminDisconnected: "\u05de\u05e0\u05d5\u05ea\u05e7",
+    adminLobby: "\u05dc\u05d5\u05d1\u05d9",
     adminGrant: "\u05ea\u05df \u05d3\u05de\u05d5\u05ea",
     adminRevoke: "\u05d4\u05e1\u05e8 \u05d3\u05de\u05d5\u05ea",
     adminHeal: "\u05e8\u05e4\u05d0",
@@ -328,7 +329,6 @@ const translations = {
     controlsLabel: "\u05e9\u05dc\u05d9\u05d8\u05d4",
     controlTouch: "\u05d8\u05dc\u05e4\u05d5\u05df / \u05de\u05d2\u05e2",
     controlKeyboard: "\u05de\u05e7\u05dc\u05d3\u05ea \u05de\u05d7\u05e9\u05d1",
-    controlGamepad: "\u05e9\u05dc\u05d8 Bluetooth / USB",
     keysMove: "\u05d7\u05e6\u05d9\u05dd",
     keysAttack: "J \u05d4\u05ea\u05e7\u05e4\u05d4",
     keysSpecial: "K \u05e1\u05d5\u05e4\u05e8",
@@ -504,7 +504,8 @@ let wasPlaying = false;
 let selectedCharacter = "blaze";
 let gameMeta = { items: [], zoneScore: {} };
 let lastBazaarBuff = "";
-let controlMode = localStorage.getItem("brawlclaui-control-mode") || (matchMedia("(hover: hover) and (pointer: fine)").matches ? "keyboard" : "touch");
+const savedControlMode = localStorage.getItem("brawlclaui-control-mode");
+let controlMode = ["touch", "keyboard"].includes(savedControlMode) ? savedControlMode : (matchMedia("(hover: hover) and (pointer: fine)").matches ? "keyboard" : "touch");
 let autoJoinTimer = 0;
 let phoneOrigin = location.origin;
 let personalBest = loadStoredPersonalBest();
@@ -561,6 +562,17 @@ function playerJoinPayload(extra = {}, options = {}) {
   };
 }
 
+function syncLobbyPresence(active = !wasPlaying && !roomCode) {
+  if (!socket.connected) return;
+  const user = activeCloudUser();
+  socket.emit("lobby:present", {
+    active: Boolean(active && user?.email),
+    playerId,
+    name: name() || user?.displayName || user?.email || "",
+    accountEmail: user?.email || ""
+  });
+}
+
 function requestAppFullscreen() {
   const target = document.documentElement;
   if (document.fullscreenElement || !target.requestFullscreen) return;
@@ -576,6 +588,7 @@ function enter(reply) {
   gameMeta = reply.meta || gameMeta;
   lastBazaarBuff = players.find(p => p.id === playerId)?.bazaarBuff || "";
   wasPlaying = true;
+  syncLobbyPresence(false);
   localStorage.setItem("brawlclaui-name", name());
   localStorage.setItem("brawlclaui-room", roomCode);
   lobby.hidden = true;
@@ -847,7 +860,9 @@ function renderAdminTargetInfo(target) {
   const health = Number.isFinite(target.health) && Number.isFinite(target.maxHealth)
     ? `${Math.max(0, target.health)}/${target.maxHealth}`
     : "--";
-  const status = target.connected === false
+  const status = target.lobby
+    ? t("adminLobby")
+    : target.connected === false
     ? t("adminDisconnected")
     : target.alive === false || target.ghost
       ? t("adminDown")
@@ -910,7 +925,7 @@ function renderAdminPanel() {
   const remoteTarget = adminFoundTarget && adminFoundTarget.roomCode !== roomCode ? adminFoundTarget : null;
   const playerOptions = selectablePlayers.map(player => `<option value="${escapeHtml(player.id)}">${escapeHtml(player.name)}${player.admin ? ` (${t("adminLabel")})` : ""}</option>`);
   if (remoteTarget && !selectablePlayers.some(player => player.id === remoteTarget.id)) {
-    playerOptions.push(`<option value="${escapeHtml(remoteTarget.id)}">${escapeHtml(remoteTarget.name)} (${escapeHtml(remoteTarget.roomCode)})</option>`);
+    playerOptions.push(`<option value="${escapeHtml(remoteTarget.id)}">${escapeHtml(remoteTarget.name)} (${escapeHtml(remoteTarget.lobby ? t("adminLobby") : remoteTarget.roomCode)})</option>`);
   }
   adminPlayerSelect.innerHTML = playerOptions.length
     ? playerOptions.join("")
@@ -927,16 +942,17 @@ function renderAdminPanel() {
   if (adminGrantCharacters.includes(previousCharacter)) adminCharacterSelect.value = previousCharacter;
   const hasTarget = Boolean((adminTargetRoomCode || roomCode) && adminPlayerSelect.value);
   const selectedTarget = players.find(player => player.id === adminPlayerSelect.value) || remoteTarget || null;
+  const targetInLobby = Boolean(selectedTarget?.lobby || adminTargetRoomCode === "LOBBY");
   renderAdminTargetInfo(selectedTarget);
   if (adminGrant) adminGrant.disabled = !hasTarget;
   if (adminRevoke) adminRevoke.disabled = !hasTarget || adminCharacterSelect.value === "blaze";
-  if (adminHeal) adminHeal.disabled = !hasTarget;
-  if (adminEliminate) adminEliminate.disabled = !hasTarget;
-  if (adminFreeze) adminFreeze.disabled = !hasTarget;
-  if (adminTeleport) adminTeleport.disabled = !hasTarget || Boolean(adminTargetRoomCode);
+  if (adminHeal) adminHeal.disabled = !hasTarget || targetInLobby;
+  if (adminEliminate) adminEliminate.disabled = !hasTarget || targetInLobby;
+  if (adminFreeze) adminFreeze.disabled = !hasTarget || targetInLobby;
+  if (adminTeleport) adminTeleport.disabled = !hasTarget || targetInLobby || Boolean(adminTargetRoomCode);
   if (adminResetProgress) adminResetProgress.disabled = !hasTarget;
   if (adminKick) adminKick.disabled = !hasTarget;
-  if (adminBan) adminBan.disabled = !hasTarget;
+  if (adminBan) adminBan.disabled = !hasTarget || targetInLobby;
   if (adminRestart) adminRestart.disabled = !(adminTargetRoomCode || roomCode);
   if (adminFindGoogle) adminFindGoogle.disabled = false;
   if (adminAddAdmin) adminAddAdmin.disabled = false;
@@ -965,10 +981,10 @@ function findPlayerByGoogleAccount() {
   socket.emit("admin:findPlayer", adminPayload({ email }), reply => {
     if (reply?.ok && reply.targetId && reply.roomCode) {
       adminTargetRoomCode = reply.roomCode;
-      adminFoundTarget = { id: reply.targetId, name: reply.name || email, roomCode: reply.roomCode };
+      adminFoundTarget = { id: reply.targetId, name: reply.name || email, roomCode: reply.roomCode, lobby: Boolean(reply.lobby), connected: true };
       renderAdminPanel();
       adminPlayerSelect.value = reply.targetId;
-      setAdminStatus(`${t("adminPlayerFound")}: ${reply.name || email}`);
+      setAdminStatus(`${t("adminPlayerFound")}: ${reply.name || email}${reply.lobby ? ` (${t("adminLobby")})` : ""}`);
     } else {
       setAdminStatus(reply?.error === "Player not found" ? t("adminPlayerNotFound") : reply?.error || t("adminFailed"));
     }
@@ -1073,6 +1089,7 @@ async function setupCloudProgress() {
         renderCharacterLocks();
         renderAccountStatus();
         renderAdminPanel();
+        syncLobbyPresence();
         if (activeCloudUser()) {
           const progress = await cloudApi.loadProgress(activeCloudUser());
           applyCloudProgress(progress);
@@ -1091,6 +1108,7 @@ async function setupCloudProgress() {
       renderCharacterLocks();
       renderAccountStatus();
       renderAdminPanel();
+      syncLobbyPresence(false);
       if (roomCode) socket.emit("admin:identify", { roomCode, playerId, accountEmail: "" }, () => {});
     };
     cloudApi.onUserChanged(async user => {
@@ -1106,6 +1124,7 @@ async function setupCloudProgress() {
       renderAccountStatus(activeUser ? t("cloudSyncing") : null);
       identifyAdminInRoom();
       renderAdminPanel();
+      syncLobbyPresence(Boolean(activeUser));
       if (!activeUser) return;
       try {
         const progress = await cloudApi.loadProgress(activeUser);
@@ -1114,6 +1133,7 @@ async function setupCloudProgress() {
         queueCloudSave();
         renderAccountStatus();
         renderAdminPanel();
+        syncLobbyPresence();
       } catch {
         renderAccountStatus(t("cloudError"));
       }
@@ -1150,9 +1170,11 @@ function updateMeta() {
 
 function applyControlMode() {
   controlMode = controlModeSelect.value;
+  if (!["touch", "keyboard"].includes(controlMode)) controlMode = matchMedia("(hover: hover) and (pointer: fine)").matches ? "keyboard" : "touch";
+  controlModeSelect.value = controlMode;
   localStorage.setItem("brawlclaui-control-mode", controlMode);
   keyboardPanel.hidden = controlMode !== "keyboard";
-  controls.hidden = controlMode === "keyboard" || controlMode === "gamepad";
+  controls.hidden = controlMode === "keyboard";
   if (controlMode !== "keyboard") keyboardState.clear();
   input.x = 0;
   input.y = 0;
@@ -1178,6 +1200,7 @@ document.querySelectorAll("[data-character]").forEach(button => {
 document.querySelector("#mode").addEventListener("change", queueAutoJoin);
 nameInput.addEventListener("change", queueAutoJoin);
 nameInput.addEventListener("change", queueCloudSave);
+nameInput.addEventListener("change", () => syncLobbyPresence());
 function joinByCode(value, requestFullscreenForJoin = true) {
   if (requestFullscreenForJoin) requestAppFullscreen();
   const joinValue = String(value || "").trim();
@@ -1232,6 +1255,7 @@ function leaveGame() {
   updateLobbyRoom();
   updateMeta();
   renderAdminPanel();
+  syncLobbyPresence(true);
   window.scrollTo(0, 0);
   if (document.fullscreenElement) document.exitFullscreen?.().catch(() => {});
 }
@@ -1250,6 +1274,7 @@ function createNewLocalPlayer() {
   renderSurvivalStats();
   renderCharacterLocks();
   renderAdminPanel();
+  syncLobbyPresence(false);
 }
 
 newLocalPlayer?.addEventListener("click", createNewLocalPlayer);
@@ -1387,6 +1412,7 @@ socket.on("admin:banned", () => {
 socket.on("disconnect", () => { if (wasPlaying) document.querySelector("#help").textContent = t("reconnecting"); });
 socket.on("connect", () => {
   syncAdminState(true);
+  syncLobbyPresence();
   if (pendingJoinCode && !wasPlaying) {
     joinByCode(pendingJoinCode, false);
   } else if (wasPlaying && roomCode) socket.emit("player:join", playerJoinPayload({ code: roomCode }), enter);
@@ -1508,10 +1534,6 @@ setInterval(() => {
     socket.emit("player:input", [input.x, input.y, input.attack ? 1 : 0, input.special ? 1 : 0, autoAim?.[0] || 0, autoAim?.[1] || 0]);
   }
 }, 1000 / 60);
-GamepadController.onInput(next => {
-  if (controlMode === "gamepad") Object.assign(input, next);
-});
-
 function motionFor(p, now) {
   const previous = motionState.get(p.id) || { x: p.x, y: p.y, phase: 0 };
   const distance = Math.hypot(p.x - previous.x, p.y - previous.y);

@@ -12,12 +12,12 @@
   <link rel="manifest" href="/manifest.webmanifest">
   <link rel="apple-touch-icon" href="/icons/icon.svg">
   <title>בראול כלווי - BrawlClaUi</title>
-  <link rel="stylesheet" href="style.css?v=60">
+  <link rel="stylesheet" href="style.css?v=61">
 </head>
 <body>
   <section id="lobby" class="lobby">
     <p class="brand">בראול כלווי - BrawlClaUi</p>
-    <h1 data-i18n="title">Brawl anywhere.</h1>
+    <h1 data-i18n="title">BrawlClaUi</h1>
     <p data-i18n="subtitle">Choose a brawler, game mode, and controls.</p>
     <label for="language" data-i18n="languageLabel">LANGUAGE</label>
     <select id="language">
@@ -61,7 +61,6 @@
     <select id="control-mode">
       <option value="touch" data-i18n="controlTouch">Phone / touch</option>
       <option value="keyboard" data-i18n="controlKeyboard">Computer keyboard</option>
-      <option value="gamepad" data-i18n="controlGamepad">Bluetooth / USB controller</option>
     </select>
     <div id="keyboard-panel" class="key-panel" hidden>
       <span data-i18n="keysMove">ARROWS</span>
@@ -208,8 +207,7 @@
   <script src="/native-config.js"></script>
   <script src="/shared/runtime.js"></script>
   <script src="/socket.io/socket.io.js"></script>
-  <script src="/shared/gamepad.js"></script>
   <script src="/shared/qr-generator.js"></script>
-  <script src="play.js?v=60"></script>
+  <script src="play.js?v=61"></script>
 </body>
 </html>
