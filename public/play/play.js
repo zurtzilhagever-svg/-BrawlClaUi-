@@ -29,6 +29,10 @@ const googleSignOut = document.querySelector("#google-sign-out");
 const newLocalPlayer = document.querySelector("#new-local-player");
 const adminToggle = document.querySelector("#admin-toggle");
 const adminPanel = document.querySelector("#admin-panel");
+const adminRoleBadge = document.querySelector("#admin-role-badge");
+const adminRoomBadge = document.querySelector("#admin-room-badge");
+const adminPlayersBadge = document.querySelector("#admin-players-badge");
+const adminTargetInfo = document.querySelector("#admin-target-info");
 const adminPlayerSelect = document.querySelector("#admin-player");
 const adminCharacterSelect = document.querySelector("#admin-character");
 const adminGoogleAccount = document.querySelector("#admin-google-account");
@@ -39,7 +43,12 @@ const adminAddAdmin = document.querySelector("#admin-add-admin");
 const adminRemoveAdmin = document.querySelector("#admin-remove-admin");
 const adminGrant = document.querySelector("#admin-grant");
 const adminRevoke = document.querySelector("#admin-revoke");
+const adminHeal = document.querySelector("#admin-heal");
+const adminEliminate = document.querySelector("#admin-eliminate");
+const adminFreeze = document.querySelector("#admin-freeze");
+const adminTeleport = document.querySelector("#admin-teleport");
 const adminResetProgress = document.querySelector("#admin-reset-progress");
+const adminKick = document.querySelector("#admin-kick");
 const adminBan = document.querySelector("#admin-ban");
 const adminRestart = document.querySelector("#admin-restart");
 const adminStatus = document.querySelector("#admin-status");
@@ -71,7 +80,6 @@ let adminPanelOpen = false;
 let adminToggleDrag = null;
 let adminListRequestAt = 0;
 let adminInvincibleMode = localStorage.getItem(adminInvincibleKey) === "1";
-let adminInvincibleAsked = false;
 let progressStorageSuffix = "";
 function progressKey(baseKey) {
   return `${baseKey}${progressStorageSuffix}`;
@@ -100,9 +108,30 @@ const translations = {
     cloudError: "Google save is unavailable",
     adminLabel: "Admin",
     adminPanelTitle: "ADMIN PANEL",
+    adminRoomLabel: "ROOM",
+    adminPlayersLabel: "PLAYERS",
+    adminFindSection: "FIND PLAYER",
+    adminAdminsSection: "ADMINS",
+    adminTargetSection: "TARGET PLAYER",
+    adminCharactersSection: "CHARACTERS",
+    adminLiveSection: "LIVE CONTROL",
+    adminDangerSection: "DANGER",
+    adminHealth: "Health",
+    adminCharacterStat: "Character",
+    adminScore: "Score",
+    adminStatusLabel: "Status",
+    adminAlive: "Alive",
+    adminDown: "Down",
+    adminConnected: "Online",
+    adminDisconnected: "Offline",
     adminGrant: "Give character",
     adminRevoke: "Remove character",
+    adminHeal: "Heal",
+    adminEliminate: "Eliminate",
+    adminFreeze: "Freeze",
+    adminTeleport: "Bring here",
     adminResetProgress: "Reset progress",
+    adminKick: "Kick player",
     adminBan: "Ban player",
     adminRestart: "Restart game",
     adminFindGoogle: "Find player",
@@ -123,6 +152,7 @@ const translations = {
     adminGrantedNotice: "Character unlocked by admin",
     adminRevokedNotice: "Character removed by admin",
     adminProgressResetNotice: "Progress reset by admin",
+    adminKickedNotice: "You were removed from this room",
     adminBannedNotice: "You were banned from this room",
     signInGoogle: "Sign in with Google",
     signOut: "Sign out",
@@ -221,9 +251,30 @@ const translations = {
     cloudError: "\u05e9\u05de\u05d9\u05e8\u05ea Google \u05dc\u05d0 \u05d6\u05de\u05d9\u05e0\u05d4",
     adminLabel: "\u05d0\u05d3\u05de\u05d9\u05df",
     adminPanelTitle: "\u05e4\u05d0\u05e0\u05dc \u05d0\u05d3\u05de\u05d9\u05df",
+    adminRoomLabel: "\u05d7\u05d3\u05e8",
+    adminPlayersLabel: "\u05e9\u05d7\u05e7\u05e0\u05d9\u05dd",
+    adminFindSection: "\u05d7\u05d9\u05e4\u05d5\u05e9 \u05e9\u05d7\u05e7\u05df",
+    adminAdminsSection: "\u05d0\u05d3\u05de\u05d9\u05e0\u05d9\u05dd",
+    adminTargetSection: "\u05e9\u05d7\u05e7\u05df \u05d9\u05e2\u05d3",
+    adminCharactersSection: "\u05d3\u05de\u05d5\u05d9\u05d5\u05ea",
+    adminLiveSection: "\u05e9\u05dc\u05d9\u05d8\u05d4 \u05d7\u05d9\u05d4",
+    adminDangerSection: "\u05de\u05e1\u05d5\u05db\u05df",
+    adminHealth: "\u05d7\u05d9\u05d9\u05dd",
+    adminCharacterStat: "\u05d3\u05de\u05d5\u05ea",
+    adminScore: "\u05e0\u05d9\u05e7\u05d5\u05d3",
+    adminStatusLabel: "\u05de\u05e6\u05d1",
+    adminAlive: "\u05d7\u05d9",
+    adminDown: "\u05e0\u05e4\u05e1\u05dc",
+    adminConnected: "\u05de\u05d7\u05d5\u05d1\u05e8",
+    adminDisconnected: "\u05de\u05e0\u05d5\u05ea\u05e7",
     adminGrant: "\u05ea\u05df \u05d3\u05de\u05d5\u05ea",
     adminRevoke: "\u05d4\u05e1\u05e8 \u05d3\u05de\u05d5\u05ea",
+    adminHeal: "\u05e8\u05e4\u05d0",
+    adminEliminate: "\u05d7\u05e1\u05dc",
+    adminFreeze: "\u05d4\u05e7\u05e4\u05d0",
+    adminTeleport: "\u05d4\u05d1\u05d0 \u05d0\u05dc\u05d9\u05d9",
     adminResetProgress: "\u05d0\u05e4\u05e1 \u05d4\u05ea\u05e7\u05d3\u05de\u05d5\u05ea",
+    adminKick: "\u05d4\u05e2\u05e3 \u05e9\u05d7\u05e7\u05df",
     adminBan: "\u05d1\u05d0\u05df \u05dc\u05e9\u05d7\u05e7\u05df",
     adminRestart: "\u05d4\u05ea\u05d7\u05dc \u05de\u05d7\u05d3\u05e9",
     adminFindGoogle: "\u05d7\u05e4\u05e9 \u05e9\u05d7\u05e7\u05df",
@@ -244,6 +295,7 @@ const translations = {
     adminGrantedNotice: "\u05d3\u05de\u05d5\u05ea \u05e0\u05e4\u05ea\u05d7\u05d4 \u05e2\u05dc \u05d9\u05d3\u05d9 \u05d0\u05d3\u05de\u05d9\u05df",
     adminRevokedNotice: "\u05d3\u05de\u05d5\u05ea \u05d4\u05d5\u05e1\u05e8\u05d4 \u05e2\u05dc \u05d9\u05d3\u05d9 \u05d0\u05d3\u05de\u05d9\u05df",
     adminProgressResetNotice: "\u05d4\u05d4\u05ea\u05e7\u05d3\u05de\u05d5\u05ea \u05d0\u05d5\u05e4\u05e1\u05d4 \u05e2\u05dc \u05d9\u05d3\u05d9 \u05d0\u05d3\u05de\u05d9\u05df",
+    adminKickedNotice: "\u05d4\u05d5\u05e6\u05d0\u05ea \u05de\u05d4\u05d7\u05d3\u05e8",
     adminBannedNotice: "\u05e7\u05d9\u05d1\u05dc\u05ea \u05d1\u05d0\u05df \u05de\u05d4\u05d7\u05d3\u05e8",
     signInGoogle: "\u05d4\u05ea\u05d7\u05d1\u05e8 \u05e2\u05dd Google",
     signOut: "\u05d4\u05ea\u05e0\u05ea\u05e7",
@@ -494,10 +546,9 @@ function name() {
 
 function playerJoinPayload(extra = {}, options = {}) {
   const user = activeCloudUser();
-  if (options.askAdmin && isOwnerUser(user) && !adminInvincibleAsked) {
+  if (options.askAdmin && isOwnerUser(user)) {
     adminInvincibleMode = window.confirm(t("adminInvinciblePrompt"));
     localStorage.setItem(adminInvincibleKey, adminInvincibleMode ? "1" : "0");
-    adminInvincibleAsked = true;
     error.textContent = adminInvincibleMode ? t("adminInvincibleOn") : t("adminInvincibleOff");
   }
   return {
@@ -787,6 +838,28 @@ function renderAdminList() {
   if (adminRemoveAdmin) adminRemoveAdmin.disabled = !adminListSelect.value || adminListSelect.value === "zurtzilhagever@gmail.com";
 }
 
+function renderAdminTargetInfo(target) {
+  if (!adminTargetInfo) return;
+  if (!target) {
+    adminTargetInfo.innerHTML = `<span><b>${escapeHtml(t("adminStatusLabel"))}</b>${escapeHtml(t("adminPickPlayer"))}</span>`;
+    return;
+  }
+  const health = Number.isFinite(target.health) && Number.isFinite(target.maxHealth)
+    ? `${Math.max(0, target.health)}/${target.maxHealth}`
+    : "--";
+  const status = target.connected === false
+    ? t("adminDisconnected")
+    : target.alive === false || target.ghost
+      ? t("adminDown")
+      : t("adminAlive");
+  adminTargetInfo.innerHTML = [
+    `<span><b>${escapeHtml(t("adminHealth"))}</b>${escapeHtml(health)}</span>`,
+    `<span><b>${escapeHtml(t("adminCharacterStat"))}</b>${escapeHtml(characterLabel(target.character) || target.characterName || "--")}</span>`,
+    `<span><b>${escapeHtml(t("adminScore"))}</b>${escapeHtml(String(target.score ?? target.gems ?? target.coins ?? 0))}</span>`,
+    `<span><b>${escapeHtml(t("adminStatusLabel"))}</b>${escapeHtml(status)}</span>`
+  ].join("");
+}
+
 function syncAdminState(force = false) {
   const email = activeCloudUser()?.email || "";
   if (!email || (!socket.connected && !force)) return renderAdminPanel();
@@ -829,6 +902,9 @@ function renderAdminPanel() {
   if (!active) return;
   renderAdminList();
   requestAdminList();
+  if (adminRoleBadge) adminRoleBadge.textContent = isOwnerUser() ? "OWNER" : t("adminLabel");
+  if (adminRoomBadge) adminRoomBadge.textContent = adminTargetRoomCode || roomCode || "----";
+  if (adminPlayersBadge) adminPlayersBadge.textContent = String(players.filter(player => !player.bot).length);
   const previousPlayer = adminPlayerSelect.value;
   const selectablePlayers = players.filter(player => !player.bot && player.id !== playerId);
   const remoteTarget = adminFoundTarget && adminFoundTarget.roomCode !== roomCode ? adminFoundTarget : null;
@@ -850,9 +926,16 @@ function renderAdminPanel() {
     .join("");
   if (adminGrantCharacters.includes(previousCharacter)) adminCharacterSelect.value = previousCharacter;
   const hasTarget = Boolean((adminTargetRoomCode || roomCode) && adminPlayerSelect.value);
+  const selectedTarget = players.find(player => player.id === adminPlayerSelect.value) || remoteTarget || null;
+  renderAdminTargetInfo(selectedTarget);
   if (adminGrant) adminGrant.disabled = !hasTarget;
   if (adminRevoke) adminRevoke.disabled = !hasTarget || adminCharacterSelect.value === "blaze";
+  if (adminHeal) adminHeal.disabled = !hasTarget;
+  if (adminEliminate) adminEliminate.disabled = !hasTarget;
+  if (adminFreeze) adminFreeze.disabled = !hasTarget;
+  if (adminTeleport) adminTeleport.disabled = !hasTarget || Boolean(adminTargetRoomCode);
   if (adminResetProgress) adminResetProgress.disabled = !hasTarget;
+  if (adminKick) adminKick.disabled = !hasTarget;
   if (adminBan) adminBan.disabled = !hasTarget;
   if (adminRestart) adminRestart.disabled = !(adminTargetRoomCode || roomCode);
   if (adminFindGoogle) adminFindGoogle.disabled = false;
@@ -868,6 +951,11 @@ function runAdminCommand(event, payload = {}) {
     setAdminStatus(reply?.ok ? t("adminDone") : reply?.error || t("adminFailed"));
     window.setTimeout(() => setAdminStatus(""), 1400);
   });
+}
+
+function runAdminTargetCommand(event) {
+  if (!adminPlayerSelect.value) return setAdminStatus(t("adminPickPlayer"));
+  runAdminCommand(event, { targetId: adminPlayerSelect.value });
 }
 
 function findPlayerByGoogleAccount() {
@@ -976,7 +1064,6 @@ async function setupCloudProgress() {
         renderAccountStatus(t("cloudSyncing"));
         const result = await cloudApi.signIn();
         cloudUser = result?.user || cloudApi.currentUser?.() || cloudUser;
-        adminInvincibleAsked = false;
         progressStorageSuffix = activeCloudUser() ? `:${activeCloudUser().uid}` : `:local:${playerId}`;
         personalBest = loadStoredPersonalBest();
         lastCloudSnapshot = "";
@@ -998,7 +1085,6 @@ async function setupCloudProgress() {
     };
     googleSignOut.onclick = () => {
       setLocalAccountMode(true);
-      adminInvincibleAsked = false;
       lastCloudSnapshot = "";
       syncAdminState(true);
       renderSurvivalStats();
@@ -1009,7 +1095,6 @@ async function setupCloudProgress() {
     };
     cloudApi.onUserChanged(async user => {
       cloudUser = user;
-      adminInvincibleAsked = false;
       const activeUser = activeCloudUser();
       adminVerified = false;
       progressStorageSuffix = activeUser ? `:${activeUser.uid}` : `:local:${playerId}`;
@@ -1184,18 +1269,18 @@ adminRevoke?.addEventListener("click", () => {
   if (!adminPlayerSelect.value) return setAdminStatus(t("adminPickPlayer"));
   runAdminCommand("admin:revokeCharacter", { targetId: adminPlayerSelect.value, character: adminCharacterSelect.value });
 });
-adminResetProgress?.addEventListener("click", () => {
-  if (!adminPlayerSelect.value) return setAdminStatus(t("adminPickPlayer"));
-  runAdminCommand("admin:resetProgress", { targetId: adminPlayerSelect.value });
-});
-adminBan?.addEventListener("click", () => {
-  if (!adminPlayerSelect.value) return setAdminStatus(t("adminPickPlayer"));
-  runAdminCommand("admin:banPlayer", { targetId: adminPlayerSelect.value });
-});
+adminHeal?.addEventListener("click", () => runAdminTargetCommand("admin:healPlayer"));
+adminEliminate?.addEventListener("click", () => runAdminTargetCommand("admin:eliminatePlayer"));
+adminFreeze?.addEventListener("click", () => runAdminTargetCommand("admin:freezePlayer"));
+adminTeleport?.addEventListener("click", () => runAdminTargetCommand("admin:teleportPlayer"));
+adminResetProgress?.addEventListener("click", () => runAdminTargetCommand("admin:resetProgress"));
+adminKick?.addEventListener("click", () => runAdminTargetCommand("admin:kickPlayer"));
+adminBan?.addEventListener("click", () => runAdminTargetCommand("admin:banPlayer"));
 adminRestart?.addEventListener("click", () => runAdminCommand("admin:restartGame"));
 adminPlayerSelect?.addEventListener("change", () => {
   adminTargetRoomCode = adminFoundTarget?.id === adminPlayerSelect.value ? adminFoundTarget.roomCode : "";
   if (!adminTargetRoomCode) adminFoundTarget = null;
+  renderAdminPanel();
 });
 adminFindGoogle?.addEventListener("click", findPlayerByGoogleAccount);
 adminGoogleAccount?.addEventListener("keydown", event => {
@@ -1286,6 +1371,12 @@ socket.on("admin:characterRevoked", ({ character } = {}) => {
 socket.on("admin:progressReset", () => {
   resetProgress();
   error.textContent = t("adminProgressResetNotice");
+});
+socket.on("admin:kicked", () => {
+  error.textContent = t("adminKickedNotice");
+  const help = document.querySelector("#help");
+  if (help) help.textContent = t("adminKickedNotice");
+  window.setTimeout(() => location.reload(), 900);
 });
 socket.on("admin:banned", () => {
   error.textContent = t("adminBannedNotice");

@@ -172,25 +172,109 @@ select {
   top: 72px;
   right: 12px;
   z-index: 41;
-  width: min(340px, calc(100vw - 24px));
-  max-height: min(620px, calc(100svh - 24px));
+  width: min(360px, calc(100vw - 24px));
+  max-height: min(680px, calc(100svh - 24px));
   overflow: auto;
   display: grid;
-  gap: 8px;
+  gap: 10px;
   padding: 12px;
-  border: 1px solid #ffd34f66;
-  border-radius: 12px;
-  background: #221f34;
-  box-shadow: 0 14px 32px #0008;
+  border: 1px solid #ffcf5a66;
+  border-radius: 14px;
+  background: linear-gradient(180deg, #1d2035, #15192b);
+  box-shadow: 0 18px 46px #000a, inset 0 1px #ffffff12;
+  scrollbar-width: thin;
+  scrollbar-color: #5b6688 #121728;
 }
 
 .admin-panel[hidden] {
   display: none;
 }
 
+.admin-head {
+  display: grid;
+  gap: 10px;
+  padding: 2px 2px 4px;
+}
+
+.admin-head > div:first-child {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+
+.admin-head span,
 .admin-panel label {
-  margin-top: 0;
-  color: #ffd34f;
+  margin: 0;
+  color: #ffcf5a;
+  font-size: .7rem;
+  font-weight: 900;
+  letter-spacing: .08em;
+}
+
+.admin-head strong {
+  max-width: 150px;
+  padding: 5px 8px;
+  border-radius: 999px;
+  background: #ffcf5a;
+  color: #171b2c;
+  font-size: .68rem;
+  font-weight: 900;
+  line-height: 1.15;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.admin-metrics {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.admin-metrics span {
+  display: grid;
+  gap: 3px;
+  padding: 8px;
+  border: 1px solid #ffffff16;
+  border-radius: 10px;
+  background: #0d1426;
+}
+
+.admin-metrics b {
+  color: #8fa0c5;
+  font-size: .62rem;
+  font-weight: 900;
+  letter-spacing: .08em;
+}
+
+.admin-metrics strong {
+  max-width: none;
+  padding: 0;
+  border-radius: 0;
+  background: transparent;
+  color: #70d7ff;
+  font-size: 1rem;
+}
+
+.admin-section {
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid #ffffff14;
+  border-radius: 12px;
+  background: #20243a;
+}
+
+.admin-section.danger {
+  border-color: #ff596455;
+  background: #2a1d2b;
+}
+
+.admin-inline {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
 }
 
 .admin-panel input,
@@ -199,8 +283,9 @@ select {
   border: 0;
   border-radius: 10px;
   padding: 10px;
-  background: #0e1427;
+  background: #0d1426;
   color: #fff;
+  outline: 1px solid #ffffff10;
 }
 
 .admin-panel input::placeholder {
@@ -213,23 +298,74 @@ select {
   color: #182038;
 }
 
-#admin-add-google:disabled {
-  opacity: .55;
-}
-
 .admin-actions {
   display: grid;
   grid-template-columns: 1fr;
-  gap: 7px;
+  gap: 8px;
 }
 
-.admin-actions button {
+.admin-actions.two {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.admin-actions button,
+.admin-section > button,
+.admin-inline button {
   width: 100%;
-  min-height: 40px;
+  min-height: 42px;
+  border: 0;
+  border-radius: 10px;
   background: #ffd34f;
+  color: #172033;
+  font-weight: 900;
+  box-shadow: inset 0 -3px #0002;
 }
 
-#admin-ban {
+.admin-actions button:hover:not(:disabled),
+.admin-section > button:hover:not(:disabled),
+.admin-inline button:hover:not(:disabled) {
+  filter: brightness(1.05);
+  transform: translateY(-1px);
+}
+
+.admin-actions button:disabled,
+.admin-section > button:disabled,
+.admin-inline button:disabled {
+  opacity: .42;
+  transform: none;
+}
+
+.admin-target-info {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+  min-height: 34px;
+}
+
+.admin-target-info span {
+  display: grid;
+  gap: 2px;
+  padding: 7px 8px;
+  border-radius: 9px;
+  background: #0d1426;
+  color: #fff;
+  font-size: .78rem;
+  font-weight: 900;
+  overflow: hidden;
+}
+
+.admin-target-info b {
+  color: #8fa0c5;
+  font-size: .6rem;
+  letter-spacing: .08em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#admin-eliminate,
+#admin-ban,
+#admin-kick {
   background: #ff5964;
   color: #fff;
 }
@@ -240,8 +376,10 @@ select {
 
 #admin-status {
   min-height: 1.1em;
+  padding: 0 2px 2px;
   color: #dbe4ff;
   font-weight: 800;
+  text-align: center;
 }
 
 .choice-grid {

@@ -7,7 +7,7 @@
   <link rel="manifest" href="/manifest.webmanifest">
   <link rel="apple-touch-icon" href="/icons/icon.svg">
   <title>BrawlClaUi</title>
-  <link rel="stylesheet" href="style.css?v=59">
+  <link rel="stylesheet" href="style.css?v=60">
 </head>
 <body>
   <section id="lobby" class="lobby">
@@ -104,24 +104,72 @@
 
   <button id="admin-toggle" class="admin-toggle" type="button" aria-controls="admin-panel" aria-expanded="false" hidden>ADMIN</button>
   <section id="admin-panel" class="admin-panel" hidden>
-    <label for="admin-player" data-i18n="adminPanelTitle">ADMIN PANEL</label>
-    <input id="admin-google-account" type="email" autocomplete="email" placeholder="Google account" data-i18n-placeholder="adminGooglePlaceholder">
-    <button id="admin-add-google" type="button" data-i18n="adminFindGoogle">Find player</button>
-    <input id="admin-email" type="email" autocomplete="email" placeholder="Admin email" data-i18n-placeholder="adminEmailPlaceholder">
-    <select id="admin-list"></select>
-    <div class="admin-actions">
-      <button id="admin-add-admin" type="button" data-i18n="adminAddAdmin">Add admin</button>
-      <button id="admin-remove-admin" type="button" data-i18n="adminRemoveAdmin">Remove admin</button>
+    <div class="admin-head">
+      <div>
+        <span data-i18n="adminPanelTitle">ADMIN PANEL</span>
+        <strong id="admin-role-badge">OWNER</strong>
+      </div>
+      <div class="admin-metrics">
+        <span><b data-i18n="adminRoomLabel">ROOM</b><strong id="admin-room-badge">----</strong></span>
+        <span><b data-i18n="adminPlayersLabel">PLAYERS</b><strong id="admin-players-badge">0</strong></span>
+      </div>
     </div>
-    <select id="admin-player"></select>
-    <select id="admin-character"></select>
-    <div class="admin-actions">
-      <button id="admin-grant" type="button" data-i18n="adminGrant">Give character</button>
-      <button id="admin-revoke" type="button" data-i18n="adminRevoke">Remove character</button>
-      <button id="admin-reset-progress" type="button" data-i18n="adminResetProgress">Reset progress</button>
-      <button id="admin-ban" type="button" data-i18n="adminBan">Ban player</button>
+
+    <section class="admin-section">
+      <label for="admin-google-account" data-i18n="adminFindSection">FIND PLAYER</label>
+      <div class="admin-inline">
+        <input id="admin-google-account" type="email" autocomplete="email" placeholder="Google account" data-i18n-placeholder="adminGooglePlaceholder">
+        <button id="admin-add-google" type="button" data-i18n="adminFindGoogle">Find</button>
+      </div>
+    </section>
+
+    <section class="admin-section">
+      <label for="admin-list" data-i18n="adminAdminsSection">ADMINS</label>
+      <input id="admin-email" type="email" autocomplete="email" placeholder="Admin email" data-i18n-placeholder="adminEmailPlaceholder">
+      <select id="admin-list"></select>
+      <div class="admin-actions two">
+        <button id="admin-add-admin" type="button" data-i18n="adminAddAdmin">Add admin</button>
+        <button id="admin-remove-admin" type="button" data-i18n="adminRemoveAdmin">Remove admin</button>
+      </div>
+    </section>
+
+    <section class="admin-section">
+      <label for="admin-player" data-i18n="adminTargetSection">TARGET PLAYER</label>
+      <select id="admin-player"></select>
+      <div id="admin-target-info" class="admin-target-info"></div>
+    </section>
+
+    <section class="admin-section">
+      <label for="admin-character" data-i18n="adminCharactersSection">CHARACTERS</label>
+      <select id="admin-character"></select>
+      <div class="admin-actions two">
+        <button id="admin-grant" type="button" data-i18n="adminGrant">Give character</button>
+        <button id="admin-revoke" type="button" data-i18n="adminRevoke">Remove character</button>
+      </div>
+    </section>
+
+    <section class="admin-section">
+      <label data-i18n="adminLiveSection">LIVE CONTROL</label>
+      <div class="admin-actions two">
+        <button id="admin-heal" type="button" data-i18n="adminHeal">Heal</button>
+        <button id="admin-eliminate" type="button" data-i18n="adminEliminate">Eliminate</button>
+        <button id="admin-freeze" type="button" data-i18n="adminFreeze">Freeze</button>
+        <button id="admin-teleport" type="button" data-i18n="adminTeleport">Bring here</button>
+      </div>
+      <div class="admin-actions">
+        <button id="admin-reset-progress" type="button" data-i18n="adminResetProgress">Reset progress</button>
+      </div>
+    </section>
+
+    <section class="admin-section danger">
+      <label data-i18n="adminDangerSection">DANGER</label>
+      <div class="admin-actions two">
+        <button id="admin-kick" type="button" data-i18n="adminKick">Kick player</button>
+        <button id="admin-ban" type="button" data-i18n="adminBan">Ban player</button>
+      </div>
       <button id="admin-restart" type="button" data-i18n="adminRestart">Restart game</button>
-    </div>
+    </section>
+
     <small id="admin-status"></small>
   </section>
 
@@ -157,6 +205,6 @@
   <script src="/socket.io/socket.io.js"></script>
   <script src="/shared/gamepad.js"></script>
   <script src="/shared/qr-generator.js"></script>
-  <script src="play.js?v=59"></script>
+  <script src="play.js?v=60"></script>
 </body>
 </html>

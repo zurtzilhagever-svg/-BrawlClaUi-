@@ -3,6 +3,7 @@ const express = require("express"), http = require("http"), os = require("os"), 
 const { Server } = require("socket.io");
 const app = express(), server = http.createServer(app), io = new Server(server, { cors: { origin: "*" } });
 const PORT = Number(process.env.PORT) || 3000, RECONNECT_MS = 30_000, MAX_PLAYERS = 8, SPECIAL_HITS = 5, AMMO_MAX = 5, PROJECTILE_SPEED = 12, BOB_UNLOCK_WAVE = 10;
+const BOT_DAMAGE_SCALE = 0.62, BOT_MOVE_SCALE = 0.82, BOT_RANGE_SCALE = 0.82;
 const rooms = new Map(), socketIndex = new Map();
 const survivalLeaders = [];
 const COLORS = ["#ff5964", "#36c8ff", "#ffd54a", "#a875ff", "#52e084", "#ff8e4f", "#fa73bd", "#80a7ff"];
@@ -385,6 +386,14 @@ function adminRoom(socket, data = {}, ack = () => {}) {
   }
   return room;
 }
+function adminTarget(room, data = {}, ack = () => {}) {
+  const target = room.players.get(String(data.targetId || ""));
+  if (!target || target.bot) {
+    ack({ ok:false, error:"Player not found" });
+    return null;
+  }
+  return target;
+}
 function resetHumanForGame(room, player) {
   const stats = CHARACTERS[player.character] || CHARACTERS.blaze, spot = randomSpot(room.arena);
   Object.assign(player, {
@@ -435,7 +444,7 @@ function pushProjectile(room, attacker, dx, dy, stats, options = {}) {
     y:attacker.y + dy * start,
     vx:dx * (options.speed || PROJECTILE_SPEED),
     vy:dy * (options.speed || PROJECTILE_SPEED),
-    damage:(options.damage || stats.damage) * (Date.now() < (attacker.damageBoostUntil || 0) ? 1.35 : 1) * (Date.now() < (attacker.giantDamageUntil || 0) ? 1.15 : 1),
+    damage:(options.damage || stats.damage) * (attacker.bot ? BOT_DAMAGE_SCALE : 1) * (Date.now() < (attacker.damageBoostUntil || 0) ? 1.35 : 1) * (Date.now() < (attacker.giantDamageUntil || 0) ? 1.15 : 1),
     remaining:Math.max(24, stats.range - Math.max(0, start - 26)),
     radius:options.radius || 7,
     baseRadius:options.baseRadius || options.radius || 7,
@@ -507,7 +516,7 @@ function special(room, p, now) {
     room.arena.obstacles = room.arena.obstacles.filter(rect => !intersectsRect(p.x, p.y, radius, rect));
     for (const target of room.players.values()) {
       if (!canAffectWithSpecial(room, p, target) || Math.hypot(target.x - p.x, target.y - p.y) > radius + playerRadius(target)) continue;
-      target.health -= 38;
+      target.health -= p.bot ? 22 : 38;
       target.hitUntil = now + 260;
       const len = Math.hypot(target.x - p.x, target.y - p.y) || 1;
       dashPlayer(room.arena, target, (target.x - p.x) / len * 82, (target.y - p.y) / len * 82);
@@ -852,11 +861,11 @@ function updateBots(room) {
     }
     if (!target) { bot.input = { x:0, y:0, attack:false, special:false }; continue; }
     const len = Math.hypot(target.x - bot.x, target.y - bot.y) || 1;
-    bot.input.x = (target.x - bot.x) / len;
-    bot.input.y = (target.y - bot.y) / len;
-    bot.aimX = bot.input.x;
-    bot.aimY = bot.input.y;
-    bot.input.attack = distance < CHARACTERS[bot.character].range;
+    bot.aimX = (target.x - bot.x) / len;
+    bot.aimY = (target.y - bot.y) / len;
+    bot.input.x = bot.aimX * BOT_MOVE_SCALE;
+    bot.input.y = bot.aimY * BOT_MOVE_SCALE;
+    bot.input.attack = distance < CHARACTERS[bot.character].range * BOT_RANGE_SCALE;
     bot.input.special = bot.character === "mash" && distance < 125 && Date.now() - (bot.lastSpecialAt || 0) > 5200;
   }
 }
@@ -1073,6 +1082,56 @@ io.on("connection", socket => {
     broadcast(room);
     ack({ ok:true });
   });
+  socket.on("admin:healPlayer", (data={}, ack=()=>{}) => {
+    const room = adminRoom(socket, data, ack);
+    if (!room) return;
+    const target = adminTarget(room, data, ack);
+    if (!target) return;
+    target.alive = true;
+    target.ghost = false;
+    target.health = target.maxHealth;
+    target.freezeMeter = 0;
+    target.freezeUntil = 0;
+    resetAmmo(target);
+    broadcast(room);
+    ack({ ok:true });
+  });
+  socket.on("admin:eliminatePlayer", (data={}, ack=()=>{}) => {
+    const room = adminRoom(socket, data, ack);
+    if (!room) return;
+    const target = adminTarget(room, data, ack);
+    if (!target) return;
+    const ref = socketIndex.get(socket.id);
+    kill(room, target, ref ? room.players.get(ref.playerId) || null : null);
+    broadcast(room);
+    ack({ ok:true });
+  });
+  socket.on("admin:freezePlayer", (data={}, ack=()=>{}) => {
+    const room = adminRoom(socket, data, ack);
+    if (!room) return;
+    const target = adminTarget(room, data, ack);
+    if (!target) return;
+    target.freezeMeter = 100;
+    target.freezeUntil = Date.now() + 3200;
+    target.input = { x:0, y:0, attack:false, special:false };
+    broadcast(room);
+    ack({ ok:true });
+  });
+  socket.on("admin:teleportPlayer", (data={}, ack=()=>{}) => {
+    const room = adminRoom(socket, data, ack);
+    if (!room) return;
+    const target = adminTarget(room, data, ack);
+    if (!target) return;
+    const ref = socketIndex.get(socket.id);
+    const actor = ref ? room.players.get(ref.playerId) : null;
+    if (!actor || actor.bot) return ack({ ok:false, error:"Admin player not found" });
+    target.x = clamp(actor.x + 42, 28, room.arena.width - 28);
+    target.y = clamp(actor.y, 28, room.arena.height - 28);
+    target.alive = true;
+    target.ghost = false;
+    broadcast(room);
+    ack({ ok:true });
+  });
   socket.on("admin:resetProgress", (data={}, ack=()=>{}) => {
     const room = adminRoom(socket, data, ack), targetId = String(data.targetId || "");
     if (!room) return;
@@ -1081,11 +1140,26 @@ io.on("connection", socket => {
     if (target.socketId) io.to(target.socketId).emit("admin:progressReset");
     ack({ ok:true });
   });
+  socket.on("admin:kickPlayer", (data={}, ack=()=>{}) => {
+    const room = adminRoom(socket, data, ack), targetId = String(data.targetId || "");
+    if (!room) return;
+    const target = adminTarget(room, data, ack);
+    if (!target) return;
+    if (isAdminEmail(target.accountEmail)) return ack({ ok:false, error:"Cannot kick admin" });
+    if (target.socketId) {
+      io.to(target.socketId).emit("admin:kicked");
+      const targetSocket = io.sockets.sockets.get(target.socketId);
+      if (targetSocket) targetSocket.leave(room.code);
+      socketIndex.delete(target.socketId);
+    }
+    removePlayer(room, targetId);
+    ack({ ok:true });
+  });
   socket.on("admin:banPlayer", (data={}, ack=()=>{}) => {
     const room = adminRoom(socket, data, ack), targetId = String(data.targetId || "");
     if (!room) return;
-    const target = room.players.get(targetId);
-    if (!target || target.bot) return ack({ ok:false, error:"Player not found" });
+    const target = adminTarget(room, data, ack);
+    if (!target) return;
     if (isAdminEmail(target.accountEmail)) return ack({ ok:false, error:"Cannot ban admin" });
     room.bannedPlayerIds.add(targetId);
     const targetEmail = normalizeEmail(target.accountEmail);
