@@ -52,21 +52,12 @@ select {
   margin: 0 auto 10px;
 }
 
-.brand-title {
-  margin: 0 0 2px;
-  color: #ffdd43;
-  font-size: 1.2rem;
-  font-weight: 1000;
-  text-align: center;
-  text-shadow: 0 3px 0 #101323, 0 0 12px #ff3c2f66;
-}
-
 .lobby h1 {
   font-size: 2.25rem;
   margin: .4rem 0;
 }
 
-.lobby > p:not(.brand):not(.brand-title) {
+.lobby > p:not(.brand) {
   color: #c2cce7;
 }
 
@@ -1052,7 +1043,6 @@ canvas {
 
   .brand,
   .brand-logo,
-  .brand-title,
   .lobby h1,
   .lobby > p,
   .lobby > input,
@@ -1090,11 +1080,7 @@ canvas {
     margin: 0 auto 4px;
   }
 
-  .brand-title {
-    font-size: 1.35rem;
-  }
-
-  .lobby > p:not(.brand):not(.brand-title) {
+  .lobby > p:not(.brand) {
     font-size: 1.05rem;
     margin: 0 0 8px;
   }
