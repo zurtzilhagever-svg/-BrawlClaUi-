@@ -962,12 +962,33 @@ canvas {
 
 @media (orientation: portrait) and (max-width: 600px) {
   .controls {
-    opacity: .3;
-    pointer-events: none;
+    opacity: .96;
+    gap: 8px;
+    align-items: end;
   }
 
-  .hud:after {
-    content: " - Rotate for better controls";
+  #stick-zone {
+    width: 118px;
+    height: 118px;
+  }
+
+  #stick-base {
+    width: 108px;
+    height: 108px;
+  }
+
+  #stick-knob {
+    width: 50px;
+    height: 50px;
+  }
+
+  .buttons {
+    gap: 8px;
+  }
+
+  .action {
+    width: 76px;
+    font-size: .72rem;
   }
 }
 
