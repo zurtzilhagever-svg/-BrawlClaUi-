@@ -55,6 +55,7 @@ const adminBan = document.querySelector("#admin-ban");
 const adminRestart = document.querySelector("#admin-restart");
 const adminStatus = document.querySelector("#admin-status");
 const input = { x: 0, y: 0, attack: false, special: false };
+const touchAim = { x: 0, y: 0, active: false };
 const keyboardState = new Set();
 const keyboardBindings = {
   up: "ArrowUp",
@@ -1539,8 +1540,46 @@ function action(selector, key) {
     el.classList.toggle("pressed", value);
     if (value) navigator.vibrate?.(12);
   };
-  el.addEventListener("pointerdown", e => { e.preventDefault(); set(true); });
-  ["pointerup", "pointercancel", "pointerleave"].forEach(type => el.addEventListener(type, () => set(false)));
+  const setAim = event => {
+    const r = el.getBoundingClientRect();
+    const cx = r.left + r.width / 2;
+    const cy = r.top + r.height / 2;
+    const dx = event.clientX - cx;
+    const dy = event.clientY - cy;
+    const max = r.width * .42;
+    const length = Math.hypot(dx, dy);
+    if (length < 8) {
+      touchAim.active = false;
+      touchAim.x = 0;
+      touchAim.y = 0;
+      el.classList.remove("aiming");
+      el.style.removeProperty("--aim-x");
+      el.style.removeProperty("--aim-y");
+      return;
+    }
+    const scale = Math.min(1, max / length);
+    touchAim.active = true;
+    touchAim.x = +(dx / length).toFixed(3);
+    touchAim.y = +(dy / length).toFixed(3);
+    el.classList.add("aiming");
+    el.style.setProperty("--aim-x", `${dx * scale}px`);
+    el.style.setProperty("--aim-y", `${dy * scale}px`);
+  };
+  const clearAim = () => {
+    touchAim.active = false;
+    touchAim.x = 0;
+    touchAim.y = 0;
+    el.classList.remove("aiming");
+    el.style.removeProperty("--aim-x");
+    el.style.removeProperty("--aim-y");
+  };
+  el.addEventListener("pointerdown", e => { e.preventDefault(); el.setPointerCapture?.(e.pointerId); set(true); setAim(e); });
+  el.addEventListener("pointermove", e => { e.preventDefault(); if (el.hasPointerCapture?.(e.pointerId)) setAim(e); });
+  ["pointerup", "pointercancel", "pointerleave"].forEach(type => el.addEventListener(type, e => {
+    if (e?.pointerId && el.hasPointerCapture?.(e.pointerId)) el.releasePointerCapture?.(e.pointerId);
+    set(false);
+    clearAim();
+  }));
 }
 action("#attack", "attack");
 action("#special", "special");
@@ -1617,7 +1656,9 @@ setInterval(() => {
   updateKeyboardInput();
   if (socket.connected && wasPlaying) {
     const autoAim = autoAimAtNearestBot();
-    socket.emit("player:input", [input.x, input.y, input.attack ? 1 : 0, input.special ? 1 : 0, autoAim?.[0] || 0, autoAim?.[1] || 0]);
+    const aimX = touchAim.active ? touchAim.x : autoAim?.[0] || 0;
+    const aimY = touchAim.active ? touchAim.y : autoAim?.[1] || 0;
+    socket.emit("player:input", [input.x, input.y, input.attack ? 1 : 0, input.special ? 1 : 0, aimX, aimY]);
   }
 }, 1000 / 60);
 function motionFor(p, now) {
