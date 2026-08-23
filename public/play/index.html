@@ -6,12 +6,20 @@
   <meta name="theme-color" content="#11172b">
   <link rel="manifest" href="/manifest.webmanifest">
   <link rel="apple-touch-icon" href="/icons/icon.svg">
-  <title>BrawlClaUi</title>
-  <link rel="stylesheet" href="style.css?v=55">
+  <title>BrawkClaUi</title>
+  <link rel="stylesheet" href="style.css?v=56">
 </head>
 <body>
+  <section id="profile-gate" class="profile-gate">
+    <select id="profile-language" class="language-only" aria-label="Language">
+      <option value="" data-i18n="profileLanguagePick">בחר שפה</option>
+      <option value="he">&#x05e2;&#x05d1;&#x05e8;&#x05d9;&#x05ea;</option>
+      <option value="en">English</option>
+    </select>
+  </section>
+
   <section id="lobby" class="lobby">
-    <p class="brand">BrawlClaUi</p>
+    <p class="brand">BrawkClaUi</p>
     <h1 data-i18n="title">Brawl anywhere.</h1>
     <p data-i18n="subtitle">Choose a brawler, game mode, and controls.</p>
     <label for="language" data-i18n="languageLabel">LANGUAGE</label>
@@ -39,6 +47,7 @@
       <button data-character="pixel"><span class="portrait pixel"></span><img class="char-img" src="/characters/pixel.png?v=43" alt="" onerror="this.hidden=true"><span data-i18n="pixelName">Pixel</span><small data-i18n="pixelDesc">Ricochet laser</small></button>
       <button data-character="tank" class="locked"><span class="portrait tank"></span><img class="char-img" src="/characters/tank.png?v=43" alt="" onerror="this.hidden=true"><span data-i18n="auroraName">Aurora</span><small data-i18n="tankDesc">Snowstorm + ice field</small></button>
       <button data-character="bazaar"><span class="portrait bazaar"></span><img class="char-img" src="/characters/bazaar.png?v=43" alt="" onerror="this.hidden=true"><span data-i18n="bazaarName">Bazaar</span><small data-i18n="bazaarDesc">Coin chain + buff box</small></button>
+      <button data-character="masterv" class="locked"><span class="portrait masterv"></span><img class="char-img" src="/characters/masterv.png?v=56" alt="" onerror="this.hidden=true"><span data-i18n="mastervName">Master V</span><small data-i18n="mastervDesc">Admin-only ultimate brawler</small></button>
     </div>
 
     <label data-i18n="modeLabel">GAME MODE</label>
@@ -118,6 +127,7 @@
     <div class="admin-actions">
       <button id="admin-grant" type="button" data-i18n="adminGrant">Give character</button>
       <button id="admin-revoke" type="button" data-i18n="adminRevoke">Remove character</button>
+      <button id="admin-allow-rename" type="button" data-i18n="adminAllowRename">Allow rename</button>
       <button id="admin-reset-progress" type="button" data-i18n="adminResetProgress">Reset progress</button>
       <button id="admin-ban" type="button" data-i18n="adminBan">Ban player</button>
       <button id="admin-restart" type="button" data-i18n="adminRestart">Restart game</button>
@@ -157,6 +167,6 @@
   <script src="/socket.io/socket.io.js"></script>
   <script src="/shared/gamepad.js"></script>
   <script src="/shared/qr-generator.js"></script>
-  <script src="play.js?v=55"></script>
+  <script src="play.js?v=56"></script>
 </body>
 </html>

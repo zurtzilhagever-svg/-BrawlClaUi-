@@ -24,9 +24,10 @@ const CHARACTERS = {
   pixel: { name: "\u05e4\u05d9\u05e7\u05e1\u05dc", hp: 96, speed: 3.75, damage: 14, range: 520, rate: 520, special: "Game Over" },
   tank: { name: "\u05d0\u05d5\u05e8\u05e8\u05d4", hp: 150, speed: 3.2, damage: 7, range: 275, rate: 720, special: "Ice Field" },
   bazaar: { name: "\u05d1\u05d0\u05d6\u05d0\u05e8", hp: 108, speed: 3.55, damage: 6, range: 310, rate: 690, special: "Reality Box" },
+  masterv: { name: "Master V", hp: 128, speed: 3.9, damage: 18, range: 470, rate: 620, special: "Ultimate Master" },
   grunt: { name: "Grunt", hp: 70, speed: 2.35, damage: 8, range: 44, rate: 760, special: "None" }
 };
-const PLAYABLE_CHARACTERS = new Set(["blaze", "boomer", "fangli", "pixel", "tank", "bazaar"]);
+const PLAYABLE_CHARACTERS = new Set(["blaze", "boomer", "fangli", "pixel", "tank", "bazaar", "masterv"]);
 const MODES = {
   survival: { name: "Survival", objective: "Survive bot waves as long as you can", target: 0 },
   brawl: { name: "Solo Brawl", objective: "Be the last brawler alive", target: 1 },
@@ -436,6 +437,10 @@ function attack(room, attacker, now) {
     for (const start of [28, 48, 68]) pushProjectile(room, attacker, dx, dy, stats, { type:"coin", color:"#ffd54a", start, speed:13, radius:6, baseRadius:6, maxRadius:15, expand:true });
     return;
   }
+  if (attacker.character === "masterv") {
+    pushProjectile(room, attacker, dx, dy, stats, { type:"laser", color:"#ffe66d", speed:19, radius:7, bounces:1, damage:stats.damage });
+    return;
+  }
   if (attacker.character === "boomer") {
     pushProjectile(room, attacker, dx, dy, stats, { type:"boomerang", color:"#ffd15c", start:34, speed:11, returnSpeed:13, radius:13, lockOwnerUntilReturn:true });
     return;
@@ -500,6 +505,12 @@ function special(room, p, now) {
       y:clamp(p.y + aim.y * 170, 35, room.arena.height - 35),
       expiresAt:now + 5000
     });
+  } else if (p.character === "masterv") {
+    const aim = aimDirection(p);
+    dashPlayer(room.arena, p, aim.x * 150, aim.y * 150);
+    p.shieldUntil = Math.max(p.shieldUntil || 0, now + 4200);
+    p.damageBoostUntil = Math.max(p.damageBoostUntil || 0, now + 4200);
+    p.hitUntil = now + 420;
   }
   else { const len=Math.hypot(p.input.x,p.input.y)||1; dashPlayer(room.arena,p,p.input.x/len*105,p.input.y/len*105); }
 }
@@ -894,6 +905,14 @@ io.on("connection", socket => {
     if (target.socketId) io.to(target.socketId).emit("admin:progressReset");
     ack({ ok:true });
   });
+  socket.on("admin:allowRename", (data={}, ack=()=>{}) => {
+    const room = adminRoom(socket, data, ack), targetId = String(data.targetId || "");
+    if (!room) return;
+    const target = room.players.get(targetId);
+    if (!target || target.bot) return ack({ ok:false, error:"Player not found" });
+    if (target.socketId) io.to(target.socketId).emit("admin:renameAllowed");
+    ack({ ok:true });
+  });
   socket.on("admin:banPlayer", (data={}, ack=()=>{}) => {
     const room = adminRoom(socket, data, ack), targetId = String(data.targetId || "");
     if (!room) return;
@@ -928,4 +947,4 @@ io.on("connection", socket => {
   socket.on("disconnect", () => { const host=socket.data.hostRoom; if(host&&rooms.get(host)?.hostSocketId===socket.id){io.to(host).emit("room:closed");rooms.delete(host);} const ref=socketIndex.get(socket.id);socketIndex.delete(socket.id);const room=ref&&rooms.get(ref.code),p=room&&room.players.get(ref.playerId);if(p&&p.socketId===socket.id){p.connected=false;p.input={x:0,y:0,attack:false,special:false};p.removeTimer=setTimeout(()=>removePlayer(room,ref.playerId),RECONNECT_MS);broadcast(room);} });
 });
 setInterval(()=>{const now=Date.now();for(const room of rooms.values())updateRoom(room,now);},1000/30);
-server.listen(PORT,()=>console.log(`BrawlClaUi running at http://localhost:${PORT}/play/`));
+server.listen(PORT,()=>console.log(`BrawkClaUi running at http://localhost:${PORT}/play/`));
