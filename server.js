@@ -412,15 +412,7 @@ function adminLobbyTarget(socket, data = {}, ack = () => {}) {
 const ADMIN_TEXT_COMMANDS = [
   "פקודות / עזרה - הצג את כל הפקודות",
   "תן ל<שחקן> את <דמות> - לדוגמה: תן לבננה את בומר",
-  "הסר / הורד מ<שחקן> את <דמות> - לדוגמה: הורד מבננה את פיקסל",
-  "רפא <שחקן>",
-  "חסל <שחקן>",
-  "הקפא <שחקן>",
-  "הבא אליי <שחקן>",
-  "אפס התקדמות <שחקן>",
-  "העף <שחקן>",
-  "באן <שחקן>",
-  "התחל מחדש"
+  "הסר / הורד מ<שחקן> את <דמות> - לדוגמה: הורד מבננה את פיקסל"
 ];
 const CHARACTER_ALIASES = {
   blaze:["blaze", "bob", "בוב", "בלייז"],
@@ -511,18 +503,6 @@ function runAdminTextCommand(socket, data = {}) {
   if (["פקודות", "עזרה", "help", "commands", "?", "/help"].includes(text)) {
     return { ok:true, keep:true, message:ADMIN_TEXT_COMMANDS.join("\n") };
   }
-  if (commandIncludesAny(text, ["התחל מחדש", "restart", "ריסטארט"])) {
-    const room = adminRoom(socket, data, () => {});
-    if (!room) return { ok:false, error:"צריך חדר פעיל בשביל restart" };
-    for (const player of [...room.players.values()]) {
-      if (player.bot) room.players.delete(player.id);
-      else resetHumanForGame(room, player);
-    }
-    room.game = gameFor(room.mode, room.arena);
-    broadcast(room);
-    return { ok:true, message:"המשחק התחיל מחדש" };
-  }
-
   const grantPrefix = commandStartsWithAny(text, ["תן", "פתח", "give", "grant", "unlock"]);
   const revokePrefix = commandStartsWithAny(text, ["הסר", "הורד", "תוריד", "תורידו", "נעל", "קח", "remove", "revoke", "lock", "take"]);
   if (grantPrefix || revokePrefix) {
@@ -555,8 +535,8 @@ function runAdminTextCommand(socket, data = {}) {
     return { ok:true, message:`הסרתי מ${commandTargetLabel(target)} את ${CHARACTERS[parsed.character].name}` };
   }
 
+  return { ok:false, error:"לא זיהיתי פקודה. כתוב: פקודות" };
   const actionPrefix = commandStartsWithAny(text, ["רפא", "heal", "החיה", "חסל", "kill", "eliminate", "הקפא", "freeze", "הבא אליי", "bring here", "teleport", "אפס התקדמות", "reset progress", "העף", "kick", "באן", "ban"]);
-  if (!actionPrefix) return { ok:false, error:"לא זיהיתי פקודה. כתוב: פקודות" };
   const target = findCommandTarget(data, text.slice(actionPrefix.length));
   if (!target) return { ok:false, error:"לא מצאתי שחקן" };
 
