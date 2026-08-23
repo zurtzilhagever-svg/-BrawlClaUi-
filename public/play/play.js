@@ -71,6 +71,10 @@ const localAccountKey = "brawlclaui-local-account";
 let playerId = sessionStorage.getItem(playerKey) || crypto.randomUUID();
 sessionStorage.setItem(playerKey, playerId);
 const languageKey = "brawlclaui-language";
+const languageCodes = [
+  "system", "aa", "ab", "ae", "af", "ak", "am", "an", "ar", "as", "av", "ay", "az", "ba", "be", "bg", "bh", "bi", "bm", "bn", "bo", "br", "bs", "ca", "ce", "ch", "co", "cr", "cs", "cu", "cv", "cy", "da", "de", "dv", "dz", "ee", "el", "en", "eo", "es", "et", "eu", "fa", "ff", "fi", "fj", "fo", "fr", "fy", "ga", "gd", "gl", "gn", "gu", "gv", "ha", "he", "hi", "ho", "hr", "ht", "hu", "hy", "hz", "ia", "id", "ie", "ig", "ii", "ik", "io", "is", "it", "iu", "ja", "jv", "ka", "kg", "ki", "kj", "kk", "kl", "km", "kn", "ko", "kr", "ks", "ku", "kv", "kw", "ky", "la", "lb", "lg", "li", "ln", "lo", "lt", "lu", "lv", "mg", "mh", "mi", "mk", "ml", "mn", "mr", "ms", "mt", "my", "na", "nb", "nd", "ne", "ng", "nl", "nn", "no", "nr", "nv", "ny", "oc", "oj", "om", "or", "os", "pa", "pi", "pl", "ps", "pt", "qu", "rm", "rn", "ro", "ru", "rw", "sa", "sc", "sd", "se", "sg", "si", "sk", "sl", "sm", "sn", "so", "sq", "sr", "ss", "st", "su", "sv", "sw", "ta", "te", "tg", "th", "ti", "tk", "tl", "tn", "to", "tr", "ts", "tt", "tw", "ty", "ug", "uk", "ur", "uz", "ve", "vi", "vo", "wa", "wo", "xh", "yi", "yo", "za", "zh", "zu"
+];
+const rtlLanguages = new Set(["ar", "dv", "fa", "he", "ku", "ps", "sd", "ug", "ur", "yi"]);
 const survivalBestKey = "brawlclaui-survival-best";
 const unlockedCharactersKey = "brawlclaui-unlocked-characters";
 const lockedCharacters = new Set(["boomer", "fangli", "pixel", "tank", "bazaar"]);
@@ -404,14 +408,29 @@ const translations = {
   }
 };
 function deviceLanguage() {
-  return (navigator.language || "").toLowerCase().startsWith("he") ? "he" : "en";
+  return ((navigator.language || "en").toLowerCase().split("-")[0] || "en");
 }
 function selectedLanguage() {
   const saved = localStorage.getItem(languageKey);
-  return saved && saved !== "system" ? saved : "he";
+  return saved && saved !== "system" ? saved : deviceLanguage();
 }
 function t(key) {
   return translations[selectedLanguage()]?.[key] || translations.en[key] || key;
+}
+function populateLanguageSelect() {
+  const current = languageSelect.value || localStorage.getItem(languageKey) || "he";
+  const displayNames = typeof Intl !== "undefined" && Intl.DisplayNames
+    ? new Intl.DisplayNames([navigator.language || "en"], { type: "language" })
+    : null;
+  languageSelect.replaceChildren(...languageCodes.map(code => {
+    const option = document.createElement("option");
+    option.value = code;
+    option.textContent = code === "system"
+      ? (((navigator.language || "").toLowerCase().startsWith("he")) ? "\u05dc\u05e4\u05d9 \u05e9\u05e4\u05ea \u05d4\u05de\u05db\u05e9\u05d9\u05e8" : "Use device language")
+      : `${displayNames?.of(code) || code.toUpperCase()} (${code.toUpperCase()})`;
+    return option;
+  }));
+  languageSelect.value = languageCodes.includes(current) ? current : "he";
 }
 function formatSeconds(value) {
   return `${Math.max(0, Math.floor(Number(value) || 0))}${t("secondsShort")}`;
@@ -506,7 +525,7 @@ function renderCharacterLocks() {
 function applyLanguage() {
   const language = selectedLanguage();
   document.documentElement.lang = language;
-  document.documentElement.dir = language === "he" ? "rtl" : "ltr";
+  document.documentElement.dir = rtlLanguages.has(language.split("-")[0]) ? "rtl" : "ltr";
   document.querySelectorAll("[data-i18n]").forEach(el => { el.textContent = t(el.dataset.i18n); });
   document.querySelectorAll("[data-i18n-placeholder]").forEach(el => { el.placeholder = t(el.dataset.i18nPlaceholder); });
   document.querySelectorAll("[data-i18n-aria-label]").forEach(el => { el.setAttribute("aria-label", t(el.dataset.i18nAriaLabel)); });
@@ -555,9 +574,10 @@ function removeAdminButtonSections() {
 }
 
 nameInput.value = localStorage.getItem("brawlclaui-name") || "";
+populateLanguageSelect();
 {
   const savedLanguage = localStorage.getItem(languageKey);
-  languageSelect.value = savedLanguage && savedLanguage !== "system" ? savedLanguage : "he";
+  languageSelect.value = savedLanguage && languageCodes.includes(savedLanguage) ? savedLanguage : "he";
 }
 controlModeSelect.value = controlMode;
 removeAdminButtonSections();
