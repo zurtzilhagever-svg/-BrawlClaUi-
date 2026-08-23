@@ -524,6 +524,17 @@ select {
   content: "$";
 }
 
+.portrait.masterv {
+  background: linear-gradient(145deg, #ffe66d, #7e5cff 55%, #182038);
+  border-radius: 50% 50% 10px 10px;
+}
+
+.portrait.masterv:before {
+  content: "V";
+  color: #101323;
+  text-shadow: 0 1px #fff8;
+}
+
 .char-img {
   grid-row: 1 / span 2;
   grid-column: 1;

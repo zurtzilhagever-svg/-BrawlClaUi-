@@ -25,10 +25,11 @@ const CHARACTERS = {
   pixel: { name: "\u05e4\u05d9\u05e7\u05e1\u05dc", hp: 96, speed: 3.75, damage: 14, range: 520, rate: 520, special: "Game Over" },
   tank: { name: "\u05d0\u05d5\u05e8\u05e8\u05d4", hp: 150, speed: 3.2, damage: 7, range: 275, rate: 720, special: "Ice Field" },
   bazaar: { name: "\u05d1\u05d0\u05d6\u05d0\u05e8", hp: 108, speed: 3.55, damage: 6, range: 310, rate: 690, special: "Reality Box" },
+  masterv: { name: "Master V", hp: 128, speed: 3.9, damage: 18, range: 470, rate: 620, special: "Ultimate Master" },
   mash: { name: "\u05de\u05d0\u05e9", hp: 78, speed: 2.8, damage: 7, range: 295, rate: 1050, special: "Star Drill" },
   grunt: { name: "Grunt", hp: 70, speed: 2.35, damage: 8, range: 44, rate: 760, special: "None" }
 };
-const PLAYABLE_CHARACTERS = new Set(["blaze", "boomer", "fangli", "pixel", "tank", "bazaar"]);
+const PLAYABLE_CHARACTERS = new Set(["blaze", "boomer", "fangli", "pixel", "tank", "bazaar", "masterv"]);
 const AMMO_RELOAD_MS = {
   blaze: 900,
   bazaar: 1050,
@@ -37,6 +38,7 @@ const AMMO_RELOAD_MS = {
   boomer: 1450,
   pixel: 1600,
   tank: 1850,
+  masterv: 1250,
   grunt: 1300
 };
 const MODES = {
@@ -361,7 +363,8 @@ function joinPlayer(socket, roomCode, playerId, name, character, accountEmail, i
   if (room.bannedPlayerIds.has(id) || (cleanEmail && room.bannedEmails?.has(cleanEmail))) return ack({ ok:false, error:"You are banned from this room" });
   if (character && !PLAYABLE_CHARACTERS.has(character)) return ack({ ok:false, error:"Unknown character" });
   detachSocket(socket, roomCode);
-  const selectedCharacter = PLAYABLE_CHARACTERS.has(character) ? character : "blaze";
+  const requestedCharacter = PLAYABLE_CHARACTERS.has(character) ? character : "blaze";
+  const selectedCharacter = requestedCharacter === "masterv" && !isAdminEmail(cleanEmail) ? "blaze" : requestedCharacter;
   let p = room.players.get(id);
   const maxHumans = isTeamCombatMode(room) ? 6 : MAX_PLAYERS;
   if (!p && humanPlayers(room).length >= maxHumans) return ack({ ok:false, error:"Room is full" });
@@ -420,7 +423,8 @@ const CHARACTER_ALIASES = {
   fangli:["fangli", "פאנגלי", "פנגלי"],
   pixel:["pixel", "פיקסל"],
   tank:["tank", "aurora", "אורורה", "טנק"],
-  bazaar:["bazaar", "באזאר", "בזאר"]
+  bazaar:["bazaar", "באזאר", "בזאר"],
+  masterv:["masterv", "master v", "מאסטר", "מאסטר וי"]
 };
 function repairCommandEncoding(value) {
   const text = String(value || "");
@@ -717,6 +721,10 @@ function attack(room, attacker, now) {
     }
     return;
   }
+  if (attacker.character === "masterv") {
+    pushProjectile(room, attacker, dx, dy, stats, { type:"laser", color:"#ffe66d", speed:19, radius:7, bounces:1, damage:stats.damage });
+    return;
+  }
   if (attacker.character === "boomer") {
     pushProjectile(room, attacker, dx, dy, stats, { type:"boomerang", color:"#ffd15c", start:34, speed:11, returnSpeed:13, radius:13, lockOwnerUntilReturn:true });
     return;
@@ -798,6 +806,12 @@ function special(room, p, now) {
       y:clamp(p.y + aim.y * 170, 35, room.arena.height - 35),
       expiresAt:now + 5000
     });
+  } else if (p.character === "masterv") {
+    const aim = aimDirection(p);
+    dashPlayer(room.arena, p, aim.x * 150, aim.y * 150);
+    p.shieldUntil = Math.max(p.shieldUntil || 0, now + 4200);
+    p.damageBoostUntil = Math.max(p.damageBoostUntil || 0, now + 4200);
+    p.hitUntil = now + 420;
   }
   else { const len=Math.hypot(p.input.x,p.input.y)||1; dashPlayer(room.arena,p,p.input.x/len*105,p.input.y/len*105); }
 }

@@ -71,14 +71,13 @@ const localAccountKey = "brawlclaui-local-account";
 let playerId = sessionStorage.getItem(playerKey) || crypto.randomUUID();
 sessionStorage.setItem(playerKey, playerId);
 const languageKey = "brawlclaui-language";
-const languageCodes = [
-  "system", "aa", "ab", "ae", "af", "ak", "am", "an", "ar", "as", "av", "ay", "az", "ba", "be", "bg", "bh", "bi", "bm", "bn", "bo", "br", "bs", "ca", "ce", "ch", "co", "cr", "cs", "cu", "cv", "cy", "da", "de", "dv", "dz", "ee", "el", "en", "eo", "es", "et", "eu", "fa", "ff", "fi", "fj", "fo", "fr", "fy", "ga", "gd", "gl", "gn", "gu", "gv", "ha", "he", "hi", "ho", "hr", "ht", "hu", "hy", "hz", "ia", "id", "ie", "ig", "ii", "ik", "io", "is", "it", "iu", "ja", "jv", "ka", "kg", "ki", "kj", "kk", "kl", "km", "kn", "ko", "kr", "ks", "ku", "kv", "kw", "ky", "la", "lb", "lg", "li", "ln", "lo", "lt", "lu", "lv", "mg", "mh", "mi", "mk", "ml", "mn", "mr", "ms", "mt", "my", "na", "nb", "nd", "ne", "ng", "nl", "nn", "no", "nr", "nv", "ny", "oc", "oj", "om", "or", "os", "pa", "pi", "pl", "ps", "pt", "qu", "rm", "rn", "ro", "ru", "rw", "sa", "sc", "sd", "se", "sg", "si", "sk", "sl", "sm", "sn", "so", "sq", "sr", "ss", "st", "su", "sv", "sw", "ta", "te", "tg", "th", "ti", "tk", "tl", "tn", "to", "tr", "ts", "tt", "tw", "ty", "ug", "uk", "ur", "uz", "ve", "vi", "vo", "wa", "wo", "xh", "yi", "yo", "za", "zh", "zu"
-];
-const rtlLanguages = new Set(["ar", "dv", "fa", "he", "ku", "ps", "sd", "ug", "ur", "yi"]);
+const languageCodes = ["system", "he", "en", "ar"];
+const rtlLanguages = new Set(["ar", "he"]);
 const survivalBestKey = "brawlclaui-survival-best";
 const unlockedCharactersKey = "brawlclaui-unlocked-characters";
-const lockedCharacters = new Set(["boomer", "fangli", "pixel", "tank", "bazaar"]);
-const adminGrantCharacters = ["boomer", "fangli", "pixel", "tank", "bazaar"];
+const lockedCharacters = new Set(["boomer", "fangli", "pixel", "tank", "bazaar", "masterv"]);
+const adminOnlyCharacters = new Set(["masterv"]);
+const adminGrantCharacters = ["boomer", "fangli", "pixel", "tank", "bazaar", "masterv"];
 const ownerAdminEmail = "zurtzilhagever@gmail.com";
 const adminEmails = new Set(["zurtzilhagever@gmail.com"]);
 const adminTogglePositionKey = "brawlclaui-admin-toggle-position";
@@ -183,6 +182,7 @@ const translations = {
     pixelName: "Pixel",
     auroraName: "\u05d0\u05d5\u05e8\u05e8\u05d4",
     bazaarName: "Bazaar",
+    mastervName: "Master V",
     blazeDesc: "3 tennis-ball volley",
     boomerDesc: "Boomerang - waits for return",
     fangliDesc: "Long bone shot, stronger when hurt",
@@ -192,6 +192,8 @@ const translations = {
     lockedCharacter: "Locked",
     tankDesc: "Snowstorm + ice field",
     bazaarDesc: "Coin chain + buff box",
+    mastervDesc: "Admin-only ultimate brawler",
+    adminOnlyCharacter: "Special character",
     modeLabel: "GAME MODE",
     modeSurvival: "Survival - bot waves",
     modeBrawl: "Solo Brawl - last alive",
@@ -334,6 +336,7 @@ const translations = {
     pixelName: "\u05e4\u05d9\u05e7\u05e1\u05dc",
     auroraName: "\u05d0\u05d5\u05e8\u05e8\u05d4",
     bazaarName: "\u05d1\u05d0\u05d6\u05d0\u05e8",
+    mastervName: "Master V",
     blazeDesc: "\u05de\u05d8\u05d7 3 \u05db\u05d3\u05d5\u05e8\u05d9 \u05d8\u05e0\u05d9\u05e1",
     boomerDesc: "\u05d1\u05d5\u05de\u05e8\u05e0\u05d2 - \u05de\u05d7\u05db\u05d4 \u05e9\u05d9\u05d7\u05d6\u05d5\u05e8",
     fangliDesc: "\u05d9\u05e8\u05d9\u05d9\u05ea \u05e2\u05e6\u05dd \u05e8\u05d7\u05d5\u05e7\u05d4, \u05de\u05ea\u05d7\u05d6\u05e7\u05ea \u05db\u05e9\u05e0\u05e4\u05d2\u05e2",
@@ -343,6 +346,8 @@ const translations = {
     lockedCharacter: "\u05e0\u05e2\u05d5\u05dc",
     tankDesc: "\u05e1\u05e2\u05e8\u05ea \u05e9\u05dc\u05d2 + \u05de\u05e9\u05d8\u05d7 \u05e7\u05e8\u05d7",
     bazaarDesc: "\u05e9\u05e8\u05e9\u05e8\u05ea \u05de\u05d8\u05d1\u05e2\u05d5\u05ea + \u05ea\u05d9\u05d1\u05ea Buff",
+    mastervDesc: "\u05dc\u05d5\u05d7\u05dd \u05d0\u05d5\u05dc\u05d8\u05d9\u05de\u05d8\u05d9\u05d1\u05d9 \u05dc\u05d0\u05d3\u05de\u05d9\u05df \u05d1\u05dc\u05d1\u05d3",
+    adminOnlyCharacter: "\u05d3\u05de\u05d5\u05ea \u05de\u05d9\u05d5\u05d7\u05d3\u05ea",
     modeLabel: "\u05de\u05e6\u05d1 \u05de\u05e9\u05d7\u05e7",
     modeSurvival: "\u05d4\u05d9\u05e9\u05e8\u05d3\u05d5\u05ea - \u05d2\u05dc\u05d9 \u05d1\u05d5\u05d8\u05d9\u05dd",
     modeBrawl: "\u05e7\u05e8\u05d1 \u05d9\u05d7\u05d9\u05d3 - \u05d4\u05d0\u05d7\u05e8\u05d5\u05df \u05e9\u05e0\u05e9\u05d0\u05e8",
@@ -407,12 +412,74 @@ const translations = {
     secondsShort: "\u05e9'"
   }
 };
+translations.ar = {
+  brandHebrew: "\u0628\u0631\u0627\u0648\u0644 \u0643\u0644\u0627\u0648\u064a",
+  title: "\u0628\u0631\u0627\u0648\u0644 \u0643\u0644\u0627\u0648\u064a",
+  subtitle: "\u0627\u062e\u062a\u0631 \u0634\u062e\u0635\u064a\u0629 \u0648\u0646\u0645\u0637 \u0644\u0639\u0628 \u0648\u0637\u0631\u064a\u0642\u0629 \u062a\u062d\u0643\u0645.",
+  languageLabel: "\u0627\u0644\u0644\u063a\u0629",
+  languageSystem: "\u0644\u063a\u0629 \u0627\u0644\u062c\u0647\u0627\u0632",
+  namePlaceholder: "\u0627\u0633\u0645\u0643",
+  accountLabel: "\u062d\u0633\u0627\u0628 Google",
+  cloudGuest: "\u063a\u064a\u0631 \u0645\u0633\u062c\u0644",
+  cloudSignedIn: "\u0645\u0633\u062c\u0644 \u0643\u0640",
+  signInGoogle: "\u062a\u0633\u062c\u064a\u0644 \u0628\u0640 Google",
+  signOut: "\u062e\u0631\u0648\u062c",
+  newLocalPlayer: "\u0644\u0627\u0639\u0628 \u0645\u062d\u0644\u064a \u062c\u062f\u064a\u062f",
+  brawlerLabel: "\u0634\u062e\u0635\u064a\u062a\u0643",
+  bobName: "Bob",
+  boomerName: "Boomer",
+  fangliName: "Fangli",
+  pixelName: "Pixel",
+  auroraName: "Aurora",
+  bazaarName: "Bazaar",
+  mastervName: "Master V",
+  modeLabel: "\u0646\u0645\u0637 \u0627\u0644\u0644\u0639\u0628",
+  modeSurvival: "\u0627\u0644\u0646\u062c\u0627\u0629 - \u0645\u0648\u062c\u0627\u062a \u0628\u0648\u062a\u0627\u062a",
+  modeBrawl: "\u0642\u062a\u0627\u0644 \u0641\u0631\u062f\u064a - \u0622\u062e\u0631 \u0645\u0646 \u064a\u0628\u0642\u0649",
+  modeGems: "\u062c\u0645\u0639 \u0627\u0644\u062c\u0648\u0627\u0647\u0631 - 10",
+  modeShowdown: "\u0627\u0644\u0645\u0648\u0627\u062c\u0647\u0629 - \u0622\u062e\u0631 \u0645\u0646 \u064a\u0628\u0642\u0649",
+  modeCoins: "\u0633\u0628\u0627\u0642 \u0627\u0644\u0639\u0645\u0644\u0627\u062a - 15",
+  modeZone: "\u0627\u0644\u0633\u064a\u0637\u0631\u0629 \u0639\u0644\u0649 \u0627\u0644\u0645\u0646\u0637\u0642\u0629",
+  modeSoloZone: "\u0645\u0646\u0637\u0642\u0629 \u0641\u0631\u062f\u064a\u0629 - 15 \u062b\u0627\u0646\u064a\u0629",
+  controlsLabel: "\u0627\u0644\u062a\u062d\u0643\u0645",
+  controlTouch: "\u0647\u0627\u062a\u0641 / \u0644\u0645\u0633",
+  controlKeyboard: "\u0644\u0648\u062d\u0629 \u0645\u0641\u0627\u062a\u064a\u062d",
+  keysMove: "\u0627\u0644\u0623\u0633\u0647\u0645",
+  keysAttack: "J \u0647\u062c\u0648\u0645",
+  keysSpecial: "K \u0633\u0648\u0628\u0631",
+  playNow: "\u0627\u0644\u0639\u0628 \u0627\u0644\u0622\u0646",
+  roomCodeLabel: "\u0631\u0645\u0632 \u0627\u0644\u063a\u0631\u0641\u0629",
+  serverCodeLabel: "\u0631\u0645\u0632 \u0627\u0644\u062e\u0627\u062f\u0645",
+  findingPlayers: "\u062c\u0627\u0631\u064a \u0627\u0644\u0628\u062d\u062b \u0639\u0646 \u0644\u0627\u0639\u0628\u064a\u0646...",
+  joinDivider: "\u0623\u0648 \u0627\u0646\u0636\u0645 \u0644\u0635\u062f\u064a\u0642",
+  codePlaceholder: "\u0631\u0645\u0632 \u0627\u0644\u063a\u0631\u0641\u0629 \u0623\u0648 \u0627\u0644\u062e\u0627\u062f\u0645",
+  join: "\u0627\u0646\u0636\u0645",
+  install: "\u062d\u0645\u0644 \u0627\u0644\u0644\u0639\u0628\u0629",
+  installHelp: "\u0644\u062a\u062b\u0628\u064a\u062a \u0627\u0644\u0644\u0639\u0628\u0629\u060c \u0627\u0641\u062a\u062d \u0642\u0627\u0626\u0645\u0629 \u0627\u0644\u0645\u062a\u0635\u0641\u062d \u0648\u0627\u062e\u062a\u0631 \u062a\u062b\u0628\u064a\u062a \u0627\u0644\u062a\u0637\u0628\u064a\u0642 \u0623\u0648 \u0625\u0636\u0627\u0641\u0629 \u0625\u0644\u0649 \u0627\u0644\u0634\u0627\u0634\u0629 \u0627\u0644\u0631\u0626\u064a\u0633\u064a\u0629.",
+  attack: "\u0647\u062c\u0648\u0645",
+  special: "\u0633\u0648\u0628\u0631",
+  useItem: "\u0627\u0633\u062a\u062e\u062f\u0645",
+  useBuff: "\u0641\u0639\u0644 Buff",
+  mastervDesc: "\u0645\u0642\u0627\u062a\u0644 \u062e\u0627\u0635 \u0644\u0644\u0623\u062f\u0645\u0646 \u0641\u0642\u0637",
+  adminOnlyCharacter: "\u0634\u062e\u0635\u064a\u0629 \u062e\u0627\u0635\u0629",
+  gotBuff: "\u062d\u0635\u0644\u062a \u0639\u0644\u0649 Buff",
+  room: "\u063a\u0631\u0641\u0629",
+  playerSingular: "\u0644\u0627\u0639\u0628",
+  playerPlural: "\u0644\u0627\u0639\u0628\u0648\u0646",
+  botSingular: "\u0628\u0648\u062a",
+  botPlural: "\u0628\u0648\u062a\u0627\u062a",
+  secondsShort: "\u062b"
+};
+function supportedLanguage(language) {
+  const code = String(language || "en").toLowerCase().split("-")[0];
+  return languageCodes.includes(code) && code !== "system" ? code : "en";
+}
 function deviceLanguage() {
-  return ((navigator.language || "en").toLowerCase().split("-")[0] || "en");
+  return supportedLanguage(navigator.language || "en");
 }
 function selectedLanguage() {
   const saved = localStorage.getItem(languageKey);
-  return saved && saved !== "system" ? saved : deviceLanguage();
+  return saved && saved !== "system" ? supportedLanguage(saved) : deviceLanguage();
 }
 function t(key) {
   return translations[selectedLanguage()]?.[key] || translations.en[key] || key;
@@ -514,8 +581,9 @@ function renderCharacterLocks() {
     button.classList.toggle("locked", locked);
     button.disabled = locked;
     const label = button.querySelector("small");
-    if (label && locked) label.textContent = character === "boomer" ? t("unlockBoomer") : t("lockedCharacter");
+    if (label && locked) label.textContent = character === "boomer" ? t("unlockBoomer") : adminOnlyCharacters.has(character) ? t("adminOnlyCharacter") : t("lockedCharacter");
     else if (label && character === "boomer") label.textContent = t("boomerDesc");
+    else if (label && character === "masterv") label.textContent = t("mastervDesc");
     if (locked && button.classList.contains("selected")) {
       selectedCharacter = "blaze";
       document.querySelectorAll("[data-character]").forEach(b => b.classList.toggle("selected", b.dataset.character === selectedCharacter));
@@ -556,7 +624,7 @@ let localAccountMode = sessionStorage.getItem(localAccountKey) === "1";
 let cloudSaveTimer = 0;
 let lastCloudSnapshot = "";
 let pendingJoinCode = (new URLSearchParams(location.search).get("join") || "").trim().toUpperCase();
-const characterImages = Object.fromEntries(["blaze", "boomer", "fangli", "pixel", "tank", "bazaar", "mash"].map(id => {
+const characterImages = Object.fromEntries(["blaze", "boomer", "fangli", "pixel", "tank", "bazaar", "masterv", "mash"].map(id => {
   const image = new Image();
   image.src = `/characters/${id}.png?v=62`;
   return [id, image];
@@ -577,6 +645,7 @@ nameInput.value = localStorage.getItem("brawlclaui-name") || "";
 populateLanguageSelect();
 {
   const savedLanguage = localStorage.getItem(languageKey);
+  if (savedLanguage && !languageCodes.includes(savedLanguage)) localStorage.setItem(languageKey, "he");
   languageSelect.value = savedLanguage && languageCodes.includes(savedLanguage) ? savedLanguage : "he";
 }
 controlModeSelect.value = controlMode;
@@ -748,6 +817,7 @@ function characterLabel(character) {
   if (character === "pixel") return t("pixelName");
   if (character === "tank") return t("auroraName");
   if (character === "bazaar") return t("bazaarName");
+  if (character === "masterv") return t("mastervName");
   return character.charAt(0).toUpperCase() + character.slice(1);
 }
 
@@ -1714,6 +1784,13 @@ function drawCharacter(p, motion) {
   ctx.beginPath();
   if (p.character === "tank") {
     ctx.rect(-23, -22, 46, 42);
+  } else if (p.character === "masterv") {
+    ctx.moveTo(0, -30);
+    ctx.lineTo(27, -7);
+    ctx.lineTo(17, 25);
+    ctx.lineTo(-17, 25);
+    ctx.lineTo(-27, -7);
+    ctx.closePath();
   } else if (p.character === "grunt") {
     ctx.arc(0, 0, 17, 0, Math.PI * 2);
   } else {
@@ -1726,6 +1803,17 @@ function drawCharacter(p, motion) {
   if (p.character === "tank") {
     ctx.fillStyle = "#dce7f2";
     ctx.fillRect(-12, -7, 24, 8);
+  } else if (p.character === "masterv") {
+    ctx.fillStyle = "#ffe66d";
+    ctx.beginPath();
+    ctx.arc(0, -7, 7, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = "#ffffffcc";
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(-13, 9);
+    ctx.lineTo(13, 9);
+    ctx.stroke();
   }
   return false;
 }
@@ -1754,6 +1842,45 @@ function cameraFor(arena) {
     width: viewWidth,
     height: viewHeight
   };
+}
+
+function drawBush(bush, now) {
+  const sway = Math.sin(now / 900 + bush.x * .017 + bush.y * .011) * 2;
+  const leafCount = Math.max(8, Math.floor((bush.w + bush.h) / 22));
+  ctx.save();
+  ctx.translate(0, sway);
+  ctx.fillStyle = "#00000024";
+  drawRoundedRect(bush.x + 6, bush.y + 9, bush.w, bush.h, 18);
+  ctx.fill();
+  const body = ctx.createLinearGradient(bush.x, bush.y, bush.x, bush.y + bush.h);
+  body.addColorStop(0, "#3fad56");
+  body.addColorStop(.58, "#287849");
+  body.addColorStop(1, "#1b5538");
+  ctx.fillStyle = body;
+  drawRoundedRect(bush.x, bush.y, bush.w, bush.h, 20);
+  ctx.fill();
+  for (let i = 0; i < leafCount; i++) {
+    const t = (i + .5) / leafCount;
+    const x = bush.x + 12 + (bush.w - 24) * ((Math.sin(i * 2.37 + bush.x * .03) + 1) / 2);
+    const y = bush.y + 10 + (bush.h - 20) * t;
+    const rx = 14 + Math.sin(i * 1.7 + bush.y) * 4;
+    const ry = 8 + Math.cos(i * 1.3 + bush.x) * 3;
+    ctx.fillStyle = i % 3 === 0 ? "#5ed36eaa" : i % 3 === 1 ? "#2f9657bb" : "#76df7f88";
+    ctx.beginPath();
+    ctx.ellipse(x, y, rx, ry, Math.sin(i) * .55, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.strokeStyle = "#153a2a88";
+  ctx.lineWidth = 3;
+  drawRoundedRect(bush.x + 2, bush.y + 2, bush.w - 4, bush.h - 4, 18);
+  ctx.stroke();
+  ctx.strokeStyle = "#9bf58a55";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(bush.x + 18, bush.y + 14);
+  ctx.quadraticCurveTo(bush.x + bush.w * .45, bush.y + 4, bush.x + bush.w - 18, bush.y + 18);
+  ctx.stroke();
+  ctx.restore();
 }
 
 function drawArena(now) {
@@ -1801,18 +1928,7 @@ function drawArena(now) {
     ctx.stroke();
   }
 
-  for (const bush of arena.bushes || []) {
-    const pulse = Math.sin(now / 650 + bush.x * .01) * 2;
-    ctx.fillStyle = "#286f46cc";
-    drawRoundedRect(bush.x, bush.y + pulse, bush.w, bush.h, 18);
-    ctx.fill();
-    ctx.fillStyle = "#55b86c88";
-    for (let x = bush.x + 14; x < bush.x + bush.w - 8; x += 24) {
-      ctx.beginPath();
-      ctx.arc(x, bush.y + bush.h / 2 + Math.sin(now / 500 + x) * 4, 16, 0, Math.PI * 2);
-      ctx.fill();
-    }
-  }
+  for (const bush of arena.bushes || []) drawBush(bush, now);
 
   for (const block of arena.obstacles || []) {
     ctx.fillStyle = "#00000024";
