@@ -25,14 +25,14 @@ const CHARACTERS = {
   pixel: { name: "\u05e4\u05d9\u05e7\u05e1\u05dc", hp: 96, speed: 3.75, damage: 14, range: 520, rate: 520, special: "Game Over" },
   tank: { name: "\u05d0\u05d5\u05e8\u05e8\u05d4", hp: 150, speed: 3.2, damage: 7, range: 275, rate: 720, special: "Ice Field" },
   bazaar: { name: "\u05d1\u05d0\u05d6\u05d0\u05e8", hp: 108, speed: 3.55, damage: 6, range: 310, rate: 690, special: "Reality Box" },
-  mash: { name: "\u05de\u05d0\u05e9", hp: 95, speed: 3.1, damage: 9, range: 335, rate: 860, special: "Star Drill" },
+  mash: { name: "\u05de\u05d0\u05e9", hp: 78, speed: 2.8, damage: 7, range: 295, rate: 1050, special: "Star Drill" },
   grunt: { name: "Grunt", hp: 70, speed: 2.35, damage: 8, range: 44, rate: 760, special: "None" }
 };
 const PLAYABLE_CHARACTERS = new Set(["blaze", "boomer", "fangli", "pixel", "tank", "bazaar"]);
 const AMMO_RELOAD_MS = {
   blaze: 900,
   bazaar: 1050,
-  mash: 1125,
+  mash: 1450,
   fangli: 1250,
   boomer: 1450,
   pixel: 1600,
@@ -409,6 +409,223 @@ function adminLobbyTarget(socket, data = {}, ack = () => {}) {
   }
   return target;
 }
+const ADMIN_TEXT_COMMANDS = [
+  "פקודות / עזרה - הצג את כל הפקודות",
+  "תן ל<שחקן> את <דמות> - לדוגמה: תן לבננה את בומר",
+  "הסר מ<שחקן> את <דמות> - לדוגמה: הסר מבננה את פיקסל",
+  "רפא <שחקן>",
+  "חסל <שחקן>",
+  "הקפא <שחקן>",
+  "הבא אליי <שחקן>",
+  "אפס התקדמות <שחקן>",
+  "העף <שחקן>",
+  "באן <שחקן>",
+  "התחל מחדש"
+];
+const CHARACTER_ALIASES = {
+  blaze:["blaze", "bob", "בוב", "בלייז"],
+  boomer:["boomer", "בומר"],
+  fangli:["fangli", "פאנגלי", "פנגלי"],
+  pixel:["pixel", "פיקסל"],
+  tank:["tank", "aurora", "אורורה", "טנק"],
+  bazaar:["bazaar", "באזאר", "בזאר"]
+};
+function commandText(value) { return String(value || "").trim().toLowerCase().replace(/\s+/g, " "); }
+function commandIncludesAny(text, words) { return words.some(word => text.includes(word)); }
+function commandStartsWithAny(text, words) { return words.find(word => text === word || text.startsWith(`${word} `)) || ""; }
+function cleanCommandTarget(value) {
+  return commandText(value)
+    .replace(/^(?:את|ל|מ)\s+/, "")
+    .replace(/^[למ](?=.)/, "")
+    .trim();
+}
+function characterFromCommand(value) {
+  const text = commandText(value);
+  for (const [id, aliases] of Object.entries(CHARACTER_ALIASES)) {
+    if (aliases.some(alias => text === alias || text.includes(alias))) return id;
+  }
+  return "";
+}
+function splitTargetAndCharacter(value) {
+  const raw = commandText(value);
+  for (const separator of [" את ", " דמות ", " character "]) {
+    const index = raw.lastIndexOf(separator);
+    if (index > -1) return { target:cleanCommandTarget(raw.slice(0, index)), character:characterFromCommand(raw.slice(index + separator.length)) };
+  }
+  const parts = raw.split(" ");
+  for (let size = Math.min(3, parts.length - 1); size >= 1; size--) {
+    const character = characterFromCommand(parts.slice(-size).join(" "));
+    if (character) return { target:cleanCommandTarget(parts.slice(0, -size).join(" ")), character };
+  }
+  return { target:cleanCommandTarget(raw), character:"" };
+}
+function commandTargets(data = {}) {
+  const preferredRoomCode = String(data.roomCode || "").trim().toUpperCase();
+  const list = [];
+  const addRoom = room => {
+    for (const player of room.players.values()) {
+      if (!player.bot) list.push({ kind:"room", room, player, id:player.id, name:player.name, email:normalizeEmail(player.accountEmail) });
+    }
+  };
+  if (preferredRoomCode && preferredRoomCode !== "LOBBY" && rooms.has(preferredRoomCode)) addRoom(rooms.get(preferredRoomCode));
+  for (const room of rooms.values()) if (room.code !== preferredRoomCode) addRoom(room);
+  for (const player of lobbyPlayers.values()) {
+    list.push({ kind:"lobby", lobbyTarget:player, id:player.targetId, name:player.name, email:normalizeEmail(player.accountEmail) });
+  }
+  return list;
+}
+function findCommandTarget(data = {}, targetQuery = "") {
+  const query = cleanCommandTarget(targetQuery);
+  const targets = commandTargets(data);
+  const byId = String(data.targetId || "");
+  if (!query && byId) return targets.find(target => target.id === byId) || null;
+  if (!query) return null;
+  return targets.find(target => commandText(target.name) === query || target.email === query)
+    || targets.find(target => commandText(target.name).includes(query) || query.includes(commandText(target.name)) || target.email.includes(query));
+}
+function commandTargetLabel(target) {
+  return target?.name ? `${target.name}${target.kind === "lobby" ? " (לובי)" : ""}` : "";
+}
+function emitProgressReset(target) {
+  if (target.kind === "lobby") io.to(target.lobbyTarget.socketId).emit("admin:progressReset");
+  else if (target.player.socketId) io.to(target.player.socketId).emit("admin:progressReset");
+}
+function emitCharacterGrant(target, character) {
+  if (target.kind === "lobby") io.to(target.lobbyTarget.socketId).emit("admin:characterGranted", { character });
+  else if (target.player.socketId) io.to(target.player.socketId).emit("admin:characterGranted", { character });
+}
+function emitCharacterRevoke(target, character) {
+  if (target.kind === "lobby") io.to(target.lobbyTarget.socketId).emit("admin:characterRevoked", { character });
+  else if (target.player.socketId) io.to(target.player.socketId).emit("admin:characterRevoked", { character });
+}
+function runAdminTextCommand(socket, data = {}) {
+  if (!isAdminActor(socket, data)) return { ok:false, error:"Admin only" };
+  const raw = String(data.command || "").trim();
+  const text = commandText(raw);
+  if (!text) return { ok:false, error:"כתוב פקודה" };
+  if (["פקודות", "עזרה", "help", "commands", "?", "/help"].includes(text)) {
+    return { ok:true, keep:true, message:ADMIN_TEXT_COMMANDS.join("\n") };
+  }
+  if (commandIncludesAny(text, ["התחל מחדש", "restart", "ריסטארט"])) {
+    const room = adminRoom(socket, data, () => {});
+    if (!room) return { ok:false, error:"צריך חדר פעיל בשביל restart" };
+    for (const player of [...room.players.values()]) {
+      if (player.bot) room.players.delete(player.id);
+      else resetHumanForGame(room, player);
+    }
+    room.game = gameFor(room.mode, room.arena);
+    broadcast(room);
+    return { ok:true, message:"המשחק התחיל מחדש" };
+  }
+
+  const grantPrefix = commandStartsWithAny(text, ["תן", "פתח", "give", "grant", "unlock"]);
+  const revokePrefix = commandStartsWithAny(text, ["הסר", "נעל", "remove", "revoke", "lock"]);
+  if (grantPrefix || revokePrefix) {
+    const parsed = splitTargetAndCharacter(text.slice((grantPrefix || revokePrefix).length));
+    if (!parsed.character || !PLAYABLE_CHARACTERS.has(parsed.character)) return { ok:false, error:"לא זיהיתי דמות" };
+    if (revokePrefix && parsed.character === "blaze") return { ok:false, error:"אי אפשר להסיר את בוב" };
+    const target = findCommandTarget(data, parsed.target);
+    if (!target) return { ok:false, error:"לא מצאתי שחקן" };
+    if (grantPrefix) {
+      if (target.kind === "room") {
+        const ratio = target.player.maxHealth ? target.player.health / target.player.maxHealth : 1, stats = CHARACTERS[parsed.character];
+        target.player.character = parsed.character;
+        target.player.maxHealth = stats.hp;
+        target.player.health = Math.min(stats.hp, Math.max(1, Math.round(stats.hp * ratio)));
+        resetAmmo(target.player);
+        broadcast(target.room);
+      }
+      emitCharacterGrant(target, parsed.character);
+      return { ok:true, message:`נתתי ל${commandTargetLabel(target)} את ${CHARACTERS[parsed.character].name}` };
+    }
+    if (target.kind === "room" && target.player.character === parsed.character) {
+      const stats = CHARACTERS.blaze;
+      target.player.character = "blaze";
+      target.player.maxHealth = stats.hp;
+      target.player.health = Math.min(stats.hp, Math.max(1, target.player.health));
+      resetAmmo(target.player);
+      broadcast(target.room);
+    }
+    emitCharacterRevoke(target, parsed.character);
+    return { ok:true, message:`הסרתי מ${commandTargetLabel(target)} את ${CHARACTERS[parsed.character].name}` };
+  }
+
+  const actionPrefix = commandStartsWithAny(text, ["רפא", "heal", "החיה", "חסל", "kill", "eliminate", "הקפא", "freeze", "הבא אליי", "bring here", "teleport", "אפס התקדמות", "reset progress", "העף", "kick", "באן", "ban"]);
+  if (!actionPrefix) return { ok:false, error:"לא זיהיתי פקודה. כתוב: פקודות" };
+  const target = findCommandTarget(data, text.slice(actionPrefix.length));
+  if (!target) return { ok:false, error:"לא מצאתי שחקן" };
+
+  if (["רפא", "heal", "החיה"].includes(actionPrefix)) {
+    if (target.kind !== "room") return { ok:false, error:"ריפוי עובד רק בחדר משחק" };
+    Object.assign(target.player, { alive:true, ghost:false, health:target.player.maxHealth, freezeMeter:0, freezeUntil:0 });
+    resetAmmo(target.player);
+    broadcast(target.room);
+    return { ok:true, message:`ריפאתי את ${commandTargetLabel(target)}` };
+  }
+  if (["חסל", "kill", "eliminate"].includes(actionPrefix)) {
+    if (target.kind !== "room") return { ok:false, error:"חיסול עובד רק בחדר משחק" };
+    const ref = socketIndex.get(socket.id);
+    kill(target.room, target.player, ref ? target.room.players.get(ref.playerId) || null : null);
+    broadcast(target.room);
+    return { ok:true, message:`חיסלתי את ${commandTargetLabel(target)}` };
+  }
+  if (["הקפא", "freeze"].includes(actionPrefix)) {
+    if (target.kind !== "room") return { ok:false, error:"הקפאה עובדת רק בחדר משחק" };
+    target.player.freezeMeter = 100;
+    target.player.freezeUntil = Date.now() + 3200;
+    target.player.input = { x:0, y:0, attack:false, special:false };
+    broadcast(target.room);
+    return { ok:true, message:`הקפאתי את ${commandTargetLabel(target)}` };
+  }
+  if (["הבא אליי", "bring here", "teleport"].includes(actionPrefix)) {
+    if (target.kind !== "room") return { ok:false, error:"שיגור עובד רק בחדר משחק" };
+    const ref = socketIndex.get(socket.id), actor = ref ? target.room.players.get(ref.playerId) : null;
+    if (!actor || actor.bot) return { ok:false, error:"האדמין צריך להיות באותו חדר" };
+    target.player.x = clamp(actor.x + 42, 28, target.room.arena.width - 28);
+    target.player.y = clamp(actor.y, 28, target.room.arena.height - 28);
+    target.player.alive = true;
+    target.player.ghost = false;
+    broadcast(target.room);
+    return { ok:true, message:`הבאתי את ${commandTargetLabel(target)} אליך` };
+  }
+  if (["אפס התקדמות", "reset progress"].includes(actionPrefix)) {
+    emitProgressReset(target);
+    return { ok:true, message:`איפסתי התקדמות ל${commandTargetLabel(target)}` };
+  }
+  if (["העף", "kick"].includes(actionPrefix)) {
+    const email = target.kind === "lobby" ? target.lobbyTarget.accountEmail : target.player.accountEmail;
+    if (isAdminEmail(email)) return { ok:false, error:"אי אפשר להעיף אדמין" };
+    if (target.kind === "lobby") {
+      io.to(target.lobbyTarget.socketId).emit("admin:kicked");
+      lobbyPlayers.delete(target.lobbyTarget.socketId);
+    } else {
+      if (target.player.socketId) {
+        io.to(target.player.socketId).emit("admin:kicked");
+        const targetSocket = io.sockets.sockets.get(target.player.socketId);
+        if (targetSocket) targetSocket.leave(target.room.code);
+        socketIndex.delete(target.player.socketId);
+      }
+      removePlayer(target.room, target.player.id);
+    }
+    return { ok:true, message:`העפתי את ${commandTargetLabel(target)}` };
+  }
+  if (["באן", "ban"].includes(actionPrefix)) {
+    if (target.kind !== "room") return { ok:false, error:"באן עובד רק בחדר משחק" };
+    if (isAdminEmail(target.player.accountEmail)) return { ok:false, error:"אי אפשר לתת באן לאדמין" };
+    target.room.bannedPlayerIds.add(target.player.id);
+    const targetEmail = normalizeEmail(target.player.accountEmail);
+    if (targetEmail) target.room.bannedEmails.add(targetEmail);
+    if (target.player.socketId) {
+      io.to(target.player.socketId).emit("admin:banned");
+      const targetSocket = io.sockets.sockets.get(target.player.socketId);
+      if (targetSocket) targetSocket.leave(target.room.code);
+      socketIndex.delete(target.player.socketId);
+    }
+    removePlayer(target.room, target.player.id);
+    return { ok:true, message:`נתתי באן ל${commandTargetLabel(target)}` };
+  }
+  return { ok:false, error:"לא זיהיתי פקודה. כתוב: פקודות" };
+}
 function resetHumanForGame(room, player) {
   const stats = CHARACTERS[player.character] || CHARACTERS.blaze, spot = randomSpot(room.arena);
   Object.assign(player, {
@@ -511,7 +728,7 @@ function attack(room, attacker, now) {
   if (attacker.character === "mash") {
     for (const angle of [-0.08, 0, 0.08]) {
       const cos = Math.cos(angle), sin = Math.sin(angle);
-      pushProjectile(room, attacker, dx * cos - dy * sin, dx * sin + dy * cos, stats, { type:"plasma", color:"#6eeaff", speed:14, radius:7 });
+      pushProjectile(room, attacker, dx * cos - dy * sin, dx * sin + dy * cos, stats, { type:"plasma", color:"#6eeaff", speed:12, radius:6 });
     }
     return;
   }
@@ -523,18 +740,18 @@ function attack(room, attacker, now) {
 }
 function special(room, p, now) {
   if (p.character === "mash" && p.bot) {
-    if (now - (p.lastSpecialAt || 0) < 5200) return;
+    if (now - (p.lastSpecialAt || 0) < 9000) return;
     p.lastSpecialAt = now;
     const aim = aimDirection(p);
-    dashPlayer(room.arena, p, aim.x * 105, aim.y * 105);
-    const radius = 105;
+    dashPlayer(room.arena, p, aim.x * 75, aim.y * 75);
+    const radius = 82;
     room.arena.obstacles = room.arena.obstacles.filter(rect => !intersectsRect(p.x, p.y, radius, rect));
     for (const target of room.players.values()) {
       if (!canAffectWithSpecial(room, p, target) || Math.hypot(target.x - p.x, target.y - p.y) > radius + playerRadius(target)) continue;
-      target.health -= p.bot ? 22 : 38;
+      target.health -= p.bot ? 16 : 32;
       target.hitUntil = now + 260;
       const len = Math.hypot(target.x - p.x, target.y - p.y) || 1;
-      dashPlayer(room.arena, target, (target.x - p.x) / len * 82, (target.y - p.y) / len * 82);
+      dashPlayer(room.arena, target, (target.x - p.x) / len * 54, (target.y - p.y) / len * 54);
       if (target.health <= 0) kill(room, target, p);
     }
     return;
@@ -881,7 +1098,7 @@ function updateBots(room) {
     bot.input.x = bot.aimX * BOT_MOVE_SCALE;
     bot.input.y = bot.aimY * BOT_MOVE_SCALE;
     bot.input.attack = distance < CHARACTERS[bot.character].range * BOT_RANGE_SCALE;
-    bot.input.special = bot.character === "mash" && distance < 125 && Date.now() - (bot.lastSpecialAt || 0) > 5200;
+    bot.input.special = bot.character === "mash" && distance < 95 && Date.now() - (bot.lastSpecialAt || 0) > 9000;
   }
 }
 function updateSurvival(room, now) {
@@ -1054,6 +1271,10 @@ io.on("connection", socket => {
   socket.on("admin:list", (data={}, ack=()=>{}) => {
     if (!isAdminActor(socket, data)) return ack({ ok:false, error:"Admin only" });
     ack({ ok:true, admins:adminList() });
+  });
+  socket.on("admin:runCommand", (data={}, ack=()=>{}) => {
+    const reply = runAdminTextCommand(socket, data);
+    ack(reply.ok ? reply : { ok:false, error:reply.error || "Admin action failed" });
   });
   socket.on("admin:listLobby", (data={}, ack=()=>{}) => {
     if (!isAdminActor(socket, data)) return ack({ ok:false, error:"Admin only" });

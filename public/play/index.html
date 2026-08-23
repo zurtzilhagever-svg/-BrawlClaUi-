@@ -18,11 +18,12 @@
   <link rel="icon" type="image/png" sizes="48x48" href="/icons/favicon-48.png?v=65">
   <link rel="apple-touch-icon" href="/icons/icon-192.png?v=65">
   <title>בראול כלווי - BrawlClaUi</title>
-  <link rel="stylesheet" href="style.css?v=64">
+  <link rel="stylesheet" href="style.css?v=66">
 </head>
 <body>
   <section id="lobby" class="lobby">
     <img class="brand-logo" src="/logo.png?v=65" alt="BrawlClaUi">
+    <p class="brand-title" data-i18n="brandHebrew">&#x05d1;&#x05e8;&#x05d0;&#x05d5;&#x05dc; &#x05db;&#x05dc;&#x05d5;&#x05d5;&#x05d9;</p>
     <h1 data-i18n="title">BrawlClaUi</h1>
     <p data-i18n="subtitle">Choose a brawler, game mode, and controls.</p>
     <label for="language" data-i18n="languageLabel">LANGUAGE</label>
@@ -109,7 +110,7 @@
       <button id="join" data-i18n="join">JOIN</button>
     </div>
     <p id="error" role="alert"></p>
-    <button id="install" hidden data-i18n="install">INSTALL APP</button>
+    <button id="install" data-i18n="install">INSTALL GAME</button>
   </section>
 
   <button id="admin-toggle" class="admin-toggle" type="button" aria-controls="admin-panel" aria-expanded="false" hidden>ADMIN</button>
@@ -127,7 +128,10 @@
 
     <section class="admin-section admin-command-section">
       <label for="admin-command-search" data-i18n="adminCommandSearchLabel">COMMAND SEARCH</label>
-      <input id="admin-command-search" type="search" autocomplete="off" placeholder="Search command" data-i18n-placeholder="adminCommandSearchPlaceholder">
+      <div class="admin-inline">
+        <input id="admin-command-search" type="search" autocomplete="off" placeholder="Search command" data-i18n-placeholder="adminCommandSearchPlaceholder">
+        <button id="admin-run-command" type="button" data-i18n="adminRunCommand">Run</button>
+      </div>
       <small id="admin-command-hint"></small>
     </section>
 
@@ -220,6 +224,6 @@
   <script src="/shared/runtime.js"></script>
   <script src="/socket.io/socket.io.js"></script>
   <script src="/shared/qr-generator.js"></script>
-  <script src="play.js?v=64"></script>
+  <script src="play.js?v=66"></script>
 </body>
 </html>

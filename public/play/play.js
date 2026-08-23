@@ -34,6 +34,7 @@ const adminRoomBadge = document.querySelector("#admin-room-badge");
 const adminPlayersBadge = document.querySelector("#admin-players-badge");
 const adminTargetInfo = document.querySelector("#admin-target-info");
 const adminCommandSearch = document.querySelector("#admin-command-search");
+const adminRunCommand = document.querySelector("#admin-run-command");
 const adminCommandHint = document.querySelector("#admin-command-hint");
 const adminPlayerSelect = document.querySelector("#admin-player");
 const adminCharacterSelect = document.querySelector("#admin-character");
@@ -100,6 +101,7 @@ function isOwnerUser(user = activeCloudUser()) {
 }
 const translations = {
   en: {
+    brandHebrew: "\u05d1\u05e8\u05d0\u05d5\u05dc \u05db\u05dc\u05d5\u05d5\u05d9",
     title: "BrawlClaUi",
     subtitle: "Choose a brawler, game mode, and controls.",
     languageLabel: "LANGUAGE",
@@ -113,11 +115,12 @@ const translations = {
     cloudError: "Google save is unavailable",
     adminLabel: "Admin",
     adminPanelTitle: "ADMIN PANEL",
-    adminCommandSearchLabel: "COMMAND SEARCH",
-    adminCommandSearchPlaceholder: "Search commands",
+    adminCommandSearchLabel: "COMMAND CONSOLE",
+    adminCommandSearchPlaceholder: "Type a command, e.g. give Banana Boomer",
+    adminRunCommand: "Run",
     adminCommandMatches: "commands found",
     adminCommandNoMatches: "No matching commands",
-    adminCommandEnterHint: "Press Enter to run the first available command",
+    adminCommandEnterHint: "Type commands or help",
     adminRoomLabel: "ROOM",
     adminPlayersLabel: "PLAYERS",
     adminFindSection: "FIND PLAYER",
@@ -208,7 +211,8 @@ const translations = {
     joinDivider: "OR JOIN A FRIEND",
     codePlaceholder: "ROOM OR SERVER CODE",
     join: "JOIN",
-    install: "INSTALL APP",
+    install: "INSTALL GAME",
+    installHelp: "To install the game, open your browser menu and choose Install app or Add to Home Screen.",
     leaveAria: "Leave game",
     initialObjective: "Share the room code to play together",
     adminInvinciblePrompt: "Admin mode: press OK to be invincible, or Cancel to play normally.",
@@ -248,7 +252,8 @@ const translations = {
     secondsShort: "s"
   },
   he: {
-    title: "\u05e7\u05e8\u05d1 \u05de\u05db\u05dc \u05de\u05db\u05e9\u05d9\u05e8.",
+    brandHebrew: "\u05d1\u05e8\u05d0\u05d5\u05dc \u05db\u05dc\u05d5\u05d5\u05d9",
+    title: "\u05d1\u05e8\u05d0\u05d5\u05dc \u05db\u05dc\u05d5\u05d5\u05d9",
     subtitle: "\u05d1\u05d7\u05e8 \u05d3\u05de\u05d5\u05ea, \u05de\u05e6\u05d1 \u05de\u05e9\u05d7\u05e7 \u05d5\u05e9\u05dc\u05d9\u05d8\u05d4.",
     languageLabel: "\u05e9\u05e4\u05d4",
     languageSystem: "\u05dc\u05e4\u05d9 \u05e9\u05e4\u05ea \u05d4\u05de\u05db\u05e9\u05d9\u05e8",
@@ -261,11 +266,12 @@ const translations = {
     cloudError: "\u05e9\u05de\u05d9\u05e8\u05ea Google \u05dc\u05d0 \u05d6\u05de\u05d9\u05e0\u05d4",
     adminLabel: "\u05d0\u05d3\u05de\u05d9\u05df",
     adminPanelTitle: "\u05e4\u05d0\u05e0\u05dc \u05d0\u05d3\u05de\u05d9\u05df",
-    adminCommandSearchLabel: "\u05d7\u05d9\u05e4\u05d5\u05e9 \u05e4\u05e7\u05d5\u05d3\u05d4",
-    adminCommandSearchPlaceholder: "\u05d7\u05e4\u05e9 \u05e4\u05e7\u05d5\u05d3\u05d4",
+    adminCommandSearchLabel: "\u05e7\u05d5\u05e0\u05e1\u05d5\u05dc\u05ea \u05e4\u05e7\u05d5\u05d3\u05d5\u05ea",
+    adminCommandSearchPlaceholder: "\u05db\u05ea\u05d5\u05d1 \u05e4\u05e7\u05d5\u05d3\u05d4, \u05dc\u05de\u05e9\u05dc: \u05ea\u05df \u05dc\u05d1\u05e0\u05e0\u05d4 \u05d0\u05ea \u05d1\u05d5\u05de\u05e8",
+    adminRunCommand: "\u05d4\u05e8\u05e5",
     adminCommandMatches: "\u05e4\u05e7\u05d5\u05d3\u05d5\u05ea \u05e0\u05de\u05e6\u05d0\u05d5",
     adminCommandNoMatches: "\u05d0\u05d9\u05df \u05e4\u05e7\u05d5\u05d3\u05d5\u05ea \u05ea\u05d5\u05d0\u05de\u05d5\u05ea",
-    adminCommandEnterHint: "\u05d0\u05e0\u05d8\u05e8 \u05d9\u05e4\u05e2\u05d9\u05dc \u05d0\u05ea \u05d4\u05e4\u05e7\u05d5\u05d3\u05d4 \u05d4\u05e8\u05d0\u05e9\u05d5\u05e0\u05d4 \u05d4\u05d6\u05de\u05d9\u05e0\u05d4",
+    adminCommandEnterHint: "\u05db\u05ea\u05d5\u05d1 \u05e4\u05e7\u05d5\u05d3\u05d4 \u05d0\u05d5 \u05e4\u05e7\u05d5\u05d3\u05d5\u05ea",
     adminRoomLabel: "\u05d7\u05d3\u05e8",
     adminPlayersLabel: "\u05e9\u05d7\u05e7\u05e0\u05d9\u05dd",
     adminFindSection: "\u05d7\u05d9\u05e4\u05d5\u05e9 \u05e9\u05d7\u05e7\u05df",
@@ -356,7 +362,8 @@ const translations = {
     joinDivider: "\u05d0\u05d5 \u05d4\u05e6\u05d8\u05e8\u05e3 \u05dc\u05d7\u05d1\u05e8",
     codePlaceholder: "\u05e7\u05d5\u05d3 \u05d7\u05d3\u05e8 \u05d0\u05d5 \u05e9\u05e8\u05ea",
     join: "\u05d4\u05e6\u05d8\u05e8\u05e3",
-    install: "\u05d4\u05ea\u05e7\u05df \u05d0\u05e4\u05dc\u05d9\u05e7\u05e6\u05d9\u05d4",
+    install: "\u05d4\u05d5\u05e8\u05d3 \u05d0\u05ea \u05d4\u05de\u05e9\u05d7\u05e7",
+    installHelp: "\u05db\u05d3\u05d9 \u05dc\u05d4\u05ea\u05e7\u05d9\u05df \u05d0\u05ea \u05d4\u05de\u05e9\u05d7\u05e7, \u05e4\u05ea\u05d7 \u05d0\u05ea \u05ea\u05e4\u05e8\u05d9\u05d8 \u05d4\u05d3\u05e4\u05d3\u05e4\u05df \u05d5\u05d1\u05d7\u05e8 \u05d4\u05ea\u05e7\u05df \u05d0\u05e4\u05dc\u05d9\u05e7\u05e6\u05d9\u05d4 \u05d0\u05d5 \u05d4\u05d5\u05e1\u05e3 \u05dc\u05de\u05e1\u05da \u05d4\u05d1\u05d9\u05ea.",
     leaveAria: "\u05e6\u05d0 \u05de\u05d4\u05de\u05e9\u05d7\u05e7",
     initialObjective: "\u05e9\u05ea\u05e3 \u05d0\u05ea \u05e7\u05d5\u05d3 \u05d4\u05d7\u05d3\u05e8 \u05db\u05d3\u05d9 \u05dc\u05e9\u05d7\u05e7 \u05d9\u05d7\u05d3",
     adminInvinciblePrompt: "\u05de\u05e6\u05d1 \u05d0\u05d3\u05de\u05d9\u05df: \u05dc\u05d7\u05e5 \u05d0\u05d9\u05e9\u05d5\u05e8 \u05db\u05d3\u05d9 \u05dc\u05d4\u05d9\u05d5\u05ea \u05d1\u05dc\u05ea\u05d9 \u05e4\u05d2\u05d9\u05e2, \u05d0\u05d5 \u05d1\u05d9\u05d8\u05d5\u05dc \u05db\u05d3\u05d9 \u05dc\u05e9\u05d7\u05e7 \u05e8\u05d2\u05d9\u05dc.",
@@ -902,34 +909,13 @@ function filterAdminCommands() {
   if (!adminPanel || !adminCommandSearch) return;
   const query = adminCommandSearch.value.trim().toLowerCase();
   const sections = [...adminPanel.querySelectorAll(".admin-section:not(.admin-command-section)")];
-  let matches = 0;
-  let firstRunnable = null;
   for (const section of sections) {
-    const sectionText = section.querySelector("label")?.textContent.toLowerCase() || "";
-    const sectionMatches = Boolean(query && sectionText.includes(query));
-    const commands = [...section.querySelectorAll("[data-admin-command]")];
-    let visibleInSection = !query;
-    for (const command of commands) {
-      const commandMatches = !query || sectionMatches || adminCommandText(command).includes(query);
-      if (command.tagName === "BUTTON") {
-        command.hidden = !commandMatches;
-        if (commandMatches) {
-          matches += 1;
-          if (!firstRunnable && !command.disabled) firstRunnable = command;
-        }
-      }
-      if (commandMatches) visibleInSection = true;
-    }
-    section.hidden = !visibleInSection;
+    section.hidden = false;
+    section.querySelectorAll("[data-admin-command]").forEach(command => { command.hidden = false; });
   }
   if (adminCommandHint) {
-    adminCommandHint.textContent = !query
-      ? t("adminCommandEnterHint")
-      : matches
-        ? `${matches} ${t("adminCommandMatches")}`
-        : t("adminCommandNoMatches");
+    adminCommandHint.textContent = query ? t("adminCommandEnterHint") : t("adminCommandEnterHint");
   }
-  adminCommandSearch.dataset.firstCommand = firstRunnable?.id || "";
 }
 
 function syncAdminState(force = false) {
@@ -1044,6 +1030,18 @@ function runAdminCommand(event, payload = {}) {
   socket.emit(event, adminPayload(payload), reply => {
     setAdminStatus(reply?.ok ? t("adminDone") : reply?.error || t("adminFailed"));
     window.setTimeout(() => setAdminStatus(""), 1400);
+  });
+}
+
+function runAdminTextCommand() {
+  const command = adminCommandSearch?.value.trim();
+  if (!command) return filterAdminCommands();
+  if (!isAdminUser()) return setAdminStatus(t("adminFailed"));
+  socket.emit("admin:runCommand", adminPayload({ command, targetId: adminPlayerSelect?.value || "" }), reply => {
+    setAdminStatus(reply?.ok ? reply.message || t("adminDone") : reply?.error || t("adminFailed"));
+    if (reply?.ok && !reply.keep && adminCommandSearch) adminCommandSearch.value = "";
+    filterAdminCommands();
+    if (reply?.ok && !reply.keep) window.setTimeout(() => setAdminStatus(""), 1800);
   });
 }
 
@@ -1405,11 +1403,9 @@ adminCommandSearch?.addEventListener("input", filterAdminCommands);
 adminCommandSearch?.addEventListener("keydown", event => {
   if (event.key !== "Enter") return;
   event.preventDefault();
-  const firstCommand = adminCommandSearch.dataset.firstCommand
-    ? document.getElementById(adminCommandSearch.dataset.firstCommand)
-    : null;
-  if (firstCommand && !firstCommand.disabled && !firstCommand.hidden) firstCommand.click();
+  runAdminTextCommand();
 });
+adminRunCommand?.addEventListener("click", runAdminTextCommand);
 
 socket.on("game:state", next => {
   players = next;
@@ -2273,7 +2269,12 @@ window.addEventListener("beforeinstallprompt", e => {
   install.hidden = false;
 });
 install.onclick = async () => {
-  await installEvent?.prompt();
+  if (!installEvent) {
+    alert(t("installHelp"));
+    return;
+  }
+  await installEvent.prompt();
+  installEvent = null;
   install.hidden = true;
 };
 if ("serviceWorker" in navigator) navigator.serviceWorker.register("/service-worker.js");
