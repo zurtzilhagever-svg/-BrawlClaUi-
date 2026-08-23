@@ -549,12 +549,18 @@ function clamp(n, min, max) {
   return Math.max(min, Math.min(max, n));
 }
 
+function removeAdminButtonSections() {
+  document.querySelectorAll('[data-i18n="adminCharactersSection"], [data-i18n="adminLiveSection"], [data-i18n="adminDangerSection"]')
+    .forEach(label => label.closest(".admin-section")?.remove());
+}
+
 nameInput.value = localStorage.getItem("brawlclaui-name") || "";
 {
   const savedLanguage = localStorage.getItem(languageKey);
   languageSelect.value = savedLanguage && savedLanguage !== "system" ? savedLanguage : "he";
 }
 controlModeSelect.value = controlMode;
+removeAdminButtonSections();
 setupAdminToggle();
 applyLanguage();
 applyControlMode();
