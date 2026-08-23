@@ -412,7 +412,7 @@ function adminLobbyTarget(socket, data = {}, ack = () => {}) {
 const ADMIN_TEXT_COMMANDS = [
   "פקודות / עזרה - הצג את כל הפקודות",
   "תן ל<שחקן> את <דמות> - לדוגמה: תן לבננה את בומר",
-  "הסר מ<שחקן> את <דמות> - לדוגמה: הסר מבננה את פיקסל",
+  "הסר / הורד מ<שחקן> את <דמות> - לדוגמה: הורד מבננה את פיקסל",
   "רפא <שחקן>",
   "חסל <שחקן>",
   "הקפא <שחקן>",
@@ -524,7 +524,7 @@ function runAdminTextCommand(socket, data = {}) {
   }
 
   const grantPrefix = commandStartsWithAny(text, ["תן", "פתח", "give", "grant", "unlock"]);
-  const revokePrefix = commandStartsWithAny(text, ["הסר", "נעל", "remove", "revoke", "lock"]);
+  const revokePrefix = commandStartsWithAny(text, ["הסר", "הורד", "תוריד", "תורידו", "נעל", "קח", "remove", "revoke", "lock", "take"]);
   if (grantPrefix || revokePrefix) {
     const parsed = splitTargetAndCharacter(text.slice((grantPrefix || revokePrefix).length));
     if (!parsed.character || !PLAYABLE_CHARACTERS.has(parsed.character)) return { ok:false, error:"לא זיהיתי דמות" };
