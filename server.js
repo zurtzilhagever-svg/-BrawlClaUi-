@@ -430,7 +430,12 @@ const CHARACTER_ALIASES = {
   tank:["tank", "aurora", "אורורה", "טנק"],
   bazaar:["bazaar", "באזאר", "בזאר"]
 };
-function commandText(value) { return String(value || "").trim().toLowerCase().replace(/\s+/g, " "); }
+function repairCommandEncoding(value) {
+  const text = String(value || "");
+  if (!/[×Ø]/.test(text)) return text;
+  try { return Buffer.from(text, "latin1").toString("utf8"); } catch { return text; }
+}
+function commandText(value) { return repairCommandEncoding(value).trim().toLowerCase().replace(/\s+/g, " "); }
 function commandIncludesAny(text, words) { return words.some(word => text.includes(word)); }
 function commandStartsWithAny(text, words) { return words.find(word => text === word || text.startsWith(`${word} `)) || ""; }
 function cleanCommandTarget(value) {
