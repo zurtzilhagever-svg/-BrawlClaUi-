@@ -1427,6 +1427,21 @@ io.on("connection", socket => {
     if (target.socketId) io.to(target.socketId).emit("admin:progressReset");
     ack({ ok:true });
   });
+  socket.on("admin:allowRename", (data={}, ack=()=>{}) => {
+    const isLobbyTarget = String(data.roomCode || "").toUpperCase() === "LOBBY";
+    const lobbyTarget = isLobbyTarget ? adminLobbyTarget(socket, data, ack) : null;
+    if (isLobbyTarget) {
+      if (!lobbyTarget) return;
+      io.to(lobbyTarget.socketId).emit("admin:renameAllowed");
+      return ack({ ok:true });
+    }
+    const room = adminRoom(socket, data, ack), targetId = String(data.targetId || "");
+    if (!room) return;
+    const target = room.players.get(targetId);
+    if (!target || target.bot) return ack({ ok:false, error:"Player not found" });
+    if (target.socketId) io.to(target.socketId).emit("admin:renameAllowed");
+    ack({ ok:true });
+  });
   socket.on("admin:kickPlayer", (data={}, ack=()=>{}) => {
     const isLobbyTarget = String(data.roomCode || "").toUpperCase() === "LOBBY";
     const lobbyTarget = isLobbyTarget ? adminLobbyTarget(socket, data, ack) : null;
@@ -1485,4 +1500,4 @@ io.on("connection", socket => {
   socket.on("disconnect", () => { lobbyPlayers.delete(socket.id); const host=socket.data.hostRoom; if(host&&rooms.get(host)?.hostSocketId===socket.id){io.to(host).emit("room:closed");rooms.delete(host);} const ref=socketIndex.get(socket.id);socketIndex.delete(socket.id);const room=ref&&rooms.get(ref.code),p=room&&room.players.get(ref.playerId);if(p&&p.socketId===socket.id){p.connected=false;p.input={x:0,y:0,attack:false,special:false};p.removeTimer=setTimeout(()=>removePlayer(room,ref.playerId),RECONNECT_MS);broadcast(room);} });
 });
 setInterval(()=>{const now=Date.now();for(const room of rooms.values())updateRoom(room,now);},1000/30);
-server.listen(PORT,()=>console.log(`BrawlClaUi running at http://localhost:${PORT}/play/`));
+server.listen(PORT,()=>console.log(`BrawkClaUi running at http://localhost:${PORT}/play/`));

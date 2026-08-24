@@ -25,6 +25,41 @@ select {
   font: inherit;
 }
 
+.profile-gate {
+  min-height: 100svh;
+  width: 100%;
+  margin: 0;
+  padding: 24px;
+  display: grid;
+  place-items: center;
+  background: radial-gradient(circle at 50% 18%, #3d558d, #11172b 72%);
+}
+
+.profile-gate[hidden] {
+  display: none;
+}
+
+.language-only {
+  width: min(84vw, 720px);
+  min-height: 96px;
+  border: 0;
+  border-radius: 18px;
+  padding: 0 28px;
+  background: #0e1427;
+  color: #fff;
+  font-size: clamp(2rem, 6vw, 4.8rem);
+  font-weight: 900;
+  text-align: center;
+  text-align-last: center;
+  box-shadow: 0 24px 70px #0009, inset 0 1px #ffffff20;
+  outline: 2px solid #70d7ff55;
+}
+
+input.name-locked {
+  opacity: .7;
+  cursor: not-allowed;
+}
+
 .lobby {
   width: min(92vw, 430px);
   max-height: 94svh;

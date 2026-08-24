@@ -3,27 +3,36 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
-  <meta name="description" content="בראול כלווי - BrawlClaUi, משחק דפדפן מרובה משתתפים בסגנון בראול שאפשר לשחק עם חברים מהמחשב ומהטלפון.">
-  <meta name="keywords" content="בראול כלווי, BrawlClaUi, Brawl Claui, משחק בראול אונליין, משחק מרובה משתתפים">
+  <meta name="description" content="בראול כלווי - BrawkClaUi, משחק דפדפן מרובה משתתפים בסגנון בראול שאפשר לשחק עם חברים מהמחשב ומהטלפון.">
+  <meta name="keywords" content="בראול כלווי, BrawkClaUi, BrawlClaUi, Brawl Claui, משחק בראול אונליין, משחק מרובה משתתפים">
   <meta name="theme-color" content="#11172b">
-  <meta property="og:title" content="בראול כלווי - BrawlClaUi">
+  <meta property="og:title" content="בראול כלווי - BrawkClaUi">
   <meta property="og:description" content="משחק בראול אונליין מרובה משתתפים למחשב ולטלפון.">
   <meta property="og:type" content="website">
   <meta property="og:image" content="https://brawlclaui-y7xm.onrender.com/logo.png?v=65">
   <meta property="og:image:secure_url" content="https://brawlclaui-y7xm.onrender.com/logo.png?v=65">
-  <meta property="og:image:alt" content="BrawlClaUi logo">
+  <meta property="og:image:alt" content="BrawkClaUi logo">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:image" content="https://brawlclaui-y7xm.onrender.com/logo.png?v=65">
   <link rel="manifest" href="/manifest.webmanifest">
   <link rel="icon" type="image/png" sizes="48x48" href="/icons/favicon-48.png?v=65">
   <link rel="apple-touch-icon" href="/icons/icon-192.png?v=65">
-  <title>בראול כלווי - BrawlClaUi</title>
-  <link rel="stylesheet" href="style.css?v=70">
+  <title>בראול כלווי - BrawkClaUi</title>
+  <link rel="stylesheet" href="style.css?v=71">
 </head>
 <body>
+  <section id="profile-gate" class="profile-gate">
+    <select id="profile-language" class="language-only" aria-label="Language">
+      <option value="" data-i18n="profileLanguagePick">בחר שפה</option>
+      <option value="he">עברית</option>
+      <option value="en">English</option>
+      <option value="ar">العربية</option>
+    </select>
+  </section>
+
   <section id="lobby" class="lobby">
-    <img class="brand-logo" src="/logo.png?v=65" alt="BrawlClaUi">
-    <h1 data-i18n="title">BrawlClaUi</h1>
+    <img class="brand-logo" src="/logo.png?v=65" alt="BrawkClaUi">
+    <h1 data-i18n="title">BrawkClaUi</h1>
     <p data-i18n="subtitle">Choose a brawler, game mode, and controls.</p>
     <label for="language" data-i18n="languageLabel">LANGUAGE</label>
     <select id="language">
@@ -177,6 +186,7 @@
         <button id="admin-teleport" type="button" data-i18n="adminTeleport" data-admin-command="teleport bring here summon שגר הבא אליי">Bring here</button>
       </div>
       <div class="admin-actions">
+        <button id="admin-allow-rename" type="button" data-i18n="adminAllowRename" data-admin-command="allow rename name edit שינוי שם אפשר ערוך שם">Allow rename</button>
         <button id="admin-reset-progress" type="button" data-i18n="adminResetProgress" data-admin-command="reset progress wipe איפוס אפס התקדמות">Reset progress</button>
       </div>
     </section>
@@ -224,6 +234,6 @@
   <script src="/shared/runtime.js"></script>
   <script src="/socket.io/socket.io.js"></script>
   <script src="/shared/qr-generator.js"></script>
-  <script src="play.js?v=70"></script>
+  <script src="play.js?v=71"></script>
 </body>
 </html>

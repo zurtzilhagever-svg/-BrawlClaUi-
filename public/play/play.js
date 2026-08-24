@@ -1,6 +1,8 @@
 const socket = io(BrawlClaUiRuntime.serverUrl, { transports: ["websocket", "polling"] });
 const lobby = document.querySelector("#lobby");
 const game = document.querySelector("#game");
+const profileGate = document.querySelector("#profile-gate");
+const profileLanguageSelect = document.querySelector("#profile-language");
 const nameInput = document.querySelector("#name");
 const codeInput = document.querySelector("#code");
 const error = document.querySelector("#error");
@@ -46,6 +48,7 @@ const adminAddAdmin = document.querySelector("#admin-add-admin");
 const adminRemoveAdmin = document.querySelector("#admin-remove-admin");
 const adminGrant = document.querySelector("#admin-grant");
 const adminRevoke = document.querySelector("#admin-revoke");
+const adminAllowRename = document.querySelector("#admin-allow-rename");
 const adminHeal = document.querySelector("#admin-heal");
 const adminEliminate = document.querySelector("#admin-eliminate");
 const adminFreeze = document.querySelector("#admin-freeze");
@@ -71,10 +74,14 @@ const localAccountKey = "brawlclaui-local-account";
 let playerId = sessionStorage.getItem(playerKey) || crypto.randomUUID();
 sessionStorage.setItem(playerKey, playerId);
 const languageKey = "brawlclaui-language";
+const languagePickedKey = "brawlclaui-language-picked";
 const languageCodes = ["system", "he", "en", "ar"];
 const rtlLanguages = new Set(["ar", "he"]);
 const survivalBestKey = "brawlclaui-survival-best";
 const unlockedCharactersKey = "brawlclaui-unlocked-characters";
+const nameLockedKey = "brawlclaui-name-locked";
+const renameGrantKey = "brawlclaui-can-rename";
+const firstGameCompletedKey = "brawlclaui-first-game-completed";
 const lockedCharacters = new Set(["boomer", "fangli", "pixel", "tank", "bazaar", "masterv"]);
 const adminOnlyCharacters = new Set(["masterv"]);
 const adminGrantCharacters = ["boomer", "fangli", "pixel", "tank", "bazaar", "masterv"];
@@ -105,11 +112,15 @@ function isOwnerUser(user = activeCloudUser()) {
 const translations = {
   en: {
     brandHebrew: "\u05d1\u05e8\u05d0\u05d5\u05dc \u05db\u05dc\u05d5\u05d5\u05d9",
-    title: "BrawlClaUi",
+    title: "BrawkClaUi",
     subtitle: "Choose a brawler, game mode, and controls.",
+    profileLanguagePick: "Choose language",
     languageLabel: "LANGUAGE",
     languageSystem: "Use device language",
     namePlaceholder: "Your name",
+    nameLockedNotice: "Your name is locked. An admin can allow one rename.",
+    renameAllowed: "Rename is available",
+    renameSaved: "Name saved",
     accountLabel: "GOOGLE ACCOUNT",
     cloudGuest: "Not signed in",
     cloudSignedIn: "Signed in as",
@@ -143,6 +154,7 @@ const translations = {
     adminLobby: "Lobby",
     adminGrant: "Give character",
     adminRevoke: "Remove character",
+    adminAllowRename: "Allow rename",
     adminHeal: "Heal",
     adminEliminate: "Eliminate",
     adminFreeze: "Freeze",
@@ -188,7 +200,9 @@ const translations = {
     fangliDesc: "Long bone shot, stronger when hurt",
     pixelDesc: "Fast ricochet laser",
     unlockBoomer: "Beat wave 10 with Bob",
+    unlockPixel: "Finish one game to unlock",
     boomerUnlocked: "Boomer unlocked",
+    pixelUnlocked: "Pixel unlocked",
     lockedCharacter: "Locked",
     tankDesc: "Snowstorm + ice field",
     bazaarDesc: "Coin chain + buff box",
@@ -259,11 +273,15 @@ const translations = {
   },
   he: {
     brandHebrew: "\u05d1\u05e8\u05d0\u05d5\u05dc \u05db\u05dc\u05d5\u05d5\u05d9",
-    title: "\u05d1\u05e8\u05d0\u05d5\u05dc \u05db\u05dc\u05d5\u05d5\u05d9",
+    title: "BrawkClaUi",
     subtitle: "\u05d1\u05d7\u05e8 \u05d3\u05de\u05d5\u05ea, \u05de\u05e6\u05d1 \u05de\u05e9\u05d7\u05e7 \u05d5\u05e9\u05dc\u05d9\u05d8\u05d4.",
+    profileLanguagePick: "\u05d1\u05d7\u05e8 \u05e9\u05e4\u05d4",
     languageLabel: "\u05e9\u05e4\u05d4",
     languageSystem: "\u05dc\u05e4\u05d9 \u05e9\u05e4\u05ea \u05d4\u05de\u05db\u05e9\u05d9\u05e8",
     namePlaceholder: "\u05d4\u05e9\u05dd \u05e9\u05dc\u05da",
+    nameLockedNotice: "\u05d4\u05e9\u05dd \u05e0\u05e2\u05d5\u05dc. \u05d0\u05d3\u05de\u05d9\u05df \u05d9\u05db\u05d5\u05dc \u05dc\u05d0\u05e4\u05e9\u05e8 \u05e9\u05d9\u05e0\u05d5\u05d9 \u05d7\u05d3-\u05e4\u05e2\u05de\u05d9.",
+    renameAllowed: "\u05e9\u05d9\u05e0\u05d5\u05d9 \u05e9\u05dd \u05e4\u05ea\u05d5\u05d7",
+    renameSaved: "\u05d4\u05e9\u05dd \u05e0\u05e9\u05de\u05e8",
     accountLabel: "\u05d7\u05e9\u05d1\u05d5\u05df Google",
     cloudGuest: "\u05dc\u05d0 \u05de\u05d7\u05d5\u05d1\u05e8",
     cloudSignedIn: "\u05de\u05d7\u05d5\u05d1\u05e8 \u05db\u05de\u05d5",
@@ -297,6 +315,7 @@ const translations = {
     adminLobby: "\u05dc\u05d5\u05d1\u05d9",
     adminGrant: "\u05ea\u05df \u05d3\u05de\u05d5\u05ea",
     adminRevoke: "\u05d4\u05e1\u05e8 \u05d3\u05de\u05d5\u05ea",
+    adminAllowRename: "\u05d0\u05e4\u05e9\u05e8 \u05e9\u05d9\u05e0\u05d5\u05d9 \u05e9\u05dd",
     adminHeal: "\u05e8\u05e4\u05d0",
     adminEliminate: "\u05d7\u05e1\u05dc",
     adminFreeze: "\u05d4\u05e7\u05e4\u05d0",
@@ -342,7 +361,9 @@ const translations = {
     fangliDesc: "\u05d9\u05e8\u05d9\u05d9\u05ea \u05e2\u05e6\u05dd \u05e8\u05d7\u05d5\u05e7\u05d4, \u05de\u05ea\u05d7\u05d6\u05e7\u05ea \u05db\u05e9\u05e0\u05e4\u05d2\u05e2",
     pixelDesc: "\u05dc\u05d9\u05d9\u05d6\u05e8 \u05de\u05d4\u05d9\u05e8 \u05e2\u05dd \u05d4\u05d7\u05d6\u05e8\u05d4 \u05de\u05e7\u05d9\u05e8\u05d5\u05ea",
     unlockBoomer: "\u05e0\u05e6\u05d7 \u05d0\u05ea \u05d2\u05dc 10 \u05e2\u05dd \u05d1\u05d5\u05d1",
+    unlockPixel: "\u05e1\u05d9\u05d9\u05dd \u05de\u05e9\u05d7\u05e7 \u05d0\u05d7\u05d3 \u05db\u05d3\u05d9 \u05dc\u05e4\u05ea\u05d5\u05d7",
     boomerUnlocked: "\u05d1\u05d5\u05de\u05e8 \u05e0\u05e4\u05ea\u05d7",
+    pixelUnlocked: "\u05e4\u05d9\u05e7\u05e1\u05dc \u05e0\u05e4\u05ea\u05d7",
     lockedCharacter: "\u05e0\u05e2\u05d5\u05dc",
     tankDesc: "\u05e1\u05e2\u05e8\u05ea \u05e9\u05dc\u05d2 + \u05de\u05e9\u05d8\u05d7 \u05e7\u05e8\u05d7",
     bazaarDesc: "\u05e9\u05e8\u05e9\u05e8\u05ea \u05de\u05d8\u05d1\u05e2\u05d5\u05ea + \u05ea\u05d9\u05d1\u05ea Buff",
@@ -414,11 +435,15 @@ const translations = {
 };
 translations.ar = {
   brandHebrew: "\u0628\u0631\u0627\u0648\u0644 \u0643\u0644\u0627\u0648\u064a",
-  title: "\u0628\u0631\u0627\u0648\u0644 \u0643\u0644\u0627\u0648\u064a",
+  title: "BrawkClaUi",
   subtitle: "\u0627\u062e\u062a\u0631 \u0634\u062e\u0635\u064a\u0629 \u0648\u0646\u0645\u0637 \u0644\u0639\u0628 \u0648\u0637\u0631\u064a\u0642\u0629 \u062a\u062d\u0643\u0645.",
+  profileLanguagePick: "\u0627\u062e\u062a\u0631 \u0644\u063a\u0629",
   languageLabel: "\u0627\u0644\u0644\u063a\u0629",
   languageSystem: "\u0644\u063a\u0629 \u0627\u0644\u062c\u0647\u0627\u0632",
   namePlaceholder: "\u0627\u0633\u0645\u0643",
+  nameLockedNotice: "\u0627\u0644\u0627\u0633\u0645 \u0645\u0642\u0641\u0644. \u064a\u0645\u0643\u0646 \u0644\u0644\u0623\u062f\u0645\u0646 \u0627\u0644\u0633\u0645\u0627\u062d \u0628\u062a\u063a\u064a\u064a\u0631 \u0648\u0627\u062d\u062f.",
+  renameAllowed: "\u062a\u063a\u064a\u064a\u0631 \u0627\u0644\u0627\u0633\u0645 \u0645\u062a\u0627\u062d",
+  renameSaved: "\u062a\u0645 \u062d\u0641\u0638 \u0627\u0644\u0627\u0633\u0645",
   accountLabel: "\u062d\u0633\u0627\u0628 Google",
   cloudGuest: "\u063a\u064a\u0631 \u0645\u0633\u062c\u0644",
   cloudSignedIn: "\u0645\u0633\u062c\u0644 \u0643\u0640",
@@ -462,6 +487,9 @@ translations.ar = {
   useBuff: "\u0641\u0639\u0644 Buff",
   mastervDesc: "\u0645\u0642\u0627\u062a\u0644 \u062e\u0627\u0635 \u0644\u0644\u0623\u062f\u0645\u0646 \u0641\u0642\u0637",
   adminOnlyCharacter: "\u0634\u062e\u0635\u064a\u0629 \u062e\u0627\u0635\u0629",
+  adminAllowRename: "\u0627\u0633\u0645\u062d \u0628\u062a\u063a\u064a\u064a\u0631 \u0627\u0644\u0627\u0633\u0645",
+  unlockPixel: "\u0623\u0646\u0647 \u0644\u0639\u0628\u0629 \u0648\u0627\u062d\u062f\u0629 \u0644\u0641\u062a\u062d\u0647",
+  pixelUnlocked: "\u062a\u0645 \u0641\u062a\u062d Pixel",
   gotBuff: "\u062d\u0635\u0644\u062a \u0639\u0644\u0649 Buff",
   room: "\u063a\u0631\u0641\u0629",
   playerSingular: "\u0644\u0627\u0639\u0628",
@@ -568,12 +596,24 @@ function resetProgress() {
   saveUnlockedCharacters(new Set());
   personalBest = 0;
   localStorage.removeItem(progressKey(survivalBestKey));
+  localStorage.removeItem(nameLockedKey);
+  localStorage.removeItem(renameGrantKey);
+  localStorage.removeItem(firstGameCompletedKey);
   selectedCharacter = "blaze";
   document.querySelectorAll("[data-character]").forEach(button => button.classList.toggle("selected", button.dataset.character === selectedCharacter));
   renderSurvivalStats();
   renderCharacterLocks();
+  updateNameLock();
   queueCloudSave();
 }
+
+function markFirstGameCompleted() {
+  if (!wasPlaying || localStorage.getItem(firstGameCompletedKey) === "1") return;
+  localStorage.setItem(firstGameCompletedKey, "1");
+  if (unlockCharacter("pixel")) error.textContent = t("pixelUnlocked");
+  queueCloudSave();
+}
+
 function renderCharacterLocks() {
   document.querySelectorAll("[data-character]").forEach(button => {
     const character = button.dataset.character;
@@ -581,8 +621,9 @@ function renderCharacterLocks() {
     button.classList.toggle("locked", locked);
     button.disabled = locked;
     const label = button.querySelector("small");
-    if (label && locked) label.textContent = character === "boomer" ? t("unlockBoomer") : adminOnlyCharacters.has(character) ? t("adminOnlyCharacter") : t("lockedCharacter");
+    if (label && locked) label.textContent = character === "boomer" ? t("unlockBoomer") : character === "pixel" ? t("unlockPixel") : adminOnlyCharacters.has(character) ? t("adminOnlyCharacter") : t("lockedCharacter");
     else if (label && character === "boomer") label.textContent = t("boomerDesc");
+    else if (label && character === "pixel") label.textContent = t("pixelDesc");
     else if (label && character === "masterv") label.textContent = t("mastervDesc");
     if (locked && button.classList.contains("selected")) {
       selectedCharacter = "blaze";
@@ -647,11 +688,14 @@ populateLanguageSelect();
   const savedLanguage = localStorage.getItem(languageKey);
   if (savedLanguage && !languageCodes.includes(savedLanguage)) localStorage.setItem(languageKey, "he");
   languageSelect.value = savedLanguage && languageCodes.includes(savedLanguage) ? savedLanguage : "he";
+  if (profileLanguageSelect) profileLanguageSelect.value = localStorage.getItem(languagePickedKey) === "1" ? languageSelect.value : "";
 }
 controlModeSelect.value = controlMode;
 removeAdminButtonSections();
 setupAdminToggle();
 applyLanguage();
+updateProfileGate();
+updateNameLock();
 applyControlMode();
 setLocalAccountMode(localAccountMode);
 renderSurvivalStats();
@@ -660,6 +704,42 @@ setupCloudProgress();
 
 function name() {
   return nameInput.value.trim().slice(0, 14);
+}
+
+function updateProfileGate() {
+  const needsLanguage = localStorage.getItem(languagePickedKey) !== "1";
+  if (profileGate) profileGate.hidden = !needsLanguage;
+  if (lobby) lobby.hidden = needsLanguage;
+}
+
+function isNameLocked() {
+  return localStorage.getItem(nameLockedKey) === "1" && Boolean(localStorage.getItem("brawlclaui-name"));
+}
+
+function canEditName() {
+  return isAdminUser() || !isNameLocked() || localStorage.getItem(renameGrantKey) === "1";
+}
+
+function updateNameLock() {
+  if (!nameInput) return;
+  const locked = !canEditName();
+  nameInput.disabled = locked;
+  nameInput.classList.toggle("name-locked", locked);
+  if (locked) error.textContent = t("nameLockedNotice");
+}
+
+function savePlayerName(value = name(), lock = false) {
+  const next = String(value || "").trim().slice(0, 14);
+  if (!next) return false;
+  nameInput.value = next;
+  localStorage.setItem("brawlclaui-name", next);
+  if (lock && !isAdminUser()) {
+    localStorage.setItem(nameLockedKey, "1");
+    localStorage.removeItem(renameGrantKey);
+  }
+  updateNameLock();
+  queueCloudSave();
+  return true;
 }
 
 function playerJoinPayload(extra = {}, options = {}) {
@@ -706,7 +786,7 @@ function enter(reply) {
   lastBazaarBuff = players.find(p => p.id === playerId)?.bazaarBuff || "";
   wasPlaying = true;
   syncLobbyPresence(false);
-  localStorage.setItem("brawlclaui-name", name());
+  savePlayerName(name(), true);
   localStorage.setItem("brawlclaui-room", roomCode);
   lobby.hidden = true;
   game.hidden = false;
@@ -789,6 +869,9 @@ function progressSnapshot() {
   return {
     bestSurvival: personalBest,
     unlockedCharacters: isAdminUser() ? [...lockedCharacters].sort() : [...unlockedCharacters()].sort(),
+    firstGameCompleted: localStorage.getItem(firstGameCompletedKey) === "1",
+    nameLocked: isNameLocked(),
+    canRename: isAdminUser() || localStorage.getItem(renameGrantKey) === "1",
     role: isAdminUser() ? "admin" : "player",
     preferredName: name(),
     language: localStorage.getItem(languageKey) || "he"
@@ -1109,6 +1192,7 @@ function renderAdminPanel() {
   if (adminEliminate) adminEliminate.disabled = !hasTarget || targetInLobby;
   if (adminFreeze) adminFreeze.disabled = !hasTarget || targetInLobby;
   if (adminTeleport) adminTeleport.disabled = !hasTarget || targetInLobby || Boolean(adminTargetRoomCode);
+  if (adminAllowRename) adminAllowRename.disabled = !hasTarget;
   if (adminResetProgress) adminResetProgress.disabled = !hasTarget;
   if (adminKick) adminKick.disabled = !hasTarget;
   if (adminBan) adminBan.disabled = !hasTarget || targetInLobby;
@@ -1216,8 +1300,15 @@ function applyCloudProgress(progress) {
     nameInput.value = String(progress.preferredName).slice(0, 14);
     localStorage.setItem("brawlclaui-name", name());
   }
+  if (progress.nameLocked && name()) localStorage.setItem(nameLockedKey, "1");
+  if (progress.canRename) localStorage.setItem(renameGrantKey, "1");
+  if (progress.firstGameCompleted) {
+    localStorage.setItem(firstGameCompletedKey, "1");
+    unlockCharacter("pixel");
+  }
   renderSurvivalStats();
   renderCharacterLocks();
+  updateNameLock();
 }
 
 function queueCloudSave() {
@@ -1358,6 +1449,17 @@ function applyControlMode() {
 controlModeSelect.addEventListener("change", applyControlMode);
 languageSelect.addEventListener("change", () => {
   localStorage.setItem(languageKey, languageSelect.value);
+  localStorage.setItem(languagePickedKey, "1");
+  if (profileLanguageSelect) profileLanguageSelect.value = languageSelect.value;
+  updateProfileGate();
+  applyLanguage();
+});
+profileLanguageSelect?.addEventListener("change", () => {
+  if (!profileLanguageSelect.value) return;
+  languageSelect.value = profileLanguageSelect.value;
+  localStorage.setItem(languageKey, profileLanguageSelect.value);
+  localStorage.setItem(languagePickedKey, "1");
+  updateProfileGate();
   applyLanguage();
 });
 
@@ -1370,7 +1472,15 @@ document.querySelectorAll("[data-character]").forEach(button => {
   };
 });
 document.querySelector("#mode").addEventListener("change", queueAutoJoin);
-nameInput.addEventListener("change", queueAutoJoin);
+nameInput.addEventListener("change", () => {
+  if (!canEditName()) {
+    nameInput.value = localStorage.getItem("brawlclaui-name") || nameInput.value;
+    updateNameLock();
+    return;
+  }
+  if (name()) savePlayerName(name(), false);
+  queueAutoJoin();
+});
 nameInput.addEventListener("change", queueCloudSave);
 nameInput.addEventListener("change", () => syncLobbyPresence());
 function joinByCode(value, requestFullscreenForJoin = true) {
@@ -1405,6 +1515,7 @@ codeInput.addEventListener("input", () => codeInput.value = codeInput.value.toUp
 if (pendingJoinCode && /^[A-Z0-9]{4}$/.test(pendingJoinCode)) codeInput.value = pendingJoinCode;
 else pendingJoinCode = "";
 function leaveGame() {
+  markFirstGameCompleted();
   const leavingRoom = roomCode;
   if (leavingRoom) socket.emit("player:leave", { code: leavingRoom, playerId });
   roomCode = "";
@@ -1439,12 +1550,16 @@ function createNewLocalPlayer() {
   setLocalAccountMode(true);
   nameInput.value = "";
   localStorage.removeItem("brawlclaui-name");
+  localStorage.removeItem(nameLockedKey);
+  localStorage.removeItem(renameGrantKey);
+  localStorage.removeItem(firstGameCompletedKey);
   selectedCharacter = "blaze";
   document.querySelectorAll("[data-character]").forEach(button => button.classList.toggle("selected", button.dataset.character === selectedCharacter));
   error.textContent = t("localPlayerCreated");
   renderAccountStatus();
   renderSurvivalStats();
   renderCharacterLocks();
+  updateNameLock();
   renderAdminPanel();
   syncLobbyPresence(false);
 }
@@ -1470,6 +1585,10 @@ adminHeal?.addEventListener("click", () => runAdminTargetCommand("admin:healPlay
 adminEliminate?.addEventListener("click", () => runAdminTargetCommand("admin:eliminatePlayer"));
 adminFreeze?.addEventListener("click", () => runAdminTargetCommand("admin:freezePlayer"));
 adminTeleport?.addEventListener("click", () => runAdminTargetCommand("admin:teleportPlayer"));
+adminAllowRename?.addEventListener("click", () => {
+  if (!adminPlayerSelect.value) return setAdminStatus(t("adminPickPlayer"));
+  runAdminCommand("admin:allowRename", { targetId: adminPlayerSelect.value });
+});
 adminResetProgress?.addEventListener("click", () => runAdminTargetCommand("admin:resetProgress"));
 adminKick?.addEventListener("click", () => runAdminTargetCommand("admin:kickPlayer"));
 adminBan?.addEventListener("click", () => runAdminTargetCommand("admin:banPlayer"));
@@ -1546,6 +1665,7 @@ socket.on("game:state", next => {
 });
 socket.on("game:meta", next => {
   gameMeta = next;
+  if (wasPlaying && (next.winner || next.winnerTeam || next.endedAt)) markFirstGameCompleted();
   if (next.mode === "survival" && next.rewardCharacter === "boomer" && next.winner?.id === playerId) unlockCharacter("boomer");
   updateMeta();
   if (next.mode === "survival") document.querySelector("#count").textContent = `${t("wave")} ${next.wave || 1} - ${next.survivalTime || 0}s`;
@@ -1575,6 +1695,12 @@ socket.on("admin:characterRevoked", ({ character } = {}) => {
 socket.on("admin:progressReset", () => {
   resetProgress();
   error.textContent = t("adminProgressResetNotice");
+});
+socket.on("admin:renameAllowed", () => {
+  localStorage.setItem(renameGrantKey, "1");
+  updateNameLock();
+  error.textContent = t("renameAllowed");
+  queueCloudSave();
 });
 socket.on("admin:kicked", () => {
   error.textContent = t("adminKickedNotice");
