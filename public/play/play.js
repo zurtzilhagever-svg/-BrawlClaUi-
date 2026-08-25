@@ -67,6 +67,7 @@ const adminRestart = document.querySelector("#admin-restart");
 const adminStatus = document.querySelector("#admin-status");
 const input = { x: 0, y: 0, attack: false, special: false };
 const touchAim = { x: 0, y: 0, active: false };
+const gamepadAim = { x: 0, y: 0, active: false };
 const keyboardState = new Set();
 const keyboardBindings = {
   up: "ArrowUp",
@@ -237,6 +238,7 @@ const translations = {
     gamepadTitle: "Controller mode",
     gamepadWaiting: "Press any button on the controller",
     gamepadConnected: "Controller connected",
+    gamepadPlayStationHint: "R2 attack, L2 super, right stick aim",
     gamepadHelp: "Connect the controller to Bluetooth or USB, then return to the game.",
     keysMove: "ARROWS",
     keysAttack: "J ATTACK",
@@ -407,6 +409,7 @@ const translations = {
     gamepadTitle: "\u05de\u05e6\u05d1 \u05e9\u05dc\u05d8",
     gamepadWaiting: "\u05dc\u05d7\u05e5 \u05e2\u05dc \u05db\u05e4\u05ea\u05d5\u05e8 \u05d1\u05e9\u05dc\u05d8",
     gamepadConnected: "\u05e9\u05dc\u05d8 \u05de\u05d7\u05d5\u05d1\u05e8",
+    gamepadPlayStationHint: "R2 \u05d4\u05ea\u05e7\u05e4\u05d4, L2 \u05e1\u05d5\u05e4\u05e8, \u05e1\u05d8\u05d9\u05e7 \u05d9\u05de\u05e0\u05d9 \u05dc\u05db\u05d9\u05d5\u05d5\u05df",
     gamepadHelp: "\u05d7\u05d1\u05e8 \u05d0\u05ea \u05d4\u05e9\u05dc\u05d8 \u05dc-Bluetooth \u05d0\u05d5 USB, \u05d5\u05d0\u05d6 \u05d7\u05d6\u05d5\u05e8 \u05dc\u05de\u05e9\u05d7\u05e7.",
     keysMove: "\u05d7\u05e6\u05d9\u05dd",
     keysAttack: "J \u05d4\u05ea\u05e7\u05e4\u05d4",
@@ -505,6 +508,7 @@ translations.ar = {
   gamepadTitle: "Controller mode",
   gamepadWaiting: "Press any button on the controller",
   gamepadConnected: "Controller connected",
+  gamepadPlayStationHint: "R2 attack, L2 super, right stick aim",
   gamepadHelp: "Connect the controller to Bluetooth or USB, then return to the game.",
   keysMove: "\u0627\u0644\u0623\u0633\u0647\u0645",
   keysAttack: "J \u0647\u062c\u0648\u0645",
@@ -1555,6 +1559,9 @@ function applyControlMode() {
   input.y = 0;
   input.attack = false;
   input.special = false;
+  gamepadAim.x = 0;
+  gamepadAim.y = 0;
+  gamepadAim.active = false;
   document.querySelector("#stick-knob").style.transform = "";
 }
 
@@ -1653,6 +1660,9 @@ function leaveGame() {
   input.y = 0;
   input.attack = false;
   input.special = false;
+  gamepadAim.x = 0;
+  gamepadAim.y = 0;
+  gamepadAim.active = false;
   keyboardState.clear();
   document.querySelector("#stick-knob").style.transform = "";
   localStorage.removeItem("brawlclaui-room");
@@ -1956,7 +1966,9 @@ function gamepadName(id = "") {
 
 function updateGamepadStatus(id = "") {
   if (!gamepadStatus) return;
-  gamepadStatus.textContent = id ? `${t("gamepadConnected")}: ${gamepadName(id)}` : t("gamepadWaiting");
+  const label = gamepadName(id);
+  const extra = label === "PlayStation" ? ` - ${t("gamepadPlayStationHint")}` : "";
+  gamepadStatus.textContent = id ? `${t("gamepadConnected")}: ${label}${extra}` : t("gamepadWaiting");
 }
 
 window.GamepadController?.onInput(next => {
@@ -1965,6 +1977,9 @@ window.GamepadController?.onInput(next => {
   input.y = Number(next.y || 0);
   input.attack = Boolean(next.attack);
   input.special = Boolean(next.special);
+  gamepadAim.x = Number(next.aimX || 0);
+  gamepadAim.y = Number(next.aimY || 0);
+  gamepadAim.active = Math.hypot(gamepadAim.x, gamepadAim.y) > 0.1;
   updateGamepadStatus(next.id);
 });
 
@@ -1975,6 +1990,9 @@ window.addEventListener("gamepaddisconnected", () => {
   input.y = 0;
   input.attack = false;
   input.special = false;
+  gamepadAim.x = 0;
+  gamepadAim.y = 0;
+  gamepadAim.active = false;
   updateGamepadStatus("");
 });
 
@@ -2039,8 +2057,8 @@ setInterval(() => {
   updateKeyboardInput();
   if (socket.connected && wasPlaying) {
     const autoAim = autoAimAtNearestBot();
-    const aimX = touchAim.active ? touchAim.x : autoAim?.[0] || 0;
-    const aimY = touchAim.active ? touchAim.y : autoAim?.[1] || 0;
+    const aimX = touchAim.active ? touchAim.x : gamepadAim.active ? gamepadAim.x : autoAim?.[0] || 0;
+    const aimY = touchAim.active ? touchAim.y : gamepadAim.active ? gamepadAim.y : autoAim?.[1] || 0;
     socket.emit("player:input", [input.x, input.y, input.attack ? 1 : 0, input.special ? 1 : 0, aimX, aimY]);
   }
 }, 1000 / 60);
