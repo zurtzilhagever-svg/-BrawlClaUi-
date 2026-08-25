@@ -1,9 +1,17 @@
 :root {
   font-family: Inter, system-ui, sans-serif;
-  background: #11172b;
-  color: #fff;
+  background: #10131d;
+  color: #f8fbff;
   touch-action: none;
   overscroll-behavior: none;
+  --surface: #1b2332;
+  --surface-2: #111827;
+  --line: #ffffff24;
+  --soft: #bac6d8;
+  --gold: #ffd15a;
+  --cyan: #67d8f9;
+  --red: #f05261;
+  --violet: #8b73f6;
 }
 
 * {
@@ -16,7 +24,7 @@ body {
   min-height: 100svh;
   overflow: hidden;
   overscroll-behavior: none;
-  background: radial-gradient(circle at 50% 0, #334878, #11172b 65%);
+  background: linear-gradient(140deg, #10131d 0%, #1b2b3a 42%, #3b2630 100%);
 }
 
 button,
@@ -28,16 +36,17 @@ input {
   width: min(92vw, 390px);
   margin: 10svh auto;
   padding: 28px;
-  border-radius: 24px;
-  background: #1d2744;
-  box-shadow: 0 20px 50px #0007;
+  border-radius: 8px;
+  background: #1b2332f2;
+  border: 1px solid var(--line);
+  box-shadow: 0 20px 55px #0009;
 }
 
 .brand {
   font-weight: 900;
   letter-spacing: .13em;
   font-size: .75rem;
-  color: #85dcff;
+  color: var(--cyan);
 }
 
 .panel h1 {
@@ -49,13 +58,13 @@ input {
   display: block;
   width: 100%;
   border: 0;
-  border-radius: 12px;
+  border-radius: 8px;
   padding: 15px;
   margin-top: 10px;
 }
 
 .panel input {
-  background: #0f1528;
+  background: var(--surface-2);
   color: #fff;
 }
 
@@ -67,7 +76,7 @@ input {
 }
 
 .panel button {
-  background: #ffce4b;
+  background: var(--gold);
   color: #201900;
   font-weight: 900;
 }
@@ -94,7 +103,7 @@ header {
 }
 
 #status {
-  color: #72e8a4;
+  color: #62dc8d;
   font-size: .72rem;
   font-weight: bold;
 }
@@ -114,7 +123,7 @@ header {
 #stick-zone {
   width: 220px;
   text-align: center;
-  color: #aebcdb;
+  color: var(--soft);
   font-size: .72rem;
   font-weight: bold;
   letter-spacing: .12em;
@@ -127,8 +136,8 @@ header {
   height: 170px;
   margin: auto auto 12px;
   border-radius: 50%;
-  background: #ffffff18;
-  border: 2px solid #ffffff25;
+  background: #111827b8;
+  border: 2px solid var(--line);
   touch-action: none;
 }
 
@@ -140,7 +149,7 @@ header {
   height: 72px;
   translate: -50% -50%;
   border-radius: 50%;
-  background: #6ed4ff;
+  background: var(--cyan);
   box-shadow: 0 5px 12px #0005;
 }
 
@@ -186,11 +195,11 @@ header {
 }
 
 .attack {
-  background: #f2545b;
+  background: var(--red);
 }
 
 .special {
-  background: #8465e7;
+  background: var(--violet);
   transform: translateY(38px);
 }
 

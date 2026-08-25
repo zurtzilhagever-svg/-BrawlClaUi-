@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
   <meta name="description" content="בראול כלווי - BrawkClaUi, משחק דפדפן מרובה משתתפים בסגנון בראול שאפשר לשחק עם חברים מהמחשב ומהטלפון.">
   <meta name="keywords" content="בראול כלווי, BrawkClaUi, BrawlClaUi, Brawl Claui, משחק בראול אונליין, משחק מרובה משתתפים">
-  <meta name="theme-color" content="#11172b">
+  <meta name="theme-color" content="#10131d">
   <meta property="og:title" content="בראול כלווי - BrawkClaUi">
   <meta property="og:description" content="משחק בראול אונליין מרובה משתתפים למחשב ולטלפון.">
   <meta property="og:type" content="website">
@@ -18,7 +18,7 @@
   <link rel="icon" type="image/png" sizes="48x48" href="/icons/favicon-48.png?v=65">
   <link rel="apple-touch-icon" href="/icons/icon-192.png?v=65">
   <title>בראול כלווי - BrawkClaUi</title>
-  <link rel="stylesheet" href="style.css?v=76">
+  <link rel="stylesheet" href="style.css?v=79">
 </head>
 <body>
   <section id="profile-gate" class="profile-gate" aria-labelledby="profile-title">
@@ -92,7 +92,7 @@
       <span data-i18n="keysSpecial">K SPECIAL</span>
     </div>
 
-    <section class="room-preview" aria-live="polite">
+    <section class="room-preview" aria-live="polite" hidden>
       <span data-i18n="roomCodeLabel">ROOM CODE</span>
       <strong id="lobby-room-code">----</strong>
       <div class="server-code">
@@ -110,7 +110,7 @@
       </div>
     </section>
 
-    <section class="survival-panel">
+    <section class="survival-panel" hidden>
       <div class="survival-stats">
         <span><b data-i18n="personalBest">BEST</b><strong id="personal-best">0s</strong></span>
         <span><b data-i18n="currentRun">CURRENT</b><strong id="current-run">0s</strong></span>
@@ -121,12 +121,12 @@
       </div>
     </section>
 
-    <div class="divider" data-i18n="joinDivider">OR JOIN A FRIEND</div>
-    <div class="join-row">
+    <div class="divider" data-i18n="joinDivider" hidden>OR JOIN A FRIEND</div>
+    <div class="join-row" hidden>
       <input id="code" maxlength="80" placeholder="CODE" data-i18n-placeholder="codePlaceholder">
       <button id="join" data-i18n="join">JOIN</button>
     </div>
-    <p id="error" role="alert"></p>
+    <p id="error" role="alert" hidden></p>
     <button id="install" data-i18n="install">INSTALL GAME</button>
   </section>
 
@@ -198,8 +198,8 @@
   <main id="game" hidden>
     <header>
       <button id="leave" type="button" aria-label="Leave game" data-i18n-aria-label="leaveAria">x</button>
-      <span id="room-label">ROOM ----</span>
-      <span id="server-label" class="server-label"></span>
+      <span id="room-label" hidden>ROOM ----</span>
+      <span id="server-label" class="server-label" hidden></span>
       <span id="count">1 PLAYER</span>
     </header>
     <canvas id="arena" width="1200" height="900"></canvas>
@@ -226,6 +226,6 @@
   <script src="/shared/runtime.js"></script>
   <script src="/socket.io/socket.io.js"></script>
   <script src="/shared/qr-generator.js"></script>
-  <script src="play.js?v=76"></script>
+  <script src="play.js?v=77"></script>
 </body>
 </html>

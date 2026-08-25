@@ -14,6 +14,7 @@ const canvas = document.querySelector("#arena");
 const ctx = canvas.getContext("2d");
 const lobbyRoomCode = document.querySelector("#lobby-room-code");
 const serverJoinCodeEl = document.querySelector("#server-join-code");
+const roomLabel = document.querySelector("#room-label");
 const serverLabel = document.querySelector("#server-label");
 const matchStatus = document.querySelector("#match-status");
 const phoneConnect = document.querySelector("#phone-connect");
@@ -657,7 +658,10 @@ function applyLanguage() {
   document.querySelectorAll("[data-i18n]").forEach(el => { el.textContent = t(el.dataset.i18n); });
   document.querySelectorAll("[data-i18n-placeholder]").forEach(el => { el.placeholder = t(el.dataset.i18nPlaceholder); });
   document.querySelectorAll("[data-i18n-aria-label]").forEach(el => { el.setAttribute("aria-label", t(el.dataset.i18nAriaLabel)); });
-  if (roomCode) document.querySelector("#room-label").textContent = `${t("room")} ${roomCode}`;
+  if (roomLabel) {
+    roomLabel.hidden = !roomCode;
+    if (roomCode) roomLabel.textContent = `${t("room")} ${roomCode}`;
+  }
   updateLobbyRoom();
   renderSurvivalStats();
   updateMeta();
@@ -857,7 +861,10 @@ function enter(reply) {
   document.documentElement.classList.add("playing");
   document.body.classList.add("playing");
   window.scrollTo(0, 0);
-  document.querySelector("#room-label").textContent = `${t("room")} ${roomCode}`;
+  if (roomLabel) {
+    roomLabel.hidden = !roomCode;
+    if (roomCode) roomLabel.textContent = `${t("room")} ${roomCode}`;
+  }
   updateServerJoinCode();
   applyControlMode();
   updateMeta();
@@ -876,7 +883,10 @@ function updateLobbyRoom() {
 function updateServerJoinCode() {
   const code = roomCode ? makeServerJoinCode() : "----";
   if (serverJoinCodeEl) serverJoinCodeEl.textContent = code;
-  if (serverLabel) serverLabel.textContent = roomCode ? code : "";
+  if (serverLabel) {
+    serverLabel.hidden = !roomCode;
+    serverLabel.textContent = roomCode ? code : "";
+  }
 }
 
 function makeServerJoinCode() {
@@ -1628,6 +1638,7 @@ function leaveGame() {
   keyboardState.clear();
   document.querySelector("#stick-knob").style.transform = "";
   localStorage.removeItem("brawlclaui-room");
+  if (roomLabel) roomLabel.hidden = true;
   document.documentElement.classList.remove("playing");
   document.body.classList.remove("playing");
   game.hidden = true;
