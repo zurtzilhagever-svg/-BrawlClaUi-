@@ -1,5 +1,5 @@
 "use strict";
-const express = require("express"), http = require("http"), os = require("os"), fs = require("fs"), path = require("path"), QRCode = require("qrcode");
+const express = require("express"), http = require("http"), os = require("os"), fs = require("fs"), path = require("path"), crypto = require("crypto"), QRCode = require("qrcode");
 const { Server } = require("socket.io");
 const app = express(), server = http.createServer(app), io = new Server(server, { cors: { origin: "*" } });
 const PORT = Number(process.env.PORT) || 3000, RECONNECT_MS = 30_000, MAX_PLAYERS = 8, SPECIAL_HITS = 5, AMMO_MAX = 5, PROJECTILE_SPEED = 12, BOB_UNLOCK_WAVE = 10;
@@ -9,6 +9,9 @@ const survivalLeaders = [];
 const COLORS = ["#ff5964", "#36c8ff", "#ffd54a", "#a875ff", "#52e084", "#ff8e4f", "#fa73bd", "#80a7ff"];
 const OWNER_ADMIN_EMAIL = "zurtzilhagever@gmail.com";
 const ADMIN_FILE = path.join(__dirname, "admins.json");
+const FIREBASE_PROJECT_ID = process.env.FIREBASE_PROJECT_ID || "brawlclaui";
+const FIREBASE_CERTS_URL = "https://www.googleapis.com/robot/v1/metadata/x509/securetoken@system.gserviceaccount.com";
+const firebaseCertCache = { expiresAt: 0, certs: {} };
 function loadAdminEmails() {
   const emails = new Set([OWNER_ADMIN_EMAIL]);
   try {
@@ -178,11 +181,65 @@ function isAdminEmail(value) { return ADMIN_EMAILS.has(normalizeEmail(value)); }
 function isOwnerAdminEmail(value) { return normalizeEmail(value) === OWNER_ADMIN_EMAIL; }
 function adminList() { return [...ADMIN_EMAILS].sort().map(email => ({ email, owner:isOwnerAdminEmail(email) })); }
 function saveAdminEmails() { fs.writeFileSync(ADMIN_FILE, JSON.stringify([...ADMIN_EMAILS].sort(), null, 2)); }
-function isAdminActor(socket, data = {}) {
-  const ref = socketIndex.get(socket.id);
-  const actorRoom = ref && rooms.get(ref.code);
-  const actor = actorRoom?.players.get(ref.playerId);
-  return isAdminEmail(actor?.accountEmail) || isAdminEmail(data.accountEmail);
+function readJwtPart(part) {
+  return JSON.parse(Buffer.from(String(part || ""), "base64url").toString("utf8"));
+}
+async function firebasePublicCerts() {
+  if (Date.now() < firebaseCertCache.expiresAt && Object.keys(firebaseCertCache.certs).length) return firebaseCertCache.certs;
+  const response = await fetch(FIREBASE_CERTS_URL);
+  if (!response.ok) throw new Error("Firebase certs unavailable");
+  const cacheControl = response.headers.get("cache-control") || "";
+  const maxAge = Number(cacheControl.match(/max-age=(\d+)/)?.[1]) || 3600;
+  firebaseCertCache.certs = await response.json();
+  firebaseCertCache.expiresAt = Date.now() + Math.max(60, maxAge - 30) * 1000;
+  return firebaseCertCache.certs;
+}
+async function verifyFirebaseToken(token) {
+  const [encodedHeader, encodedPayload, encodedSignature] = String(token || "").split(".");
+  if (!encodedHeader || !encodedPayload || !encodedSignature) return null;
+  const header = readJwtPart(encodedHeader);
+  if (header.alg !== "RS256" || !header.kid) return null;
+  const certs = await firebasePublicCerts();
+  const cert = certs[header.kid];
+  if (!cert) return null;
+  const verifier = crypto.createVerify("RSA-SHA256");
+  verifier.update(`${encodedHeader}.${encodedPayload}`);
+  verifier.end();
+  const signature = Buffer.from(encodedSignature, "base64url");
+  if (!verifier.verify(cert, signature)) return null;
+  const payload = readJwtPart(encodedPayload);
+  const nowSeconds = Math.floor(Date.now() / 1000);
+  if (payload.aud !== FIREBASE_PROJECT_ID) return null;
+  if (payload.iss !== `https://securetoken.google.com/${FIREBASE_PROJECT_ID}`) return null;
+  if (!payload.sub || payload.exp <= nowSeconds || payload.iat > nowSeconds + 60) return null;
+  if (payload.email_verified === false) return null;
+  return payload;
+}
+async function verifyAuthEmail(socket, data = {}) {
+  const cached = normalizeEmail(socket.data.verifiedEmail);
+  const tokenProvided = Object.prototype.hasOwnProperty.call(data, "authToken");
+  const token = String(data.authToken || "").trim();
+  if (tokenProvided && !token) {
+    socket.data.verifiedEmail = "";
+    return "";
+  }
+  if (!token) return cached;
+  try {
+    const decoded = await verifyFirebaseToken(token);
+    const email = normalizeEmail(decoded.email);
+    if (!email || decoded.email_verified === false) return "";
+    socket.data.verifiedEmail = email;
+    return email;
+  } catch {
+    socket.data.verifiedEmail = "";
+    return "";
+  }
+}
+function verifiedSocketEmail(socket) {
+  return normalizeEmail(socket.data.verifiedEmail);
+}
+function isAdminActor(socket) {
+  return isAdminEmail(verifiedSocketEmail(socket));
 }
 function protectInvinciblePlayer(player) {
   if (!isOwnerAdminEmail(player?.accountEmail) || !player.invincibleMode) return false;
@@ -384,7 +441,7 @@ function adminRoom(socket, data = {}, ack = () => {}) {
   const ref = socketIndex.get(socket.id);
   const roomCode = String(data.roomCode || ref?.code || "").trim().toUpperCase();
   const room = rooms.get(roomCode);
-  if (!room || !isAdminActor(socket, data)) {
+  if (!room || !isAdminActor(socket)) {
     ack({ ok:false, error:"Admin only" });
     return null;
   }
@@ -400,7 +457,7 @@ function adminTarget(room, data = {}, ack = () => {}) {
 }
 function adminLobbyTarget(socket, data = {}, ack = () => {}) {
   if (String(data.roomCode || "").toUpperCase() !== "LOBBY") return null;
-  if (!isAdminActor(socket, data)) {
+  if (!isAdminActor(socket)) {
     ack({ ok:false, error:"Admin only" });
     return null;
   }
@@ -500,7 +557,7 @@ function emitCharacterRevoke(target, character) {
   else if (target.player.socketId) io.to(target.player.socketId).emit("admin:characterRevoked", { character });
 }
 function runAdminTextCommand(socket, data = {}) {
-  if (!isAdminActor(socket, data)) return { ok:false, error:"Admin only" };
+  if (!isAdminActor(socket)) return { ok:false, error:"Admin only" };
   const raw = String(data.command || "").trim();
   const text = commandText(raw);
   if (!text) return { ok:false, error:"כתוב פקודה" };
@@ -1215,12 +1272,16 @@ function updateRoom(room, now) {
   broadcast(room);
 }
 io.on("connection", socket => {
-  socket.on("lobby:present", (data={}) => {
+  socket.use(async ([event, data], next) => {
+    if (String(event || "").startsWith("admin:")) await verifyAuthEmail(socket, data || {});
+    next();
+  });
+  socket.on("lobby:present", async (data={}) => {
     if (data.active === false) {
       lobbyPlayers.delete(socket.id);
       return;
     }
-    const email = normalizeEmail(data.accountEmail);
+    const email = await verifyAuthEmail(socket, data);
     if (!isValidEmail(email)) {
       lobbyPlayers.delete(socket.id);
       return;
@@ -1235,13 +1296,17 @@ io.on("connection", socket => {
     });
   });
   socket.on("host:create", (data={}, ack=()=>{}) => { if (typeof data === "function") { ack=data; data={}; } const room=createRoom(socket.id,data.mode); socket.join(room.code); socket.data.hostRoom=room.code; ack({ok:true,code:room.code,players:[],meta:meta(room)}); });
-  socket.on("player:create", ({playerId,name,character,mode,accountEmail,invincibleMode}={}, ack=()=>{}) => { const room=createRoom(null,mode); joinPlayer(socket,room.code,playerId,name,character,accountEmail,invincibleMode,ack); });
-  socket.on("player:autoJoin", ({playerId,name,character,mode,accountEmail,invincibleMode}={}, ack=()=>{}) => {
+  socket.on("player:create", async ({playerId,name,character,mode,authToken,invincibleMode}={}, ack=()=>{}) => { const accountEmail = await verifyAuthEmail(socket, { authToken }); const room=createRoom(null,mode); joinPlayer(socket,room.code,playerId,name,character,accountEmail,invincibleMode,ack); });
+  socket.on("player:autoJoin", async ({playerId,name,character,mode,authToken,invincibleMode}={}, ack=()=>{}) => {
+    const accountEmail = await verifyAuthEmail(socket, { authToken });
     const selectedMode = MODES[mode] ? mode : "survival";
     const room = selectedMode === "survival" ? createRoom(null, selectedMode) : findOpenRoom(selectedMode) || createRoom(null, selectedMode);
     joinPlayer(socket, room.code, playerId, name, character, accountEmail, invincibleMode, ack);
   });
-  socket.on("player:join", ({code:roomCode,playerId,name,character,accountEmail,invincibleMode}={}, ack=()=>{}) => joinPlayer(socket,String(roomCode||"").trim().toUpperCase(),playerId,name,character,accountEmail,invincibleMode,ack));
+  socket.on("player:join", async ({code:roomCode,playerId,name,character,authToken,invincibleMode}={}, ack=()=>{}) => {
+    const accountEmail = await verifyAuthEmail(socket, { authToken });
+    joinPlayer(socket,String(roomCode||"").trim().toUpperCase(),playerId,name,character,accountEmail,invincibleMode,ack);
+  });
   socket.on("player:leave", ({code:roomCode,playerId}={}, ack=()=>{}) => {
     const ref = socketIndex.get(socket.id);
     const code = String(roomCode || ref?.code || "").trim().toUpperCase();
@@ -1255,20 +1320,23 @@ io.on("connection", socket => {
     removePlayer(room, id);
     ack({ ok:true });
   });
-  socket.on("admin:identify", ({ roomCode, playerId, accountEmail } = {}, ack=()=>{}) => {
+  socket.on("admin:identify", async ({ roomCode, playerId, authToken } = {}, ack=()=>{}) => {
+    const accountEmail = await verifyAuthEmail(socket, { authToken });
     const room = rooms.get(String(roomCode || "").trim().toUpperCase()), ref = socketIndex.get(socket.id);
     const p = room?.players.get(String(playerId || ref?.playerId || ""));
     if (!room || !p || p.socketId !== socket.id) return ack({ ok:false, error:"Player not found" });
-    p.accountEmail = normalizeEmail(accountEmail);
-    ack({ ok:true, admin:isAdminEmail(p.accountEmail), admins:adminList() });
+    p.accountEmail = accountEmail;
+    const admin = isAdminEmail(accountEmail);
+    ack({ ok:true, admin, admins:admin ? adminList() : [] });
     broadcast(room);
   });
-  socket.on("admin:check", (data={}, ack=()=>{}) => {
-    const email = normalizeEmail(data.accountEmail);
-    ack({ ok:true, admin:isAdminEmail(email), admins:adminList() });
+  socket.on("admin:check", async (data={}, ack=()=>{}) => {
+    const email = await verifyAuthEmail(socket, data);
+    const admin = isAdminEmail(email);
+    ack({ ok:true, admin, admins:admin ? adminList() : [] });
   });
   socket.on("admin:list", (data={}, ack=()=>{}) => {
-    if (!isAdminActor(socket, data)) return ack({ ok:false, error:"Admin only" });
+    if (!isAdminActor(socket)) return ack({ ok:false, error:"Admin only" });
     ack({ ok:true, admins:adminList() });
   });
   socket.on("admin:runCommand", (data={}, ack=()=>{}) => {
@@ -1276,15 +1344,15 @@ io.on("connection", socket => {
     ack(reply.ok ? reply : { ok:false, error:reply.error || "Admin action failed" });
   });
   socket.on("admin:listLobby", (data={}, ack=()=>{}) => {
-    if (!isAdminActor(socket, data)) return ack({ ok:false, error:"Admin only" });
-    const actorEmail = normalizeEmail(data.accountEmail);
+    if (!isAdminActor(socket)) return ack({ ok:false, error:"Admin only" });
+    const actorEmail = verifiedSocketEmail(socket);
     const players = [...lobbyPlayers.values()]
       .filter(player => normalizeEmail(player.accountEmail) !== actorEmail)
       .map(player => ({ id:player.targetId, name:player.name, roomCode:"LOBBY", lobby:true, connected:true }));
     ack({ ok:true, players });
   });
   socket.on("admin:addAdmin", (data={}, ack=()=>{}) => {
-    if (!isAdminActor(socket, data)) return ack({ ok:false, error:"Admin only" });
+    if (!isAdminActor(socket)) return ack({ ok:false, error:"Admin only" });
     const email = normalizeEmail(data.email);
     if (!isValidEmail(email)) return ack({ ok:false, error:"Invalid Google account" });
     ADMIN_EMAILS.add(email);
@@ -1294,7 +1362,7 @@ io.on("connection", socket => {
     ack({ ok:true, admins:adminList() });
   });
   socket.on("admin:removeAdmin", (data={}, ack=()=>{}) => {
-    if (!isAdminActor(socket, data)) return ack({ ok:false, error:"Admin only" });
+    if (!isAdminActor(socket)) return ack({ ok:false, error:"Admin only" });
     const email = normalizeEmail(data.email);
     if (!isValidEmail(email)) return ack({ ok:false, error:"Invalid Google account" });
     if (isOwnerAdminEmail(email)) return ack({ ok:false, error:"Owner admin cannot be removed" });
@@ -1305,7 +1373,7 @@ io.on("connection", socket => {
     ack({ ok:true, admins:adminList() });
   });
   socket.on("admin:findPlayer", (data={}, ack=()=>{}) => {
-    if (!isAdminActor(socket, data)) return ack({ ok:false, error:"Admin only" });
+    if (!isAdminActor(socket)) return ack({ ok:false, error:"Admin only" });
     const email = normalizeEmail(data.email);
     if (!isValidEmail(email)) return ack({ ok:false, error:"Invalid Google account" });
     for (const room of rooms.values()) {

@@ -680,6 +680,7 @@ let phoneOrigin = location.origin;
 let personalBest = loadStoredPersonalBest();
 let cloudApi = null;
 let cloudUser = null;
+let cloudAuthToken = "";
 let localAccountMode = sessionStorage.getItem(localAccountKey) === "1";
 let cloudSaveTimer = 0;
 let lastCloudSnapshot = "";
@@ -712,7 +713,6 @@ populateLanguageSelect();
   if (profileLanguageSelect) profileLanguageSelect.value = localStorage.getItem(languagePickedKey) === "1" ? languageSelect.value : "";
 }
 controlModeSelect.value = controlMode;
-removeAdminButtonSections();
 setupAdminToggle();
 applyLanguage();
 updateProfileGate();
@@ -817,7 +817,7 @@ function playerJoinPayload(extra = {}, options = {}) {
     playerId,
     name: name(),
     character: selectedCharacter,
-    accountEmail: user?.email || "",
+    authToken: cloudAuthToken,
     invincibleMode: adminInvincibleMode,
     ...extra
   };
@@ -830,7 +830,7 @@ function syncLobbyPresence(active = !wasPlaying && !roomCode) {
     active: Boolean(active && user?.email),
     playerId,
     name: name() || user?.displayName || user?.email || "",
-    accountEmail: user?.email || ""
+    authToken: cloudAuthToken
   });
 }
 
@@ -1081,6 +1081,21 @@ function activeCloudUser() {
   return localAccountMode ? null : cloudUser;
 }
 
+async function refreshCloudAuthToken(force = false) {
+  const user = activeCloudUser();
+  if (!user?.getIdToken) {
+    cloudAuthToken = "";
+    return "";
+  }
+  try {
+    cloudAuthToken = await user.getIdToken(force);
+    return cloudAuthToken;
+  } catch {
+    cloudAuthToken = "";
+    return "";
+  }
+}
+
 function setLocalAccountMode(active) {
   localAccountMode = Boolean(active);
   if (localAccountMode) sessionStorage.setItem(localAccountKey, "1");
@@ -1091,7 +1106,7 @@ function setLocalAccountMode(active) {
 }
 
 function adminPayload(extra = {}) {
-  return { roomCode: adminTargetRoomCode || roomCode, playerId, accountEmail: activeCloudUser()?.email || "", ...extra };
+  return { roomCode: adminTargetRoomCode || roomCode, playerId, authToken: cloudAuthToken, ...extra };
 }
 
 function applyAdminList(admins = []) {
@@ -1161,12 +1176,13 @@ function filterAdminCommands() {
   }
 }
 
-function syncAdminState(force = false) {
+async function syncAdminState(force = false) {
   const email = activeCloudUser()?.email || "";
   if (!email || (!socket.connected && !force)) return renderAdminPanel();
   if (!force && Date.now() - adminListRequestAt < 1200) return;
   adminListRequestAt = Date.now();
-  socket.emit("admin:check", { accountEmail: email }, reply => {
+  const authToken = await refreshCloudAuthToken(force);
+  socket.emit("admin:check", { authToken }, reply => {
     if (reply?.admins) applyAdminList(reply.admins);
     adminVerified = Boolean(reply?.admin);
     renderAccountStatus();
@@ -1195,8 +1211,9 @@ function requestAdminLobbyPlayers() {
   });
 }
 
-function identifyAdminInRoom() {
+async function identifyAdminInRoom() {
   if (!roomCode || !activeCloudUser()) return;
+  await refreshCloudAuthToken();
   socket.emit("admin:identify", adminPayload(), reply => {
     adminVerified = Boolean(reply?.admin);
     if (reply?.admins) applyAdminList(reply.admins);
@@ -1407,6 +1424,7 @@ async function setupCloudProgress() {
         renderAccountStatus(t("cloudSyncing"));
         const result = await cloudApi.signIn();
         cloudUser = result?.user || cloudApi.currentUser?.() || cloudUser;
+        await refreshCloudAuthToken(true);
         progressStorageSuffix = activeCloudUser() ? `:${activeCloudUser().uid}` : `:local:${playerId}`;
         personalBest = loadStoredPersonalBest();
         lastCloudSnapshot = "";
@@ -1429,6 +1447,7 @@ async function setupCloudProgress() {
     };
     googleSignOut.onclick = () => {
       setLocalAccountMode(true);
+      cloudAuthToken = "";
       lastCloudSnapshot = "";
       syncAdminState(true);
       renderSurvivalStats();
@@ -1436,12 +1455,13 @@ async function setupCloudProgress() {
       renderAccountStatus();
       renderAdminPanel();
       syncLobbyPresence(false);
-      if (roomCode) socket.emit("admin:identify", { roomCode, playerId, accountEmail: "" }, () => {});
+      if (roomCode) socket.emit("admin:identify", { roomCode, playerId, authToken: "" }, () => {});
     };
     cloudApi.onUserChanged(async user => {
       cloudUser = user;
       const activeUser = activeCloudUser();
       adminVerified = false;
+      await refreshCloudAuthToken(true);
       progressStorageSuffix = activeUser ? `:${activeUser.uid}` : `:local:${playerId}`;
       personalBest = loadStoredPersonalBest();
       lastCloudSnapshot = "";
@@ -1559,7 +1579,7 @@ nameInput.addEventListener("change", () => {
 });
 nameInput.addEventListener("change", queueCloudSave);
 nameInput.addEventListener("change", () => syncLobbyPresence());
-function joinByCode(value, requestFullscreenForJoin = true) {
+async function joinByCode(value, requestFullscreenForJoin = true) {
   if (requestFullscreenForJoin) requestAppFullscreen();
   const joinValue = String(value || "").trim();
   if (!joinValue) return error.textContent = t("codePlaceholder");
@@ -1570,6 +1590,7 @@ function joinByCode(value, requestFullscreenForJoin = true) {
   }
   const joinCode = remote ? remote.room : joinValue.toUpperCase();
   error.textContent = t("reconnecting");
+  await refreshCloudAuthToken();
   socket.emit("player:join", playerJoinPayload({ code: joinCode }, { askAdmin: true }), reply => {
     pendingJoinCode = "";
     if (!reply?.ok) {
@@ -1579,8 +1600,9 @@ function joinByCode(value, requestFullscreenForJoin = true) {
     enter(reply);
   });
 }
-document.querySelector("#create").onclick = () => {
+document.querySelector("#create").onclick = async () => {
   requestAppFullscreen();
+  await refreshCloudAuthToken();
   if (roomCode) return socket.emit("player:join", playerJoinPayload({ code: roomCode }, { askAdmin: true }), enter);
   socket.emit("player:autoJoin", playerJoinPayload({ mode: document.querySelector("#mode").value }, { askAdmin: true }), enter);
 };
@@ -1795,12 +1817,15 @@ socket.on("admin:banned", () => {
   window.setTimeout(() => location.reload(), 900);
 });
 socket.on("disconnect", () => { if (wasPlaying) document.querySelector("#help").textContent = t("reconnecting"); });
-socket.on("connect", () => {
+socket.on("connect", async () => {
   syncAdminState(true);
   syncLobbyPresence();
   if (pendingJoinCode && !wasPlaying) {
     joinByCode(pendingJoinCode, false);
-  } else if (wasPlaying && roomCode) socket.emit("player:join", playerJoinPayload({ code: roomCode }), enter);
+  } else if (wasPlaying && roomCode) {
+    await refreshCloudAuthToken();
+    socket.emit("player:join", playerJoinPayload({ code: roomCode }), enter);
+  }
   else updateLobbyRoom();
 });
 updateLobbyRoom();
