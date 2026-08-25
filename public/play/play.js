@@ -29,6 +29,8 @@ const gameGlobalBestEl = document.querySelector("#game-global-best");
 const languageSelect = document.querySelector("#language");
 const controlModeSelect = document.querySelector("#control-mode");
 const keyboardPanel = document.querySelector("#keyboard-panel");
+const gamepadPanel = document.querySelector("#gamepad-panel");
+const gamepadStatus = document.querySelector("#gamepad-status");
 const controls = document.querySelector(".controls");
 const accountStatus = document.querySelector("#account-status");
 const googleSignIn = document.querySelector("#google-sign-in");
@@ -231,6 +233,11 @@ const translations = {
     controlsLabel: "CONTROLS",
     controlTouch: "Phone / touch",
     controlKeyboard: "Computer keyboard",
+    controlGamepad: "Bluetooth / USB controller",
+    gamepadTitle: "Controller mode",
+    gamepadWaiting: "Press any button on the controller",
+    gamepadConnected: "Controller connected",
+    gamepadHelp: "Connect the controller to Bluetooth or USB, then return to the game.",
     keysMove: "ARROWS",
     keysAttack: "J ATTACK",
     keysSpecial: "K SUPER",
@@ -396,6 +403,11 @@ const translations = {
     controlsLabel: "\u05e9\u05dc\u05d9\u05d8\u05d4",
     controlTouch: "\u05d8\u05dc\u05e4\u05d5\u05df / \u05de\u05d2\u05e2",
     controlKeyboard: "\u05de\u05e7\u05dc\u05d3\u05ea \u05de\u05d7\u05e9\u05d1",
+    controlGamepad: "\u05e9\u05dc\u05d8 Bluetooth / USB",
+    gamepadTitle: "\u05de\u05e6\u05d1 \u05e9\u05dc\u05d8",
+    gamepadWaiting: "\u05dc\u05d7\u05e5 \u05e2\u05dc \u05db\u05e4\u05ea\u05d5\u05e8 \u05d1\u05e9\u05dc\u05d8",
+    gamepadConnected: "\u05e9\u05dc\u05d8 \u05de\u05d7\u05d5\u05d1\u05e8",
+    gamepadHelp: "\u05d7\u05d1\u05e8 \u05d0\u05ea \u05d4\u05e9\u05dc\u05d8 \u05dc-Bluetooth \u05d0\u05d5 USB, \u05d5\u05d0\u05d6 \u05d7\u05d6\u05d5\u05e8 \u05dc\u05de\u05e9\u05d7\u05e7.",
     keysMove: "\u05d7\u05e6\u05d9\u05dd",
     keysAttack: "J \u05d4\u05ea\u05e7\u05e4\u05d4",
     keysSpecial: "K \u05e1\u05d5\u05e4\u05e8",
@@ -489,6 +501,11 @@ translations.ar = {
   controlsLabel: "\u0627\u0644\u062a\u062d\u0643\u0645",
   controlTouch: "\u0647\u0627\u062a\u0641 / \u0644\u0645\u0633",
   controlKeyboard: "\u0644\u0648\u062d\u0629 \u0645\u0641\u0627\u062a\u064a\u062d",
+  controlGamepad: "Bluetooth / USB controller",
+  gamepadTitle: "Controller mode",
+  gamepadWaiting: "Press any button on the controller",
+  gamepadConnected: "Controller connected",
+  gamepadHelp: "Connect the controller to Bluetooth or USB, then return to the game.",
   keysMove: "\u0627\u0644\u0623\u0633\u0647\u0645",
   keysAttack: "J \u0647\u062c\u0648\u0645",
   keysSpecial: "K \u0633\u0648\u0628\u0631",
@@ -678,7 +695,7 @@ let selectedCharacter = "blaze";
 let gameMeta = { items: [], zoneScore: {} };
 let lastBazaarBuff = "";
 const savedControlMode = localStorage.getItem("brawlclaui-control-mode");
-let controlMode = ["touch", "keyboard"].includes(savedControlMode) ? savedControlMode : (matchMedia("(hover: hover) and (pointer: fine)").matches ? "keyboard" : "touch");
+let controlMode = ["touch", "keyboard", "gamepad"].includes(savedControlMode) ? savedControlMode : (matchMedia("(hover: hover) and (pointer: fine)").matches ? "keyboard" : "touch");
 let autoJoinTimer = 0;
 let phoneOrigin = location.origin;
 let personalBest = loadStoredPersonalBest();
@@ -1527,11 +1544,12 @@ function updateMeta() {
 
 function applyControlMode() {
   controlMode = controlModeSelect.value;
-  if (!["touch", "keyboard"].includes(controlMode)) controlMode = matchMedia("(hover: hover) and (pointer: fine)").matches ? "keyboard" : "touch";
+  if (!["touch", "keyboard", "gamepad"].includes(controlMode)) controlMode = matchMedia("(hover: hover) and (pointer: fine)").matches ? "keyboard" : "touch";
   controlModeSelect.value = controlMode;
   localStorage.setItem("brawlclaui-control-mode", controlMode);
   keyboardPanel.hidden = controlMode !== "keyboard";
-  controls.hidden = controlMode === "keyboard";
+  if (gamepadPanel) gamepadPanel.hidden = controlMode !== "gamepad";
+  controls.hidden = controlMode !== "touch";
   if (controlMode !== "keyboard") keyboardState.clear();
   input.x = 0;
   input.y = 0;
@@ -1929,8 +1947,39 @@ function updateKeyboardInput() {
   input.special = keyboardState.has(keyboardBindings.special);
 }
 
+function gamepadName(id = "") {
+  if (/xbox/i.test(id)) return "Xbox";
+  if (/dualsense|dualshock|wireless controller|playstation|sony/i.test(id)) return "PlayStation";
+  if (/nintendo|switch|pro controller|joy-con/i.test(id)) return "Nintendo";
+  return id ? id.split("(")[0].trim() || t("gamepadConnected") : t("gamepadConnected");
+}
+
+function updateGamepadStatus(id = "") {
+  if (!gamepadStatus) return;
+  gamepadStatus.textContent = id ? `${t("gamepadConnected")}: ${gamepadName(id)}` : t("gamepadWaiting");
+}
+
+window.GamepadController?.onInput(next => {
+  if (controlMode !== "gamepad") return;
+  input.x = Number(next.x || 0);
+  input.y = Number(next.y || 0);
+  input.attack = Boolean(next.attack);
+  input.special = Boolean(next.special);
+  updateGamepadStatus(next.id);
+});
+
+window.addEventListener("gamepadconnected", event => updateGamepadStatus(event.gamepad?.id || ""));
+window.addEventListener("gamepaddisconnected", () => {
+  if (controlMode !== "gamepad") return;
+  input.x = 0;
+  input.y = 0;
+  input.attack = false;
+  input.special = false;
+  updateGamepadStatus("");
+});
+
 function autoAimAtNearestBot() {
-  if (controlMode !== "keyboard" || !input.attack) return null;
+  if (!["keyboard", "gamepad"].includes(controlMode) || !input.attack) return null;
   const me = players.find(p => p.id === playerId && p.alive);
   if (!me) return null;
   let target = null, distance = Infinity;

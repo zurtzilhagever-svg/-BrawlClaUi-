@@ -769,6 +769,34 @@ input.name-locked {
   font-weight: 900;
 }
 
+.gamepad-panel {
+  display: grid;
+  gap: 7px;
+  margin: 2px 0 10px;
+  padding: 11px 12px;
+  border-radius: 8px;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  color: #dbe4ff;
+  text-align: center;
+}
+
+.gamepad-panel strong {
+  color: #fff;
+  font-size: .82rem;
+}
+
+.gamepad-panel span {
+  color: #ffdd4a;
+  font-size: .9rem;
+  font-weight: 900;
+}
+
+.gamepad-panel small {
+  color: #aab8d9;
+  font-size: .72rem;
+}
+
 .room-preview {
   margin: 14px 0;
   padding: 14px;
@@ -1085,7 +1113,8 @@ canvas {
 }
 
 .controls[hidden],
-.key-panel[hidden] {
+.key-panel[hidden],
+.gamepad-panel[hidden] {
   display: none;
 }
 

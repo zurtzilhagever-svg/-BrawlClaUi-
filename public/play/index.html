@@ -18,7 +18,7 @@
   <link rel="icon" type="image/png" sizes="48x48" href="/icons/favicon-48.png?v=65">
   <link rel="apple-touch-icon" href="/icons/icon-192.png?v=65">
   <title>בראול כלווי - BrawkClaUi</title>
-  <link rel="stylesheet" href="style.css?v=79">
+  <link rel="stylesheet" href="style.css?v=80">
 </head>
 <body>
   <section id="profile-gate" class="profile-gate" aria-labelledby="profile-title">
@@ -85,11 +85,17 @@
     <select id="control-mode">
       <option value="touch" data-i18n="controlTouch">Phone / touch</option>
       <option value="keyboard" data-i18n="controlKeyboard">Computer keyboard</option>
+      <option value="gamepad" data-i18n="controlGamepad">Bluetooth / USB controller</option>
     </select>
     <div id="keyboard-panel" class="key-panel" hidden>
       <span data-i18n="keysMove">ARROWS</span>
       <span data-i18n="keysAttack">J ATTACK</span>
       <span data-i18n="keysSpecial">K SPECIAL</span>
+    </div>
+    <div id="gamepad-panel" class="gamepad-panel" hidden>
+      <strong data-i18n="gamepadTitle">Controller mode</strong>
+      <span id="gamepad-status" data-i18n="gamepadWaiting">Press any button on the controller</span>
+      <small data-i18n="gamepadHelp">Connect the controller to Bluetooth or USB, then return to the game.</small>
     </div>
 
     <section class="room-preview" aria-live="polite" hidden>
@@ -226,6 +232,7 @@
   <script src="/shared/runtime.js"></script>
   <script src="/socket.io/socket.io.js"></script>
   <script src="/shared/qr-generator.js"></script>
-  <script src="play.js?v=77"></script>
+  <script src="/shared/gamepad.js"></script>
+  <script src="play.js?v=80"></script>
 </body>
 </html>
