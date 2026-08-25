@@ -18,7 +18,7 @@
   <link rel="icon" type="image/png" sizes="48x48" href="/icons/favicon-48.png?v=65">
   <link rel="apple-touch-icon" href="/icons/icon-192.png?v=65">
   <title>בראול כלווי - BrawkClaUi</title>
-  <link rel="stylesheet" href="style.css?v=75">
+  <link rel="stylesheet" href="style.css?v=76">
 </head>
 <body>
   <section id="profile-gate" class="profile-gate" aria-labelledby="profile-title">
@@ -187,25 +187,9 @@
 
     <section class="admin-section">
       <label data-i18n="adminLiveSection">LIVE CONTROL</label>
-      <div class="admin-actions two">
-        <button id="admin-heal" type="button" data-i18n="adminHeal" data-admin-command="heal health revive רפא חיים החיה">Heal</button>
-        <button id="admin-eliminate" type="button" data-i18n="adminEliminate" data-admin-command="eliminate kill knockout חסל הרוג נוקאאוט">Eliminate</button>
-        <button id="admin-freeze" type="button" data-i18n="adminFreeze" data-admin-command="freeze stop slow הקפא עצור האט">Freeze</button>
-        <button id="admin-teleport" type="button" data-i18n="adminTeleport" data-admin-command="teleport bring here summon שגר הבא אליי">Bring here</button>
-      </div>
       <div class="admin-actions">
         <button id="admin-allow-rename" type="button" data-i18n="adminAllowRename" data-admin-command="allow rename name edit שינוי שם אפשר ערוך שם">Allow rename</button>
-        <button id="admin-reset-progress" type="button" data-i18n="adminResetProgress" data-admin-command="reset progress wipe איפוס אפס התקדמות">Reset progress</button>
       </div>
-    </section>
-
-    <section class="admin-section danger">
-      <label data-i18n="adminDangerSection">DANGER</label>
-      <div class="admin-actions two">
-        <button id="admin-kick" type="button" data-i18n="adminKick" data-admin-command="kick remove player העף הוצא שחקן">Kick player</button>
-        <button id="admin-ban" type="button" data-i18n="adminBan" data-admin-command="ban block player באן חסום שחקן">Ban player</button>
-      </div>
-      <button id="admin-restart" type="button" data-i18n="adminRestart" data-admin-command="restart reset game room התחל מחדש ריסטארט חדר משחק">Restart game</button>
     </section>
 
     <small id="admin-status"></small>
@@ -242,6 +226,6 @@
   <script src="/shared/runtime.js"></script>
   <script src="/socket.io/socket.io.js"></script>
   <script src="/shared/qr-generator.js"></script>
-  <script src="play.js?v=75"></script>
+  <script src="play.js?v=76"></script>
 </body>
 </html>
