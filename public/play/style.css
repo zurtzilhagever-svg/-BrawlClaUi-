@@ -29,9 +29,10 @@ select {
   min-height: 100svh;
   width: 100%;
   margin: 0;
-  padding: 24px;
+  padding: 16px;
   display: grid;
   place-items: center;
+  overflow: auto;
   background: radial-gradient(circle at 50% 18%, #3d558d, #11172b 72%);
 }
 
@@ -39,40 +40,119 @@ select {
   display: none;
 }
 
-.language-card {
-  width: min(88vw, 760px);
+.profile-card {
+  width: 100%;
+  max-width: 760px;
   display: grid;
-  gap: 18px;
+  gap: 14px;
   text-align: center;
+  justify-items: center;
+  padding: clamp(22px, 5vw, 42px);
+  border-radius: 24px;
+  background: #111a31e8;
+  border: 1px solid #ffffff24;
+  box-shadow: 0 28px 80px #0009, inset 0 1px #ffffff18;
 }
 
-.language-card h1 {
+.profile-logo {
+  width: min(76vw, 320px);
+  max-height: 145px;
+  object-fit: contain;
+}
+
+.profile-kicker {
+  margin: 0;
+  color: #ffd34f;
+  font-size: .8rem;
+  font-weight: 900;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+}
+
+.profile-card h1 {
   margin: 0;
   color: #fff;
-  font-size: clamp(2.1rem, 7vw, 5rem);
+  font-size: clamp(2.4rem, 8vw, 5.5rem);
   font-weight: 900;
+  line-height: .92;
+}
+
+.profile-copy {
+  margin: 0 0 4px;
+  color: #c2cce7;
+  font-size: clamp(1rem, 3vw, 1.3rem);
+  font-weight: 800;
 }
 
 .language-buttons {
   display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 12px;
+  width: 100%;
 }
 
 .language-buttons button {
-  min-height: 76px;
+  min-height: 58px;
   border: 0;
-  border-radius: 18px;
-  padding: 14px 20px;
+  border-radius: 14px;
+  padding: 10px 12px;
   background: #0e1427;
   color: #fff;
-  font-size: clamp(1.5rem, 5vw, 3.25rem);
+  font-size: clamp(1rem, 3.6vw, 1.7rem);
   font-weight: 900;
   box-shadow: 0 18px 46px #0007, inset 0 1px #ffffff20;
   outline: 2px solid #70d7ff55;
 }
 
+.language-buttons button.selected {
+  background: #ffd34f;
+  color: #182038;
+  outline-color: #ffffffaa;
+}
+
 .language-buttons button:active {
   transform: translateY(2px);
+}
+
+.profile-card input {
+  width: 100%;
+  min-height: 56px;
+  border: 0;
+  border-radius: 14px;
+  padding: 0 16px;
+  background: #0e1427;
+  color: #fff;
+  font-size: 1.1rem;
+  font-weight: 900;
+  text-align: center;
+  outline: 2px solid #ffffff24;
+}
+
+.profile-card input::placeholder {
+  color: #8fa0c5;
+}
+
+#profile-continue {
+  width: 100%;
+  min-height: 58px;
+  border: 0;
+  border-radius: 14px;
+  background: #70d7ff;
+  color: #182038;
+  font-size: 1.05rem;
+  font-weight: 900;
+}
+
+#profile-status {
+  min-height: 1.2em;
+  color: #ffb1b8;
+  font-weight: 800;
+}
+
+@media (max-width: 520px) {
+  .language-buttons {
+    grid-template-columns: 1fr;
+  }
 }
 
 .language-only {

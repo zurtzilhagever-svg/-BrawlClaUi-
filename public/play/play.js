@@ -4,6 +4,9 @@ const game = document.querySelector("#game");
 const profileGate = document.querySelector("#profile-gate");
 const profileLanguageSelect = document.querySelector("#profile-language");
 const profileLanguageButtons = document.querySelectorAll("[data-profile-language]");
+const profileNameInput = document.querySelector("#profile-name");
+const profileContinue = document.querySelector("#profile-continue");
+const profileStatus = document.querySelector("#profile-status");
 const nameInput = document.querySelector("#name");
 const codeInput = document.querySelector("#code");
 const error = document.querySelector("#error");
@@ -76,8 +79,9 @@ let playerId = sessionStorage.getItem(playerKey) || crypto.randomUUID();
 sessionStorage.setItem(playerKey, playerId);
 const languageKey = "brawlclaui-language";
 const languagePickedKey = "brawlclaui-language-picked";
+const profileCompletedKey = "brawlclaui-profile-completed";
 const profileGateVersionKey = "brawlclaui-profile-gate-version";
-const profileGateVersion = "73";
+const profileGateVersion = "74";
 const languageCodes = ["system", "he", "en", "ar"];
 const rtlLanguages = new Set(["ar", "he"]);
 const survivalBestKey = "brawlclaui-survival-best";
@@ -117,7 +121,11 @@ const translations = {
     brandHebrew: "\u05d1\u05e8\u05d0\u05d5\u05dc \u05db\u05dc\u05d5\u05d5\u05d9",
     title: "BrawkClaUi",
     subtitle: "Choose a brawler, game mode, and controls.",
+    profileKicker: "Welcome",
+    profileIntro: "Choose your language and player name.",
     profileLanguagePick: "Choose language",
+    profileContinue: "Continue",
+    nameRequired: "Choose a name to continue",
     languageLabel: "LANGUAGE",
     languageSystem: "Use device language",
     namePlaceholder: "Your name",
@@ -278,7 +286,11 @@ const translations = {
     brandHebrew: "\u05d1\u05e8\u05d0\u05d5\u05dc \u05db\u05dc\u05d5\u05d5\u05d9",
     title: "BrawkClaUi",
     subtitle: "\u05d1\u05d7\u05e8 \u05d3\u05de\u05d5\u05ea, \u05de\u05e6\u05d1 \u05de\u05e9\u05d7\u05e7 \u05d5\u05e9\u05dc\u05d9\u05d8\u05d4.",
+    profileKicker: "\u05d1\u05e8\u05d5\u05da \u05d4\u05d1\u05d0",
+    profileIntro: "\u05d1\u05d7\u05e8 \u05e9\u05e4\u05d4 \u05d5\u05e9\u05dd \u05e9\u05d7\u05e7\u05df.",
     profileLanguagePick: "\u05d1\u05d7\u05e8 \u05e9\u05e4\u05d4",
+    profileContinue: "\u05d4\u05de\u05e9\u05da",
+    nameRequired: "\u05d1\u05d7\u05e8 \u05e9\u05dd \u05db\u05d3\u05d9 \u05dc\u05d4\u05de\u05e9\u05d9\u05da",
     languageLabel: "\u05e9\u05e4\u05d4",
     languageSystem: "\u05dc\u05e4\u05d9 \u05e9\u05e4\u05ea \u05d4\u05de\u05db\u05e9\u05d9\u05e8",
     namePlaceholder: "\u05d4\u05e9\u05dd \u05e9\u05dc\u05da",
@@ -440,7 +452,11 @@ translations.ar = {
   brandHebrew: "\u0628\u0631\u0627\u0648\u0644 \u0643\u0644\u0627\u0648\u064a",
   title: "BrawkClaUi",
   subtitle: "\u0627\u062e\u062a\u0631 \u0634\u062e\u0635\u064a\u0629 \u0648\u0646\u0645\u0637 \u0644\u0639\u0628 \u0648\u0637\u0631\u064a\u0642\u0629 \u062a\u062d\u0643\u0645.",
+  profileKicker: "\u0645\u0631\u062d\u0628\u0627",
+  profileIntro: "\u0627\u062e\u062a\u0631 \u0627\u0644\u0644\u063a\u0629 \u0648\u0627\u0633\u0645 \u0627\u0644\u0644\u0627\u0639\u0628.",
   profileLanguagePick: "\u0627\u062e\u062a\u0631 \u0644\u063a\u0629",
+  profileContinue: "\u0627\u0633\u062a\u0645\u0631",
+  nameRequired: "\u0627\u062e\u062a\u0631 \u0627\u0633\u0645\u0627 \u0644\u0644\u0645\u062a\u0627\u0628\u0639\u0629",
   languageLabel: "\u0627\u0644\u0644\u063a\u0629",
   languageSystem: "\u0644\u063a\u0629 \u0627\u0644\u062c\u0647\u0627\u0632",
   namePlaceholder: "\u0627\u0633\u0645\u0643",
@@ -668,6 +684,7 @@ let localAccountMode = sessionStorage.getItem(localAccountKey) === "1";
 let cloudSaveTimer = 0;
 let lastCloudSnapshot = "";
 let pendingJoinCode = (new URLSearchParams(location.search).get("join") || "").trim().toUpperCase();
+let profileIntroResetApplied = false;
 const characterImages = Object.fromEntries(["blaze", "boomer", "fangli", "pixel", "tank", "bazaar", "masterv", "mash"].map(id => {
   const image = new Image();
   image.src = `/characters/${id}.png?v=62`;
@@ -686,6 +703,7 @@ function removeAdminButtonSections() {
 }
 
 nameInput.value = localStorage.getItem("brawlclaui-name") || "";
+if (profileNameInput) profileNameInput.value = nameInput.value;
 populateLanguageSelect();
 {
   const savedLanguage = localStorage.getItem(languageKey);
@@ -711,13 +729,17 @@ function name() {
 
 function updateProfileGate() {
   const params = new URLSearchParams(location.search);
-  if (params.has("intro") || params.has("resetIntro")) {
+  if (!profileIntroResetApplied && (params.has("intro") || params.has("resetIntro"))) {
+    profileIntroResetApplied = true;
     localStorage.removeItem(languagePickedKey);
+    localStorage.removeItem(profileCompletedKey);
     localStorage.removeItem(profileGateVersionKey);
   }
-  const needsLanguage = localStorage.getItem(languagePickedKey) !== "1" || localStorage.getItem(profileGateVersionKey) !== profileGateVersion;
-  if (profileGate) profileGate.hidden = !needsLanguage;
-  if (lobby) lobby.hidden = needsLanguage;
+  const needsProfile = localStorage.getItem(profileCompletedKey) !== "1" || localStorage.getItem(profileGateVersionKey) !== profileGateVersion;
+  if (profileGate) profileGate.hidden = !needsProfile;
+  if (lobby) lobby.hidden = needsProfile;
+  if (profileNameInput && !profileNameInput.value) profileNameInput.value = nameInput.value;
+  renderProfileLanguageButtons();
 }
 
 function chooseProfileLanguage(language) {
@@ -726,9 +748,32 @@ function chooseProfileLanguage(language) {
   if (profileLanguageSelect) profileLanguageSelect.value = language;
   localStorage.setItem(languageKey, language);
   localStorage.setItem(languagePickedKey, "1");
-  localStorage.setItem(profileGateVersionKey, profileGateVersion);
-  updateProfileGate();
+  renderProfileLanguageButtons();
   applyLanguage();
+}
+
+function renderProfileLanguageButtons() {
+  const current = localStorage.getItem(languageKey) || languageSelect.value || "he";
+  Array.prototype.forEach.call(profileLanguageButtons, button => {
+    button.classList.toggle("selected", button.dataset.profileLanguage === current);
+  });
+}
+
+function completeProfileGate() {
+  const nextName = (profileNameInput?.value || nameInput.value || "").trim().slice(0, 14);
+  if (!nextName) {
+    if (profileStatus) profileStatus.textContent = t("nameRequired");
+    profileNameInput?.focus();
+    return;
+  }
+  if (!localStorage.getItem(languageKey)) chooseProfileLanguage("he");
+  savePlayerName(nextName, false);
+  localStorage.setItem(languagePickedKey, "1");
+  localStorage.setItem(profileCompletedKey, "1");
+  localStorage.setItem(profileGateVersionKey, profileGateVersion);
+  if (profileStatus) profileStatus.textContent = "";
+  updateProfileGate();
+  queueAutoJoin();
 }
 
 function isNameLocked() {
@@ -1483,6 +1528,16 @@ profileGate?.addEventListener("click", event => {
   const button = event.target.closest?.("[data-profile-language]");
   if (button) chooseProfileLanguage(button.dataset.profileLanguage);
 });
+profileContinue?.addEventListener("click", completeProfileGate);
+profileNameInput?.addEventListener("input", () => {
+  if (profileStatus) profileStatus.textContent = "";
+  nameInput.value = profileNameInput.value.slice(0, 14);
+});
+profileNameInput?.addEventListener("keydown", event => {
+  if (event.key !== "Enter") return;
+  event.preventDefault();
+  completeProfileGate();
+});
 
 document.querySelectorAll("[data-character]").forEach(button => {
   button.onclick = () => {
@@ -1574,6 +1629,9 @@ function createNewLocalPlayer() {
   localStorage.removeItem(nameLockedKey);
   localStorage.removeItem(renameGrantKey);
   localStorage.removeItem(firstGameCompletedKey);
+  localStorage.removeItem(profileCompletedKey);
+  localStorage.removeItem(profileGateVersionKey);
+  if (profileNameInput) profileNameInput.value = "";
   selectedCharacter = "blaze";
   document.querySelectorAll("[data-character]").forEach(button => button.classList.toggle("selected", button.dataset.character === selectedCharacter));
   error.textContent = t("localPlayerCreated");
@@ -1581,6 +1639,7 @@ function createNewLocalPlayer() {
   renderSurvivalStats();
   renderCharacterLocks();
   updateNameLock();
+  updateProfileGate();
   renderAdminPanel();
   syncLobbyPresence(false);
 }
