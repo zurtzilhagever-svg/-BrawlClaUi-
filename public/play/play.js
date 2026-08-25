@@ -3,6 +3,7 @@ const lobby = document.querySelector("#lobby");
 const game = document.querySelector("#game");
 const profileGate = document.querySelector("#profile-gate");
 const profileLanguageSelect = document.querySelector("#profile-language");
+const profileLanguageButtons = document.querySelectorAll("[data-profile-language]");
 const nameInput = document.querySelector("#name");
 const codeInput = document.querySelector("#code");
 const error = document.querySelector("#error");
@@ -710,6 +711,16 @@ function updateProfileGate() {
   const needsLanguage = localStorage.getItem(languagePickedKey) !== "1";
   if (profileGate) profileGate.hidden = !needsLanguage;
   if (lobby) lobby.hidden = needsLanguage;
+}
+
+function chooseProfileLanguage(language) {
+  if (!languageCodes.includes(language) || language === "system") return;
+  languageSelect.value = language;
+  if (profileLanguageSelect) profileLanguageSelect.value = language;
+  localStorage.setItem(languageKey, language);
+  localStorage.setItem(languagePickedKey, "1");
+  updateProfileGate();
+  applyLanguage();
 }
 
 function isNameLocked() {
@@ -1455,12 +1466,10 @@ languageSelect.addEventListener("change", () => {
   applyLanguage();
 });
 profileLanguageSelect?.addEventListener("change", () => {
-  if (!profileLanguageSelect.value) return;
-  languageSelect.value = profileLanguageSelect.value;
-  localStorage.setItem(languageKey, profileLanguageSelect.value);
-  localStorage.setItem(languagePickedKey, "1");
-  updateProfileGate();
-  applyLanguage();
+  chooseProfileLanguage(profileLanguageSelect.value);
+});
+profileLanguageButtons.forEach(button => {
+  button.addEventListener("click", () => chooseProfileLanguage(button.dataset.profileLanguage));
 });
 
 document.querySelectorAll("[data-character]").forEach(button => {
