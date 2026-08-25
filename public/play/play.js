@@ -76,6 +76,8 @@ let playerId = sessionStorage.getItem(playerKey) || crypto.randomUUID();
 sessionStorage.setItem(playerKey, playerId);
 const languageKey = "brawlclaui-language";
 const languagePickedKey = "brawlclaui-language-picked";
+const profileGateVersionKey = "brawlclaui-profile-gate-version";
+const profileGateVersion = "73";
 const languageCodes = ["system", "he", "en", "ar"];
 const rtlLanguages = new Set(["ar", "he"]);
 const survivalBestKey = "brawlclaui-survival-best";
@@ -708,7 +710,12 @@ function name() {
 }
 
 function updateProfileGate() {
-  const needsLanguage = localStorage.getItem(languagePickedKey) !== "1";
+  const params = new URLSearchParams(location.search);
+  if (params.has("intro") || params.has("resetIntro")) {
+    localStorage.removeItem(languagePickedKey);
+    localStorage.removeItem(profileGateVersionKey);
+  }
+  const needsLanguage = localStorage.getItem(languagePickedKey) !== "1" || localStorage.getItem(profileGateVersionKey) !== profileGateVersion;
   if (profileGate) profileGate.hidden = !needsLanguage;
   if (lobby) lobby.hidden = needsLanguage;
 }
@@ -719,6 +726,7 @@ function chooseProfileLanguage(language) {
   if (profileLanguageSelect) profileLanguageSelect.value = language;
   localStorage.setItem(languageKey, language);
   localStorage.setItem(languagePickedKey, "1");
+  localStorage.setItem(profileGateVersionKey, profileGateVersion);
   updateProfileGate();
   applyLanguage();
 }
@@ -1468,8 +1476,12 @@ languageSelect.addEventListener("change", () => {
 profileLanguageSelect?.addEventListener("change", () => {
   chooseProfileLanguage(profileLanguageSelect.value);
 });
-profileLanguageButtons.forEach(button => {
+Array.prototype.forEach.call(profileLanguageButtons, button => {
   button.addEventListener("click", () => chooseProfileLanguage(button.dataset.profileLanguage));
+});
+profileGate?.addEventListener("click", event => {
+  const button = event.target.closest?.("[data-profile-language]");
+  if (button) chooseProfileLanguage(button.dataset.profileLanguage);
 });
 
 document.querySelectorAll("[data-character]").forEach(button => {
