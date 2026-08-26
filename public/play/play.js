@@ -1778,6 +1778,72 @@ function drawObstacle(block) {
   }
 }
 
+function drawArenaFloor(arena, now) {
+  const centerX = arena.width / 2;
+  const centerY = arena.height / 2;
+  const g = ctx.createLinearGradient(0, 0, arena.width, arena.height);
+  g.addColorStop(0, "#6bab71");
+  g.addColorStop(.48, "#4f865f");
+  g.addColorStop(1, "#315d55");
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, arena.width, arena.height);
+
+  ctx.save();
+  ctx.globalAlpha = .34;
+  const path = ctx.createLinearGradient(0, centerY - 72, 0, centerY + 72);
+  path.addColorStop(0, "#65865f");
+  path.addColorStop(.5, "#78946a");
+  path.addColorStop(1, "#4d6c58");
+  ctx.fillStyle = path;
+  drawRoundedRect(0, centerY - 58, arena.width, 116, 34);
+  ctx.fill();
+  drawRoundedRect(centerX - 58, 0, 116, arena.height, 34);
+  ctx.fill();
+  ctx.restore();
+
+  ctx.save();
+  ctx.globalAlpha = .18;
+  ctx.fillStyle = "#9bcf78";
+  for (let x = 26; x < arena.width; x += 74) {
+    for (let y = 28; y < arena.height; y += 68) {
+      const wave = Math.sin(x * .04 + y * .025 + now / 1600);
+      ctx.fillRect(x + wave * 3, y, 30 + wave * 4, 9);
+    }
+  }
+  ctx.globalAlpha = .16;
+  ctx.fillStyle = "#213f39";
+  for (let i = 0; i < 70; i++) {
+    const x = (i * 173) % arena.width;
+    const y = (i * 97) % arena.height;
+    ctx.beginPath();
+    ctx.ellipse(x, y, 3 + (i % 4), 1.5 + (i % 3), (i % 6) * .4, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.restore();
+
+  ctx.strokeStyle = "#ffffff12";
+  ctx.lineWidth = 2;
+  for (let x = 40; x < arena.width; x += 120) {
+    ctx.beginPath();
+    ctx.moveTo(x, 0);
+    ctx.lineTo(x + Math.sin(x) * 9, arena.height);
+    ctx.stroke();
+  }
+  for (let y = 40; y < arena.height; y += 120) {
+    ctx.beginPath();
+    ctx.moveTo(0, y);
+    ctx.lineTo(arena.width, y + Math.cos(y) * 9);
+    ctx.stroke();
+  }
+
+  ctx.strokeStyle = "#17352f99";
+  ctx.lineWidth = 12;
+  ctx.strokeRect(6, 6, arena.width - 12, arena.height - 12);
+  ctx.strokeStyle = "#91d58a55";
+  ctx.lineWidth = 3;
+  ctx.strokeRect(13, 13, arena.width - 26, arena.height - 26);
+}
+
 function cameraFor(arena) {
   const me = players.find(p => p.id === playerId) || players.find(p => p.alive);
   const viewWidth = Math.min(viewport.width, arena.width);
@@ -1801,39 +1867,7 @@ function drawArena(now) {
   const centerY = arena.height / 2;
   ctx.save();
   ctx.translate(-camera.x, -camera.y);
-  const g = ctx.createLinearGradient(0, 0, arena.width, arena.height);
-  g.addColorStop(0, "#5f986f");
-  g.addColorStop(.56, "#47765e");
-  g.addColorStop(1, "#315b54");
-  ctx.fillStyle = g;
-  ctx.fillRect(0, 0, arena.width, arena.height);
-
-  ctx.fillStyle = "#45685b";
-  ctx.fillRect(0, centerY - 54, arena.width, 108);
-  ctx.fillRect(centerX - 54, 0, 108, arena.height);
-  ctx.fillStyle = "#6e9f6c";
-  for (let x = 28; x < arena.width; x += 64) {
-    for (let y = 30; y < arena.height; y += 64) {
-      ctx.globalAlpha = ((x + y) / 64) % 2 ? .1 : .05;
-      ctx.fillRect(x, y, 34, 24);
-    }
-  }
-  ctx.globalAlpha = 1;
-
-  ctx.strokeStyle = "#ffffff13";
-  ctx.lineWidth = 2;
-  for (let x = 40; x < arena.width; x += 80) {
-    ctx.beginPath();
-    ctx.moveTo(x, 0);
-    ctx.lineTo(x, arena.height);
-    ctx.stroke();
-  }
-  for (let y = 40; y < arena.height; y += 80) {
-    ctx.beginPath();
-    ctx.moveTo(0, y);
-    ctx.lineTo(arena.width, y);
-    ctx.stroke();
-  }
+  drawArenaFloor(arena, now);
 
   for (const bush of arena.bushes || []) {
     drawBush(bush, now);

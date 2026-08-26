@@ -25,7 +25,7 @@ const CHARACTERS = {
   tank: { name: "\u05d0\u05d5\u05e8\u05e8\u05d4", hp: 150, speed: 3.2, damage: 7, range: 275, rate: 720, special: "Ice Field" },
   bazaar: { name: "\u05d1\u05d0\u05d6\u05d0\u05e8", hp: 108, speed: 3.55, damage: 6, range: 310, rate: 690, special: "Reality Box" },
   masterv: { name: "Master V", hp: 128, speed: 3.9, damage: 18, range: 470, rate: 620, special: "Ultimate Master" },
-  grunt: { name: "Grunt", hp: 70, speed: 2.35, damage: 8, range: 44, rate: 760, special: "None" }
+  grunt: { name: "Grunt", hp: 56, speed: 2.05, damage: 5, range: 38, rate: 980, special: "None" }
 };
 const PLAYABLE_CHARACTERS = new Set(["blaze", "boomer", "fangli", "pixel", "tank", "bazaar", "masterv"]);
 const MODES = {
@@ -671,7 +671,7 @@ function spawnBot(room, now, team = null) {
   const cap = isTeamCombatMode(room) ? 6 : Math.min(9, 2 + Math.floor(room.game.wave / 2));
   if (count >= cap) return;
   const arena = room.arena, edge = Math.floor(Math.random() * 4), spot = edge === 0 ? { x: 30, y: 80 + Math.random() * (arena.height-160) } : edge === 1 ? { x: arena.width-30, y: 80 + Math.random() * (arena.height-160) } : edge === 2 ? { x: 90 + Math.random() * (arena.width-180), y: 30 } : { x: 90 + Math.random() * (arena.width-180), y: arena.height-30 };
-  const hp = CHARACTERS.grunt.hp + Math.min(45, room.game.wave * 3), id = `bot-${room.code}-${room.game.botSerial++}`;
+  const hp = CHARACTERS.grunt.hp + Math.min(24, room.game.wave * 2), id = `bot-${room.code}-${room.game.botSerial++}`;
   room.players.set(id, { id, socketId:null, name:`Bot ${room.game.botSerial}`, character:"grunt", bot:true, color:team === "blue" ? "#36c8ff" : "#f07167", team, x:spot.x, y:spot.y, maxHealth:hp, health:hp, alive:true, score:0, gems:0, coins:0, input:{x:0,y:0,attack:false,special:false}, lastAttack:0, lastSpecial:false, shieldUntil:0, connected:true });
   room.game.nextBotAt = now + Math.max(900, 2300 - room.game.wave * 95);
 }
@@ -762,6 +762,11 @@ function updateRoom(room, now) {
     if (!p.alive) { // Non-elimination modes keep their fast respawn behavior.
       if (now-p.diedAt > 2200) { const spot=randomSpot(room.arena), s=CHARACTERS[p.character]; Object.assign(p,{x:spot.x,y:spot.y,health:s.hp,alive:true,ghost:false}); }
       continue;
+    }
+    if (p.bot) {
+      p.input.special = false;
+      p.specialCharge = 0;
+      p.bazaarBuff = "";
     }
     if ((p.freezeMeter || 0) > 0 && now > (p.freezeUntil || 0)) p.freezeMeter = Math.max(0, p.freezeMeter - 0.9);
     const stats=CHARACTERS[p.character], shieldBoost=p.character==="blaze" && now < (p.cardboardShieldUntil||0) && (p.cardboardShieldHp||0)>0 ? 1.18 : 1, moveScale=now < (p.wallUntil||0) ? 0 : now < (p.hauntedUntil||0) ? .58 : shieldBoost, confusion=now < (p.confusedUntil||0) ? -1 : 1, iceEffect=iceEffectFor(room,p), iceSpeed=iceEffect==="friendly" ? 1.3 : iceEffect==="enemy" ? .55 : 1;
