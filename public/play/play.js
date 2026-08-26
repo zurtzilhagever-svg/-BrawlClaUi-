@@ -72,7 +72,8 @@ const adminKick = document.querySelector("#admin-kick");
 const adminBan = document.querySelector("#admin-ban");
 const adminRestart = document.querySelector("#admin-restart");
 const adminStatus = document.querySelector("#admin-status");
-const input = { x: 0, y: 0, attack: false, special: false };
+const skyModeButton = document.querySelector("#sky-mode");
+const input = { x: 0, y: 0, attack: false, special: false, skyMode: "bomb" };
 const touchAim = { x: 0, y: 0, active: false };
 const gamepadAim = { x: 0, y: 0, active: false };
 const keyboardState = new Set();
@@ -100,9 +101,9 @@ const unlockedCharactersKey = "brawlclaui-unlocked-characters";
 const nameLockedKey = "brawlclaui-name-locked";
 const renameGrantKey = "brawlclaui-can-rename";
 const firstGameCompletedKey = "brawlclaui-first-game-completed";
-const lockedCharacters = new Set(["boomer", "fangli", "pixel", "tank", "bazaar", "ari", "masterv"]);
+const lockedCharacters = new Set(["boomer", "fangli", "pixel", "tank", "bazaar", "ari", "skyfalcon", "masterv"]);
 const adminOnlyCharacters = new Set(["masterv"]);
-const adminGrantCharacters = ["boomer", "fangli", "pixel", "tank", "bazaar", "ari", "masterv"];
+const adminGrantCharacters = ["boomer", "fangli", "pixel", "tank", "bazaar", "ari", "skyfalcon", "masterv"];
 const concealedCharacterLabel = "???";
 const ownerAdminEmail = "zurtzilhagever@gmail.com";
 const adminEmails = new Set(["zurtzilhagever@gmail.com"]);
@@ -221,6 +222,7 @@ const translations = {
     auroraName: "\u05d0\u05d5\u05e8\u05e8\u05d4",
     bazaarName: "Bazaar",
     ariName: "Ari",
+    skyFalconName: "Sky Falcon",
     mastervName: "Master V",
     blazeDesc: "3 tennis-ball volley",
     boomerDesc: "Boomerang - waits for return",
@@ -234,7 +236,10 @@ const translations = {
     tankDesc: "Snowstorm + ice field",
     bazaarDesc: "Coin chain + buff box",
     ariDesc: "Claw punch + wall-breaking slash",
+    skyFalconDesc: "Gold feather + bomb or clone",
     mastervDesc: "Admin-only ultimate brawler",
+    skyBombMode: "BOMB",
+    skyCloneMode: "CLONE",
     adminOnlyCharacter: "Special character",
     modeLabel: "GAME MODE",
     modeSurvival: "Survival - bot waves",
@@ -397,6 +402,7 @@ const translations = {
     auroraName: "\u05d0\u05d5\u05e8\u05e8\u05d4",
     bazaarName: "\u05d1\u05d0\u05d6\u05d0\u05e8",
     ariName: "\u05d0\u05e8\u05d9",
+    skyFalconName: "\u05d1\u05d6 \u05d4\u05e9\u05de\u05d9\u05d9\u05dd",
     mastervName: "Master V",
     blazeDesc: "\u05de\u05d8\u05d7 3 \u05db\u05d3\u05d5\u05e8\u05d9 \u05d8\u05e0\u05d9\u05e1",
     boomerDesc: "\u05d1\u05d5\u05de\u05e8\u05e0\u05d2 - \u05de\u05d7\u05db\u05d4 \u05e9\u05d9\u05d7\u05d6\u05d5\u05e8",
@@ -410,7 +416,10 @@ const translations = {
     tankDesc: "\u05e1\u05e2\u05e8\u05ea \u05e9\u05dc\u05d2 + \u05de\u05e9\u05d8\u05d7 \u05e7\u05e8\u05d7",
     bazaarDesc: "\u05e9\u05e8\u05e9\u05e8\u05ea \u05de\u05d8\u05d1\u05e2\u05d5\u05ea + \u05ea\u05d9\u05d1\u05ea Buff",
     ariDesc: "\u05d0\u05d2\u05e8\u05d5\u05e3 \u05d8\u05d5\u05e4\u05e8 + \u05d7\u05d9\u05ea\u05d5\u05da \u05e9\u05d5\u05d1\u05e8 \u05e7\u05d9\u05e8\u05d5\u05ea",
+    skyFalconDesc: "\u05e0\u05d5\u05e6\u05ea \u05d6\u05d4\u05d1 + \u05e4\u05e6\u05e6\u05d4 \u05d0\u05d5 \u05db\u05e4\u05d9\u05dc",
     mastervDesc: "\u05dc\u05d5\u05d7\u05dd \u05d0\u05d5\u05dc\u05d8\u05d9\u05de\u05d8\u05d9\u05d1\u05d9 \u05dc\u05d0\u05d3\u05de\u05d9\u05df \u05d1\u05dc\u05d1\u05d3",
+    skyBombMode: "\u05e4\u05e6\u05e6\u05d4",
+    skyCloneMode: "\u05db\u05e4\u05d9\u05dc",
     adminOnlyCharacter: "\u05d3\u05de\u05d5\u05ea \u05de\u05d9\u05d5\u05d7\u05d3\u05ea",
     modeLabel: "\u05de\u05e6\u05d1 \u05de\u05e9\u05d7\u05e7",
     modeSurvival: "\u05d4\u05d9\u05e9\u05e8\u05d3\u05d5\u05ea - \u05d2\u05dc\u05d9 \u05d1\u05d5\u05d8\u05d9\u05dd",
@@ -514,6 +523,7 @@ translations.ar = {
   auroraName: "Aurora",
   bazaarName: "Bazaar",
   ariName: "Ari",
+  skyFalconName: "Sky Falcon",
   mastervName: "Master V",
   modeLabel: "\u0646\u0645\u0637 \u0627\u0644\u0644\u0639\u0628",
   modeSurvival: "\u0627\u0644\u0646\u062c\u0627\u0629 - \u0645\u0648\u062c\u0627\u062a \u0628\u0648\u062a\u0627\u062a",
@@ -749,6 +759,7 @@ function renderCharacterLocks() {
     else if (label && character === "boomer") label.textContent = t("boomerDesc");
     else if (label && character === "pixel") label.textContent = t("pixelDesc");
     else if (label && character === "ari") label.textContent = t("ariDesc");
+    else if (label && character === "skyfalcon") label.textContent = t("skyFalconDesc");
     else if (label && character === "masterv") label.textContent = t("mastervDesc");
     if (locked && character === selectedCharacter) {
       selectedCharacter = "blaze";
@@ -774,6 +785,7 @@ function applyLanguage() {
   renderCharacterLocks();
   renderAccountStatus();
   renderAdminPanel();
+  renderSkyModeButton();
 }
 let roomCode = "";
 let adminTargetRoomCode = "";
@@ -781,6 +793,7 @@ let adminFoundTarget = null;
 let players = [];
 let wasPlaying = false;
 let selectedCharacter = "blaze";
+let skySpecialMode = "bomb";
 let pendingCharacter = selectedCharacter;
 let gameMeta = { items: [], zoneScore: {} };
 let lastBazaarBuff = "";
@@ -797,9 +810,9 @@ let cloudSaveTimer = 0;
 let lastCloudSnapshot = "";
 let pendingJoinCode = (new URLSearchParams(location.search).get("join") || "").trim().toUpperCase();
 let profileIntroResetApplied = false;
-const characterImages = Object.fromEntries(["blaze", "boomer", "fangli", "pixel", "tank", "bazaar", "ari", "masterv", "mash"].map(id => {
+const characterImages = Object.fromEntries(["blaze", "boomer", "fangli", "pixel", "tank", "bazaar", "ari", "skyfalcon", "masterv", "mash"].map(id => {
   const image = new Image();
-  image.src = `/characters/${id}.png?v=${id === "ari" ? 85 : id === "masterv" ? 77 : 62}`;
+  image.src = `/characters/${id}.png?v=${id === "skyfalcon" ? 87 : id === "ari" ? 85 : id === "masterv" ? 77 : 62}`;
   return [id, image];
 }));
 const motionState = new Map();
@@ -1082,8 +1095,24 @@ function characterLabel(character) {
   if (character === "tank") return t("auroraName");
   if (character === "bazaar") return t("bazaarName");
   if (character === "ari") return t("ariName");
+  if (character === "skyfalcon") return t("skyFalconName");
   if (character === "masterv") return t("mastervName");
   return character.charAt(0).toUpperCase() + character.slice(1);
+}
+
+function renderSkyModeButton(me = players.find(p => p.id === playerId)) {
+  if (!skyModeButton) return;
+  const active = me?.character === "skyfalcon" && me.alive && !me.ghost;
+  skyModeButton.hidden = !active;
+  input.skyMode = skySpecialMode;
+  skyModeButton.textContent = skySpecialMode === "clone" ? t("skyCloneMode") : t("skyBombMode");
+  skyModeButton.classList.toggle("clone", skySpecialMode === "clone");
+}
+
+function toggleSkySpecialMode() {
+  skySpecialMode = skySpecialMode === "bomb" ? "clone" : "bomb";
+  input.skyMode = skySpecialMode;
+  renderSkyModeButton();
 }
 
 function bazaarBuffLabel(buff) {
@@ -1646,6 +1675,7 @@ function applyControlMode() {
   input.y = 0;
   input.attack = false;
   input.special = false;
+  input.skyMode = skySpecialMode;
   gamepadAim.x = 0;
   gamepadAim.y = 0;
   gamepadAim.active = false;
@@ -1757,6 +1787,7 @@ function leaveGame() {
   input.y = 0;
   input.attack = false;
   input.special = false;
+  input.skyMode = skySpecialMode;
   gamepadAim.x = 0;
   gamepadAim.y = 0;
   gamepadAim.active = false;
@@ -1880,6 +1911,7 @@ socket.on("game:state", next => {
     error.textContent = message;
   }
   lastBazaarBuff = me?.bazaarBuff || "";
+  renderSkyModeButton(me);
   if (!wasPlaying) updateLobbyRoom();
   const attack = document.querySelector("#attack");
   if (attack) {
@@ -2043,6 +2075,7 @@ function action(selector, key) {
 }
 action("#attack", "attack");
 action("#special", "special");
+skyModeButton?.addEventListener("click", toggleSkySpecialMode);
 
 function updateKeyboardInput() {
   if (controlMode !== "keyboard") return;
@@ -2111,6 +2144,11 @@ function autoAimAtNearestBot() {
 
 window.addEventListener("keydown", event => {
   if (controlMode !== "keyboard" || event.repeat) return;
+  if (event.code === "KeyL" && !skyModeButton?.hidden) {
+    event.preventDefault();
+    toggleSkySpecialMode();
+    return;
+  }
   if (!Object.values(keyboardBindings).includes(event.code)) return;
   event.preventDefault();
   keyboardState.add(event.code);
@@ -2157,7 +2195,7 @@ setInterval(() => {
     const autoAim = autoAimAtNearestBot();
     const aimX = touchAim.active ? touchAim.x : gamepadAim.active ? gamepadAim.x : autoAim?.[0] || 0;
     const aimY = touchAim.active ? touchAim.y : gamepadAim.active ? gamepadAim.y : autoAim?.[1] || 0;
-    socket.emit("player:input", [input.x, input.y, input.attack ? 1 : 0, input.special ? 1 : 0, aimX, aimY]);
+    socket.emit("player:input", [input.x, input.y, input.attack ? 1 : 0, input.special ? 1 : 0, aimX, aimY, input.skyMode]);
   }
 }, 1000 / 60);
 function motionFor(p, now) {
@@ -2197,6 +2235,12 @@ function drawCharacter(p, motion) {
     ctx.lineTo(-18, 25);
     ctx.bezierCurveTo(-28, 7, -24, -21, 0, -30);
     ctx.closePath();
+  } else if (p.character === "skyfalcon") {
+    ctx.moveTo(0, -29);
+    ctx.lineTo(19, 18);
+    ctx.lineTo(0, 27);
+    ctx.lineTo(-19, 18);
+    ctx.closePath();
   } else if (p.character === "masterv") {
     ctx.moveTo(0, -30);
     ctx.lineTo(27, -7);
@@ -2226,6 +2270,21 @@ function drawCharacter(p, motion) {
     ctx.beginPath();
     ctx.arc(0, -12, 15, Math.PI * 1.05, Math.PI * 1.95);
     ctx.stroke();
+  } else if (p.character === "skyfalcon") {
+    ctx.strokeStyle = "#e7d7ad";
+    ctx.lineWidth = 5;
+    ctx.lineCap = "round";
+    for (const side of [-1, 1]) {
+      ctx.beginPath();
+      ctx.moveTo(side * 7, -5);
+      ctx.quadraticCurveTo(side * 36, -28, side * 54, -16);
+      ctx.quadraticCurveTo(side * 35, -4, side * 12, 7);
+      ctx.stroke();
+    }
+    ctx.fillStyle = "#64a7ff";
+    ctx.beginPath();
+    ctx.arc(0, -5, 7, 0, Math.PI * 2);
+    ctx.fill();
   } else if (p.character === "masterv") {
     ctx.fillStyle = "#ffe66d";
     ctx.beginPath();
@@ -2560,6 +2619,21 @@ function drawProjectile(projectile, now) {
     ctx.moveTo(-18, 0);
     ctx.lineTo(20, 0);
     ctx.stroke();
+  } else if (projectile.type === "goldFeather" || projectile.type === "featherShard") {
+    const shard = projectile.type === "featherShard";
+    ctx.fillStyle = projectile.color || "#ffd76a";
+    ctx.strokeStyle = shard ? "#fff4c8" : "#9f7420";
+    ctx.shadowColor = "#ffd76a";
+    ctx.shadowBlur = shard ? 9 : 14;
+    ctx.lineWidth = shard ? 1.5 : 2.5;
+    ctx.beginPath();
+    ctx.moveTo(shard ? 12 : 24, 0);
+    ctx.quadraticCurveTo(shard ? -2 : -6, shard ? -5 : -9, shard ? -13 : -22, shard ? -2 : -4);
+    ctx.quadraticCurveTo(shard ? -4 : -8, shard ? 4 : 8, shard ? 12 : 24, 0);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    ctx.shadowBlur = 0;
   } else if (projectile.type === "plasma") {
     ctx.fillStyle = projectile.color || "#6eeaff";
     ctx.shadowColor = projectile.color || "#6eeaff";
@@ -2721,18 +2795,47 @@ function draw() {
     }
     ctx.restore();
   }
+  for (const bomb of gameMeta.skyBombs || []) {
+    const radius = bomb.radius || 132;
+    const pulse = 1 + Math.sin(now / 95) * .08;
+    ctx.save();
+    ctx.translate(bomb.x, bomb.y);
+    ctx.rotate(now / 260);
+    ctx.globalCompositeOperation = "screen";
+    ctx.fillStyle = "#ffd76a30";
+    ctx.beginPath();
+    ctx.arc(0, 0, radius * pulse, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = "#fff1b8cc";
+    ctx.lineWidth = 4;
+    ctx.setLineDash([18, 12]);
+    ctx.beginPath();
+    ctx.arc(0, 0, radius * .72, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = "#ffd76acc";
+    ctx.beginPath();
+    ctx.arc(0, 0, 28 + Math.sin(now / 70) * 4, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = "#5d7dff99";
+    ctx.lineWidth = 8;
+    ctx.beginPath();
+    ctx.arc(0, 0, 48, -1.2, 1.7);
+    ctx.stroke();
+    ctx.restore();
+  }
   for (const decoy of gameMeta.decoys || []) {
     ctx.save();
     ctx.translate(decoy.x, decoy.y);
     ctx.globalAlpha = .55;
-    ctx.strokeStyle = "#ffe9a6";
+    ctx.strokeStyle = decoy.golden ? "#ffd76a" : "#ffe9a6";
     ctx.lineWidth = 3;
     ctx.setLineDash([5, 5]);
     ctx.beginPath();
     ctx.arc(0, 0, 25, 0, Math.PI * 2);
     ctx.stroke();
     ctx.setLineDash([]);
-    ctx.fillStyle = "#ffd54a";
+    ctx.fillStyle = decoy.golden ? "#fff0a8" : "#ffd54a";
     ctx.beginPath();
     ctx.arc(0, 0, 16, 0, Math.PI * 2);
     ctx.fill();

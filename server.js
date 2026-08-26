@@ -29,11 +29,12 @@ const CHARACTERS = {
   tank: { name: "\u05d0\u05d5\u05e8\u05e8\u05d4", hp: 150, speed: 3.2, damage: 7, range: 275, rate: 720, special: "Ice Field" },
   bazaar: { name: "\u05d1\u05d0\u05d6\u05d0\u05e8", hp: 108, speed: 3.55, damage: 6, range: 310, rate: 690, special: "Reality Box" },
   ari: { name: "\u05d0\u05e8\u05d9", hp: 168, speed: 3.35, damage: 22, range: 112, rate: 720, special: "Lion Slash" },
+  skyfalcon: { name: "\u05d1\u05d6 \u05d4\u05e9\u05de\u05d9\u05d9\u05dd", hp: 92, speed: 4.18, damage: 18, range: 560, rate: 660, special: "Golden Cyclone" },
   masterv: { name: "Master V", hp: 128, speed: 3.9, damage: 18, range: 470, rate: 620, special: "Ultimate Master" },
   mash: { name: "\u05de\u05d0\u05e9", hp: 78, speed: 2.8, damage: 7, range: 295, rate: 1050, special: "Star Drill" },
   grunt: { name: "Grunt", hp: 70, speed: 2.35, damage: 8, range: 44, rate: 760, special: "None" }
 };
-const PLAYABLE_CHARACTERS = new Set(["blaze", "boomer", "fangli", "pixel", "tank", "bazaar", "ari", "masterv"]);
+const PLAYABLE_CHARACTERS = new Set(["blaze", "boomer", "fangli", "pixel", "tank", "bazaar", "ari", "skyfalcon", "masterv"]);
 const AMMO_RELOAD_MS = {
   blaze: 900,
   bazaar: 1050,
@@ -43,6 +44,7 @@ const AMMO_RELOAD_MS = {
   pixel: 1600,
   tank: 1850,
   ari: 1700,
+  skyfalcon: 1500,
   masterv: 1250,
   grunt: 1300
 };
@@ -304,8 +306,8 @@ function randomSpot(arena) {
   return arenaCenter(arena);
 }
 function makeItems(arena, amount, type) { return Array.from({ length: amount }, () => ({ ...randomSpot(arena), type })); }
-function gameFor(mode, arena = arenaFor(mode)) { return { startedAt: Date.now(), winner: null, winnerTeam: null, rewardCharacter: null, items: mode === "gems" ? makeItems(arena, 12, "gem") : mode === "coins" ? makeItems(arena, 18, "coin") : [], projectiles: [], pixelZones: [], iceZones: [], bazaarBoxes: [], fireTrails: [], decoys: [], nextProjectileId: 0, nextDecoyId: 0, zoneScore: { red: 0, blue: 0 }, safeRadius: arenaSafeRadius(arena), nextItemAt: 0, nextBotAt: 0, botSerial: 0, wave: 0 }; }
-function playerRadius(p) { const base = p.character === "ari" ? 27 : p.character === "tank" ? 26 : p.character === "grunt" ? 18 : p.character === "mash" ? 22 : 23; return Date.now() < (p.giantUntil || 0) ? base * 1.2 : base; }
+function gameFor(mode, arena = arenaFor(mode)) { return { startedAt: Date.now(), winner: null, winnerTeam: null, rewardCharacter: null, items: mode === "gems" ? makeItems(arena, 12, "gem") : mode === "coins" ? makeItems(arena, 18, "coin") : [], projectiles: [], pixelZones: [], iceZones: [], bazaarBoxes: [], skyBombs: [], fireTrails: [], decoys: [], nextProjectileId: 0, nextDecoyId: 0, zoneScore: { red: 0, blue: 0 }, safeRadius: arenaSafeRadius(arena), nextItemAt: 0, nextBotAt: 0, botSerial: 0, wave: 0 }; }
+function playerRadius(p) { const base = p.character === "ari" ? 27 : p.character === "skyfalcon" ? 21 : p.character === "tank" ? 26 : p.character === "grunt" ? 18 : p.character === "mash" ? 22 : 23; return Date.now() < (p.giantUntil || 0) ? base * 1.2 : base; }
 function movePlayer(arena, p, dx, dy) {
   const radius = playerRadius(p);
   const nextX = clamp(p.x + dx, 28, arena.width - 28);
@@ -390,7 +392,7 @@ function publicPlayer(p) { const now = Date.now(); updateAmmo(p, now); return { 
 function players(room) { return [...room.players.values()].map(publicPlayer); }
 function humanPlayers(room) { return [...room.players.values()].filter(player => !player.bot); }
 function teamGems(room, team) { return [...room.players.values()].filter(p => p.team === team).reduce((sum, p) => sum + (p.gems || 0), 0); }
-function meta(room) { const mode = MODES[room.mode], survivalTime = room.mode === "survival" ? Math.floor(((room.game.endedAt || Date.now()) - room.game.startedAt) / 1000) : 0, winner = room.players.has(room.game.winner) ? publicPlayer(room.players.get(room.game.winner)) : room.game.winner, botCount = [...room.players.values()].filter(p => p.bot).length; return { mode:room.mode, modeName:mode.name, objective:mode.objective, target:mode.target, winner, winnerTeam:room.game.winnerTeam, rewardCharacter:room.game.rewardCharacter, items:room.game.items, projectiles:room.game.projectiles.map(({ id, x, y, vx, vy, type, color, returning, radius }) => ({ id, x, y, vx, vy, type, color, returning, radius })), pixelZones:(room.game.pixelZones || []).map(({ x, y, radius, landsAt, endsAt }) => ({ x, y, radius, landsAt, endsAt })), iceZones:(room.game.iceZones || []).map(({ x, y, radius, endsAt }) => ({ x, y, radius, endsAt })), bazaarBoxes:(room.game.bazaarBoxes || []).map(({ x, y, expiresAt }) => ({ x, y, expiresAt })), fireTrails:(room.game.fireTrails || []).map(({ type, color, x, y, x1, y1, x2, y2, radius, endsAt }) => ({ type, color, x, y, x1, y1, x2, y2, radius, endsAt })), decoys:(room.game.decoys || []).map(({ id, x, y, team, bot, health }) => ({ id, x, y, team, bot, health })), safeRadius:room.game.safeRadius, zoneScore:room.game.zoneScore, gemScore:{ red:teamGems(room,"red"), blue:teamGems(room,"blue") }, survivalTime, wave:room.game.wave, botCount, arena:room.arena, survivalLeaders }; }
+function meta(room) { const mode = MODES[room.mode], survivalTime = room.mode === "survival" ? Math.floor(((room.game.endedAt || Date.now()) - room.game.startedAt) / 1000) : 0, winner = room.players.has(room.game.winner) ? publicPlayer(room.players.get(room.game.winner)) : room.game.winner, botCount = [...room.players.values()].filter(p => p.bot).length; return { mode:room.mode, modeName:mode.name, objective:mode.objective, target:mode.target, winner, winnerTeam:room.game.winnerTeam, rewardCharacter:room.game.rewardCharacter, items:room.game.items, projectiles:room.game.projectiles.map(({ id, x, y, vx, vy, type, color, returning, radius }) => ({ id, x, y, vx, vy, type, color, returning, radius })), pixelZones:(room.game.pixelZones || []).map(({ x, y, radius, landsAt, endsAt }) => ({ x, y, radius, landsAt, endsAt })), iceZones:(room.game.iceZones || []).map(({ x, y, radius, endsAt }) => ({ x, y, radius, endsAt })), bazaarBoxes:(room.game.bazaarBoxes || []).map(({ x, y, expiresAt }) => ({ x, y, expiresAt })), skyBombs:(room.game.skyBombs || []).map(({ x, y, radius, endsAt }) => ({ x, y, radius, endsAt })), fireTrails:(room.game.fireTrails || []).map(({ type, color, x, y, x1, y1, x2, y2, radius, endsAt }) => ({ type, color, x, y, x1, y1, x2, y2, radius, endsAt })), decoys:(room.game.decoys || []).map(({ id, x, y, team, bot, health, golden }) => ({ id, x, y, team, bot, health, golden })), safeRadius:room.game.safeRadius, zoneScore:room.game.zoneScore, gemScore:{ red:teamGems(room,"red"), blue:teamGems(room,"blue") }, survivalTime, wave:room.game.wave, botCount, arena:room.arena, survivalLeaders }; }
 function broadcast(room) { io.to(room.code).emit("game:state", players(room)); io.to(room.code).emit("game:meta", meta(room)); }
 function recordSurvivalLeaders(room) {
   const survived = Math.floor((room.game.endedAt - room.game.startedAt) / 1000);
@@ -442,7 +444,7 @@ function joinPlayer(socket, roomCode, playerId, name, character, accountEmail, i
       resetAmmo(p);
     }
   }
-  else { const c = selectedCharacter, stats = CHARACTERS[c], spot = randomSpot(room.arena), team=chooseTeam(room), defaultName=`Player ${humanPlayers(room).length + 1}`, displayName=String(name || "").trim().slice(0, 14) || defaultName; p = { id, socketId:socket.id, accountEmail:cleanEmail, invincibleMode:isOwnerAdminEmail(cleanEmail) && Boolean(invincibleMode), name:displayName, character:c, color:COLORS[room.players.size % COLORS.length], team, x:spot.x, y:spot.y, aimX:1, aimY:0, maxHealth:stats.hp, health:stats.hp, alive:true, score:0, gems:0, coins:0, input:{x:0,y:0,attack:false,special:false}, lastAttack:0, lastSpecial:false, specialCharge:0, shieldUntil:0, bazaarBuff:"", damageBoostUntil:0, connected:true }; resetAmmo(p); room.players.set(id, p); }
+  else { const c = selectedCharacter, stats = CHARACTERS[c], spot = randomSpot(room.arena), team=chooseTeam(room), defaultName=`Player ${humanPlayers(room).length + 1}`, displayName=String(name || "").trim().slice(0, 14) || defaultName; p = { id, socketId:socket.id, accountEmail:cleanEmail, invincibleMode:isOwnerAdminEmail(cleanEmail) && Boolean(invincibleMode), name:displayName, character:c, color:COLORS[room.players.size % COLORS.length], team, x:spot.x, y:spot.y, aimX:1, aimY:0, maxHealth:stats.hp, health:stats.hp, alive:true, score:0, gems:0, coins:0, input:{x:0,y:0,attack:false,special:false,skyMode:"bomb"}, lastAttack:0, lastSpecial:false, specialCharge:0, shieldUntil:0, bazaarBuff:"", damageBoostUntil:0, connected:true }; resetAmmo(p); room.players.set(id, p); }
   socketIndex.set(socket.id, { code:roomCode, playerId:id }); socket.join(roomCode); ack({ ok:true, code:roomCode, player:publicPlayer(p), players:players(room), meta:meta(room) }); broadcast(room);
 }
 function adminRoom(socket, data = {}, ack = () => {}) {
@@ -686,7 +688,7 @@ function resetHumanForGame(room, player) {
     x:spot.x, y:spot.y, maxHealth:stats.hp, health:stats.hp, alive:true, ghost:false,
     ghostItem:false, ghostTargetId:null, score:0, gems:0, coins:0, specialCharge:0,
     shieldUntil:0, cardboardShieldUntil:0, cardboardShieldHp:0, hauntedUntil:0, wallUntil:0,
-    inkUntil:0, confusedUntil:0, freezeMeter:0, freezeUntil:0, bazaarBuff:"", damageBoostUntil:0, coinMagnetUntil:0, desertSpiceUntil:0, goldenArmorUntil:0, reloadBoostUntil:0, phaseUntil:0, bouncyUntil:0, giantUntil:0, giantBonusHp:0, giantDamageUntil:0, invisibleUntil:0, iceVx:0, iceVy:0, clawRushUntil:0, hitUntil:0, input:{x:0,y:0,attack:false,special:false}
+    inkUntil:0, confusedUntil:0, freezeMeter:0, freezeUntil:0, bazaarBuff:"", damageBoostUntil:0, coinMagnetUntil:0, desertSpiceUntil:0, goldenArmorUntil:0, reloadBoostUntil:0, phaseUntil:0, bouncyUntil:0, giantUntil:0, giantBonusHp:0, giantDamageUntil:0, invisibleUntil:0, iceVx:0, iceVy:0, clawRushUntil:0, hitUntil:0, input:{x:0,y:0,attack:false,special:false,skyMode:"bomb"}
   });
   resetAmmo(player);
 }
@@ -718,6 +720,8 @@ function kill(room, victim, killer) {
 }
 function pushProjectile(room, attacker, dx, dy, stats, options = {}) {
   const start = options.start || 26;
+  const originX = Number.isFinite(options.originX) ? options.originX : attacker.x;
+  const originY = Number.isFinite(options.originY) ? options.originY : attacker.y;
   const projectile = {
     id:`${room.code}-${room.game.nextProjectileId++}`,
     ownerId:attacker.id,
@@ -726,12 +730,12 @@ function pushProjectile(room, attacker, dx, dy, stats, options = {}) {
     character:attacker.character,
     type:options.type || "shot",
     color:options.color || attacker.color,
-    x:attacker.x + dx * start,
-    y:attacker.y + dy * start,
+    x:originX + dx * start,
+    y:originY + dy * start,
     vx:dx * (options.speed || PROJECTILE_SPEED),
     vy:dy * (options.speed || PROJECTILE_SPEED),
     damage:(options.damage || stats.damage) * (attacker.bot ? BOT_DAMAGE_SCALE : 1) * (Date.now() < (attacker.damageBoostUntil || 0) ? 1.35 : 1) * (Date.now() < (attacker.giantDamageUntil || 0) ? 1.15 : 1),
-    remaining:Math.max(24, stats.range - Math.max(0, start - 26)),
+    remaining:Math.max(24, (options.range || stats.range) - Math.max(0, start - 26)),
     radius:options.radius || 7,
     baseRadius:options.baseRadius || options.radius || 7,
     maxRadius:options.maxRadius || options.radius || 7,
@@ -745,6 +749,15 @@ function pushProjectile(room, attacker, dx, dy, stats, options = {}) {
   };
   room.game.projectiles.push(projectile);
   if (options.lockOwnerUntilReturn) attacker.boomerangActive = projectile.id;
+}
+function explodeSkyFeather(room, feather) {
+  const owner = room.players.get(feather.ownerId);
+  if (!owner) return;
+  const stats = CHARACTERS.skyfalcon;
+  for (let i = 0; i < 8; i++) {
+    const angle = Math.PI * 2 * i / 8;
+    pushProjectile(room, owner, Math.cos(angle), Math.sin(angle), stats, { type:"featherShard", color:"#ffd76a", originX:feather.x, originY:feather.y, start:0, speed:10, radius:5, range:125, damage:7 });
+  }
 }
 function attack(room, attacker, now) {
   const stats = CHARACTERS[attacker.character], rate = stats.rate * (now < (attacker.reloadBoostUntil || 0) ? .5 : 1) * (attacker.character === "ari" && now < (attacker.clawRushUntil || 0) ? .52 : 1); if (attacker.character === "boomer" && attacker.boomerangActive) return; if (now - attacker.lastAttack < rate) return; if (!consumeAmmo(attacker, now)) return; attacker.lastAttack = now;
@@ -781,6 +794,10 @@ function attack(room, attacker, now) {
   }
   if (attacker.character === "ari") {
     pushProjectile(room, attacker, dx, dy, stats, { type:"claw", color:"#ff9a3c", start:34, speed:18, radius:18 });
+    return;
+  }
+  if (attacker.character === "skyfalcon") {
+    pushProjectile(room, attacker, dx, dy, stats, { type:"goldFeather", color:"#ffd76a", start:34, speed:21, radius:6 });
     return;
   }
   if (attacker.character === "mash") {
@@ -893,6 +910,19 @@ function special(room, p, now) {
       dashPlayer(room.arena, target, (target.x - startX) / len * 62, (target.y - startY) / len * 62);
       if (target.health <= 0) kill(room, target, p);
     }
+  } else if (p.character === "skyfalcon") {
+    const aim = aimDirection(p), mode = p.input.skyMode === "clone" ? "clone" : "bomb";
+    if (mode === "clone") {
+      room.game.decoys ||= [];
+      const distance = 96;
+      room.game.decoys.push({ id:`${room.code}-decoy-${room.game.nextDecoyId++}`, ownerId:p.id, team:p.team, bot:Boolean(p.bot), character:p.character, x:clamp(p.x - aim.x * distance, 28, room.arena.width - 28), y:clamp(p.y - aim.y * distance, 28, room.arena.height - 28), health:85, golden:true, endsAt:now + 4200 });
+      p.invisibleUntil = Math.max(p.invisibleUntil || 0, now + 1000);
+      p.hitUntil = now + 260;
+    } else {
+      const radius = 132;
+      room.game.skyBombs ||= [];
+      room.game.skyBombs.push({ ownerId:p.id, team:p.team, bot:Boolean(p.bot), x:clamp(p.x + aim.x * 255, radius, room.arena.width - radius), y:clamp(p.y + aim.y * 255, radius, room.arena.height - radius), radius, endsAt:now + 2600 });
+    }
   } else if (p.character === "masterv") {
     const aim = aimDirection(p);
     dashPlayer(room.arena, p, aim.x * 150, aim.y * 150);
@@ -984,6 +1014,7 @@ function updateProjectiles(room) {
     const blockedPath = !projectile.returning && lineBlocked(arena, projectile.x, projectile.y, nextX, nextY, projectile.radius);
     if (projectile.remaining <= 0 || nextX < 0 || nextX > arena.width || nextY < 0 || nextY > arena.height || blockedPath) {
       if (projectile.type === "laser" && projectile.remaining > 0 && reflectLaser(arena, projectile, nextX, nextY)) continue;
+      if (projectile.type === "goldFeather") explodeSkyFeather(room, projectile);
       if (projectile.type === "boomerang" && !projectile.returning) {
         projectile.returning = true;
         projectile.remaining = Infinity;
@@ -1004,6 +1035,7 @@ function updateProjectiles(room) {
     const victim = [...room.players.values()].find(p => projectileCanHit(room, projectile, p) && Math.hypot(p.x-projectile.x,p.y-projectile.y) < playerRadius(p) + projectile.radius);
     if (victim) {
       hitWithProjectile(room, projectile, victim);
+      if (projectile.type === "goldFeather") explodeSkyFeather(room, projectile);
       if (projectile.type === "boomerang") {
         projectile.hitIds.push(victim.id);
         projectile.returning = true;
@@ -1078,6 +1110,23 @@ function updateBazaarBoxes(room, now) {
     const collector = [...room.players.values()].find(player => !player.bazaarBuff && player.alive && player.connected && sameBazaarSide(room, box, player) && Math.hypot(player.x - box.x, player.y - box.y) < 34);
     if (collector && storeBazaarBuff(collector, now)) {
       room.game.bazaarBoxes.splice(i, 1);
+    }
+  }
+}
+function updateSkyBombs(room, now) {
+  room.game.skyBombs ||= [];
+  room.game.skyBombs = room.game.skyBombs.filter(bomb => now < bomb.endsAt);
+  for (const bomb of room.game.skyBombs) {
+    const owner = room.players.get(bomb.ownerId) || null;
+    for (const player of room.players.values()) {
+      if (!canAffectWithSpecial(room, bomb, player)) continue;
+      const dx = bomb.x - player.x, dy = bomb.y - player.y, distance = Math.hypot(dx, dy) || 1;
+      if (distance > bomb.radius + playerRadius(player)) continue;
+      dashPlayer(room.arena, player, dx / distance * 4.8, dy / distance * 4.8);
+      player.wallUntil = Math.max(player.wallUntil || 0, now + 120);
+      player.hitUntil = now + 120;
+      player.health -= owner?.bot ? .14 : .24;
+      if (player.health <= 0) kill(room, player, owner);
     }
   }
 }
@@ -1231,6 +1280,7 @@ function updateRoom(room, now) {
   updateIceZones(room, now);
   updatePixelZones(room, now);
   updateBazaarBoxes(room, now);
+  updateSkyBombs(room, now);
   updateDecoys(room, now);
   updateFireTrails(room, now);
   updateCoinMagnet(room);
@@ -1595,7 +1645,7 @@ io.on("connection", socket => {
     broadcast(room);
     ack({ ok:true });
   });
-  socket.on("player:input", payload => { const ref=socketIndex.get(socket.id), room=ref&&rooms.get(ref.code), p=room&&room.players.get(ref.playerId); if(!p||!Array.isArray(payload))return; const x=clamp(Number(payload[0])||0,-1,1), y=clamp(Number(payload[1])||0,-1,1), aimX=clamp(Number(payload[4])||0,-1,1), aimY=clamp(Number(payload[5])||0,-1,1); p.input={x,y,attack:Boolean(payload[2]),special:Boolean(payload[3])}; if(Math.hypot(aimX,aimY)>.12){p.aimX=aimX;p.aimY=aimY;} else if(Math.hypot(x,y)>.12){p.aimX=x;p.aimY=y;} });
+  socket.on("player:input", payload => { const ref=socketIndex.get(socket.id), room=ref&&rooms.get(ref.code), p=room&&room.players.get(ref.playerId); if(!p||!Array.isArray(payload))return; const x=clamp(Number(payload[0])||0,-1,1), y=clamp(Number(payload[1])||0,-1,1), aimX=clamp(Number(payload[4])||0,-1,1), aimY=clamp(Number(payload[5])||0,-1,1), skyMode=payload[6] === "clone" ? "clone" : "bomb"; p.input={x,y,attack:Boolean(payload[2]),special:Boolean(payload[3]),skyMode}; if(Math.hypot(aimX,aimY)>.12){p.aimX=aimX;p.aimY=aimY;} else if(Math.hypot(x,y)>.12){p.aimX=x;p.aimY=y;} });
   socket.on("ghost:target", ({ targetId } = {}) => { const ref=socketIndex.get(socket.id), room=ref&&rooms.get(ref.code), ghost=room&&room.players.get(ref.playerId), target=room&&room.players.get(String(targetId||"")); if (!ghost?.ghost || !target?.alive || ghost.id===target.id) return; ghost.ghostTargetId=target.id; });
   socket.on("disconnect", () => { lobbyPlayers.delete(socket.id); const host=socket.data.hostRoom; if(host&&rooms.get(host)?.hostSocketId===socket.id){io.to(host).emit("room:closed");rooms.delete(host);} const ref=socketIndex.get(socket.id);socketIndex.delete(socket.id);const room=ref&&rooms.get(ref.code),p=room&&room.players.get(ref.playerId);if(p&&p.socketId===socket.id){p.connected=false;p.input={x:0,y:0,attack:false,special:false};p.removeTimer=setTimeout(()=>removePlayer(room,ref.playerId),RECONNECT_MS);broadcast(room);} });
 });
