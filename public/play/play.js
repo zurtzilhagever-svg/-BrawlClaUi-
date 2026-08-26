@@ -1705,6 +1705,79 @@ function drawGem(now) {
   ctx.restore();
 }
 
+function drawObstacle(block) {
+  const isCrate = block.kind === "crate";
+  ctx.fillStyle = "#00000030";
+  drawRoundedRect(block.x + 7, block.y + 10, block.w, block.h, 9);
+  ctx.fill();
+
+  const bg = ctx.createLinearGradient(block.x, block.y, block.x, block.y + block.h);
+  if (isCrate) {
+    bg.addColorStop(0, "#d89a58");
+    bg.addColorStop(.48, "#aa6e3b");
+    bg.addColorStop(1, "#704527");
+  } else {
+    bg.addColorStop(0, "#b9c1bd");
+    bg.addColorStop(.46, "#858e8b");
+    bg.addColorStop(1, "#4e5755");
+  }
+  ctx.fillStyle = bg;
+  drawRoundedRect(block.x, block.y, block.w, block.h, 9);
+  ctx.fill();
+
+  ctx.strokeStyle = isCrate ? "#ffe2a955" : "#eef7f255";
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(block.x + 9, block.y + 8);
+  ctx.lineTo(block.x + block.w - 11, block.y + 8);
+  ctx.stroke();
+
+  ctx.strokeStyle = isCrate ? "#4f2f1e77" : "#333d3b77";
+  ctx.lineWidth = 2;
+  drawRoundedRect(block.x + 3, block.y + 3, block.w - 6, block.h - 6, 7);
+  ctx.stroke();
+
+  if (isCrate) {
+    ctx.strokeStyle = "#5f361f88";
+    ctx.lineWidth = 3;
+    for (let x = block.x + 22; x < block.x + block.w - 10; x += 34) {
+      ctx.beginPath();
+      ctx.moveTo(x, block.y + 7);
+      ctx.lineTo(x + 8, block.y + block.h - 8);
+      ctx.stroke();
+    }
+    ctx.strokeStyle = "#f6c27966";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(block.x + 9, block.y + block.h * .5);
+    ctx.lineTo(block.x + block.w - 9, block.y + block.h * .5);
+    ctx.stroke();
+    ctx.fillStyle = "#3d2418aa";
+    for (const x of [block.x + 13, block.x + block.w - 13]) {
+      for (const y of [block.y + 13, block.y + block.h - 13]) {
+        ctx.beginPath();
+        ctx.arc(x, y, 3, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+  } else {
+    ctx.strokeStyle = "#2f393766";
+    ctx.lineWidth = 2;
+    const cracks = Math.max(2, Math.floor(block.w / 90));
+    for (let i = 0; i < cracks; i++) {
+      const x = block.x + block.w * ((i + 1) / (cracks + 1));
+      const y = block.y + 16 + ((i * 29 + block.x) % Math.max(18, block.h - 28));
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+      ctx.lineTo(x + 10, y + 8);
+      ctx.lineTo(x + 3, y + 18);
+      ctx.stroke();
+    }
+    ctx.fillStyle = "#ffffff18";
+    ctx.fillRect(block.x + 12, block.y + 12, Math.max(18, block.w * .18), 4);
+  }
+}
+
 function cameraFor(arena) {
   const me = players.find(p => p.id === playerId) || players.find(p => p.alive);
   const viewWidth = Math.min(viewport.width, arena.width);
@@ -1767,19 +1840,7 @@ function drawArena(now) {
   }
 
   for (const block of arena.obstacles || []) {
-    ctx.fillStyle = "#00000024";
-    drawRoundedRect(block.x + 5, block.y + 8, block.w, block.h, 8);
-    ctx.fill();
-    const bg = ctx.createLinearGradient(block.x, block.y, block.x, block.y + block.h);
-    bg.addColorStop(0, block.kind === "crate" ? "#bd8751" : "#9aa3a0");
-    bg.addColorStop(1, block.kind === "crate" ? "#7b5131" : "#59615f");
-    ctx.fillStyle = bg;
-    drawRoundedRect(block.x, block.y, block.w, block.h, 8);
-    ctx.fill();
-    ctx.strokeStyle = "#ffffff35";
-    ctx.lineWidth = 2;
-    drawRoundedRect(block.x + 3, block.y + 3, block.w - 6, block.h - 6, 6);
-    ctx.stroke();
+    drawObstacle(block);
   }
 
   if (gameMeta.mode === "zone" || gameMeta.mode === "soloZone") {
