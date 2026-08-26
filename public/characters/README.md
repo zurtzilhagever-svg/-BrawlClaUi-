@@ -2,6 +2,7 @@ Place character images here using these exact filenames:
 
 - blaze.png
 - tank.png
+- ari.png
 - spark.png
 - medic.png
 

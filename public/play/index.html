@@ -18,7 +18,7 @@
   <link rel="icon" type="image/png" sizes="48x48" href="/icons/favicon-48.png?v=65">
   <link rel="apple-touch-icon" href="/icons/icon-192.png?v=65">
   <title>בראול כלווי - BrawkClaUi</title>
-  <link rel="stylesheet" href="style.css?v=83">
+  <link rel="stylesheet" href="style.css?v=86">
 </head>
 <body>
   <section id="profile-gate" class="profile-gate" aria-labelledby="profile-title">
@@ -60,15 +60,31 @@
       <button id="new-local-player" type="button" data-i18n="newLocalPlayer">New local player</button>
     </section>
     <label data-i18n="brawlerLabel">YOUR BRAWLER</label>
-    <div id="characters" class="choice-grid">
-      <button data-character="blaze" class="selected"><span class="portrait blaze"></span><img class="char-img" src="/characters/blaze.png?v=62" alt="" onerror="this.hidden=true"><span data-i18n="bobName">Bob</span><small data-i18n="blazeDesc"></small></button>
-      <button data-character="boomer" class="locked"><span class="portrait boomer"></span><img class="char-img" src="/characters/boomer.png?v=62" alt="" onerror="this.hidden=true"><span data-i18n="boomerName">Boomer</span><small data-i18n="boomerDesc"></small></button>
-      <button data-character="fangli" class="locked"><span class="portrait fangli"></span><img class="char-img" src="/characters/fangli.png?v=62" alt="" onerror="this.hidden=true"><span data-i18n="fangliName">Fangli</span><small data-i18n="fangliDesc">Long bone shot</small></button>
-      <button data-character="pixel"><span class="portrait pixel"></span><img class="char-img" src="/characters/pixel.png?v=62" alt="" onerror="this.hidden=true"><span data-i18n="pixelName">Pixel</span><small data-i18n="pixelDesc">Ricochet laser</small></button>
-      <button data-character="tank" class="locked"><span class="portrait tank"></span><img class="char-img" src="/characters/tank.png?v=62" alt="" onerror="this.hidden=true"><span data-i18n="auroraName">Aurora</span><small data-i18n="tankDesc">Snowstorm + ice field</small></button>
-      <button data-character="bazaar"><span class="portrait bazaar"></span><img class="char-img" src="/characters/bazaar.png?v=62" alt="" onerror="this.hidden=true"><span data-i18n="bazaarName">Bazaar</span><small data-i18n="bazaarDesc">Coin chain + buff box</small></button>
-      <button data-character="masterv" class="locked"><span class="portrait masterv"></span><span data-i18n="mastervName">Master V</span><small data-i18n="mastervDesc">Admin-only ultimate brawler</small></button>
-    </div>
+    <button id="character-picker-open" class="character-picker-open" type="button">
+      <span data-i18n="chooseCharacter">Choose character</span>
+      <strong id="current-character-name">Bob</strong>
+    </button>
+    <section id="character-picker" class="character-picker" hidden aria-live="polite">
+      <div class="character-picker-head">
+        <strong data-i18n="chooseCharacter">Choose character</strong>
+        <button id="character-picker-close" type="button" data-i18n="closePicker">Close</button>
+      </div>
+      <div id="characters" class="choice-grid character-carousel">
+        <button data-character="blaze" class="selected"><span class="portrait blaze"></span><img class="char-img" src="/characters/blaze.png?v=62" alt="" onerror="this.hidden=true"><span data-i18n="bobName">Bob</span><small data-i18n="blazeDesc"></small></button>
+        <button data-character="boomer" class="locked"><span class="portrait boomer"></span><img class="char-img" src="/characters/boomer.png?v=62" alt="" onerror="this.hidden=true"><span data-i18n="boomerName">Boomer</span><small data-i18n="boomerDesc"></small></button>
+        <button data-character="fangli" class="locked"><span class="portrait fangli"></span><img class="char-img" src="/characters/fangli.png?v=62" alt="" onerror="this.hidden=true"><span data-i18n="fangliName">Fangli</span><small data-i18n="fangliDesc">Long bone shot</small></button>
+        <button data-character="pixel"><span class="portrait pixel"></span><img class="char-img" src="/characters/pixel.png?v=62" alt="" onerror="this.hidden=true"><span data-i18n="pixelName">Pixel</span><small data-i18n="pixelDesc">Ricochet laser</small></button>
+        <button data-character="tank" class="locked"><span class="portrait tank"></span><img class="char-img" src="/characters/tank.png?v=62" alt="" onerror="this.hidden=true"><span data-i18n="auroraName">Aurora</span><small data-i18n="tankDesc">Snowstorm + ice field</small></button>
+        <button data-character="bazaar"><span class="portrait bazaar"></span><img class="char-img" src="/characters/bazaar.png?v=62" alt="" onerror="this.hidden=true"><span data-i18n="bazaarName">Bazaar</span><small data-i18n="bazaarDesc">Coin chain + buff box</small></button>
+        <button data-character="ari" class="locked"><span class="portrait ari"></span><img class="char-img" src="/characters/ari.png?v=85" alt="" onerror="this.hidden=true"><span data-i18n="ariName">Ari</span><small data-i18n="ariDesc">Claw punch + wall-breaking slash</small></button>
+        <button data-character="masterv" class="locked"><span class="portrait masterv"></span><img class="char-img" src="/characters/masterv.png?v=77" alt="" onerror="this.hidden=true"><span data-i18n="mastervName">???</span><small data-i18n="mastervDesc">???</small></button>
+      </div>
+      <div class="character-picker-actions">
+        <button id="character-prev" type="button" aria-label="Previous character">‹</button>
+        <button id="character-confirm" type="button" data-i18n="chooseForGame">Choose for game</button>
+        <button id="character-next" type="button" aria-label="Next character">›</button>
+      </div>
+    </section>
 
     <label data-i18n="modeLabel">GAME MODE</label>
     <select id="mode">
@@ -233,6 +249,6 @@
   <script src="/socket.io/socket.io.js"></script>
   <script src="/shared/qr-generator.js"></script>
   <script src="/shared/gamepad.js?v=81"></script>
-  <script src="play.js?v=81"></script>
+  <script src="play.js?v=86"></script>
 </body>
 </html>
