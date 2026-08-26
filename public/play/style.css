@@ -1481,4 +1481,147 @@ body.playing .controls {
   max-width: none;
   width: auto;
   margin: 0;
+  padding: 0 clamp(6px, 3vw, 22px);
+  align-items: flex-end;
+  pointer-events: none;
+}
+
+body.playing #stick-zone,
+body.playing .buttons,
+body.playing .action {
+  pointer-events: auto;
+}
+
+body.playing #stick-zone {
+  width: clamp(148px, 28vw, 205px);
+  height: clamp(148px, 28vw, 205px);
+}
+
+body.playing #stick-base {
+  width: clamp(132px, 24vw, 178px);
+  height: clamp(132px, 24vw, 178px);
+  background: #111827b8;
+  border-color: #ffffff3d;
+}
+
+body.playing #stick-knob {
+  width: clamp(58px, 10vw, 76px);
+  height: clamp(58px, 10vw, 76px);
+}
+
+body.playing .buttons {
+  gap: clamp(10px, 2.6vw, 22px);
+}
+
+body.playing .action {
+  width: clamp(88px, 17vw, 125px);
+  font-size: clamp(.72rem, 2.3vw, .95rem);
+}
+
+@media (orientation: portrait) and (max-width: 600px) {
+  body.playing canvas {
+    width: min(100vw, calc((100dvh - clamp(178px, 48vw, 230px)) * 1.333333));
+    max-height: calc(100dvh - clamp(178px, 48vw, 230px));
+    align-self: start;
+    margin-top: calc(max(8px, env(safe-area-inset-top)) + 74px);
+  }
+
+  body.playing header {
+    left: max(8px, env(safe-area-inset-left));
+    right: max(8px, env(safe-area-inset-right));
+    padding: 6px 8px;
+    font-size: .66rem;
+  }
+
+  body.playing .hud {
+    top: calc(max(8px, env(safe-area-inset-top)) + 43px);
+    width: min(94vw, 520px);
+    font-size: .68rem;
+  }
+
+  body.playing .controls {
+    left: max(4px, env(safe-area-inset-left));
+    right: max(4px, env(safe-area-inset-right));
+    bottom: max(6px, env(safe-area-inset-bottom));
+    padding: 0 8px;
+  }
+
+  body.playing #stick-zone {
+    width: clamp(132px, 34vw, 170px);
+    height: clamp(132px, 34vw, 170px);
+  }
+
+  body.playing #stick-base {
+    width: clamp(120px, 31vw, 154px);
+    height: clamp(120px, 31vw, 154px);
+  }
+
+  body.playing .buttons {
+    gap: 9px;
+  }
+
+  body.playing .action {
+    width: clamp(78px, 22vw, 104px);
+    font-size: clamp(.62rem, 2.8vw, .82rem);
+  }
+}
+
+@media (orientation: landscape) and (max-height: 620px) {
+  body.playing header {
+    top: max(6px, env(safe-area-inset-top));
+    left: max(8px, env(safe-area-inset-left));
+    right: max(8px, env(safe-area-inset-right));
+    width: min(58vw, 720px);
+    margin: 0 auto;
+    padding: 6px 9px;
+    font-size: .66rem;
+  }
+
+  body.playing .hud {
+    top: auto;
+    bottom: max(7px, env(safe-area-inset-bottom));
+    width: min(44vw, 520px);
+    padding: 6px 8px;
+    font-size: .68rem;
+    pointer-events: none;
+  }
+
+  body.playing .controls {
+    top: 0;
+    bottom: 0;
+    left: max(6px, env(safe-area-inset-left));
+    right: max(6px, env(safe-area-inset-right));
+    padding: max(54px, env(safe-area-inset-top)) clamp(10px, 3vw, 34px) max(10px, env(safe-area-inset-bottom));
+    align-items: center;
+  }
+
+  body.playing #stick-zone {
+    width: clamp(148px, 22vw, 198px);
+    height: clamp(148px, 22vw, 198px);
+  }
+
+  body.playing #stick-base {
+    width: clamp(132px, 19vw, 172px);
+    height: clamp(132px, 19vw, 172px);
+  }
+
+  body.playing .buttons {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: clamp(10px, 3vh, 18px);
+  }
+
+  body.playing .action {
+    width: clamp(82px, 15vw, 116px);
+    font-size: clamp(.62rem, 2vw, .85rem);
+  }
+
+  body.playing .special,
+  body.playing .special.pressed {
+    transform: none;
+  }
+
+  body.playing .pressed {
+    transform: translateY(4px);
+  }
 }
