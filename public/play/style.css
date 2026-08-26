@@ -315,6 +315,26 @@ input.name-locked {
   opacity: .58;
 }
 
+.choice-grid button.concealed {
+  filter: none;
+}
+
+.choice-grid button.concealed .char-img {
+  display: none;
+}
+
+.choice-grid button.concealed .portrait {
+  background: repeating-conic-gradient(from 45deg, #182038 0 25%, #4ecfff 0 50%) 50% / 14px 14px;
+  border-radius: 9px;
+  filter: contrast(1.15);
+}
+
+.choice-grid button.concealed .portrait:before {
+  content: "?";
+  color: #fff;
+  text-shadow: 0 1px 3px #000;
+}
+
 .choice-grid small {
   grid-column: 2;
   display: block;
@@ -395,13 +415,14 @@ input.name-locked {
 }
 
 .portrait.masterv {
-  background: linear-gradient(145deg, #f2f6ff, #4f6dff 42%, #20254d);
-  border-radius: 8px;
-  clip-path: polygon(50% 0, 88% 16%, 100% 54%, 72% 100%, 28% 100%, 0 54%, 12% 16%);
+  background: transparent;
+  border-radius: 10px;
+  box-shadow: none;
+  clip-path: none;
 }
 
 .portrait.masterv:before {
-  content: "V";
+  content: "";
   color: #ffe66d;
   text-shadow: 0 2px 5px #0008;
 }

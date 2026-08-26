@@ -75,6 +75,7 @@ const firstGameCompletedKey = "brawlclaui-first-game-completed";
 const lockedCharacters = new Set(["boomer", "fangli", "pixel", "tank", "bazaar", "masterv"]);
 const adminOnlyCharacters = new Set(["masterv"]);
 const adminGrantCharacters = ["boomer", "fangli", "pixel", "tank", "bazaar", "masterv"];
+const concealedCharacterLabel = "???";
 const adminEmails = new Set(["zurtzilhagever@gmail.com"]);
 const adminTogglePositionKey = "brawlclaui-admin-toggle-position";
 let adminVerified = false;
@@ -169,6 +170,7 @@ const translations = {
     modeSurvival: "Survival - bot waves",
     modeBrawl: "Solo Brawl - last alive",
     modeGems: "Gem Grab - 10 gems",
+    modeHeist: "Heist - destroy the safe",
     modeShowdown: "Showdown - last alive",
     modeCoins: "Coin Rush - 15 coins",
     modeZone: "Zone Control - Red vs Blue",
@@ -301,6 +303,7 @@ const translations = {
     modeSurvival: "\u05d4\u05d9\u05e9\u05e8\u05d3\u05d5\u05ea - \u05d2\u05dc\u05d9 \u05d1\u05d5\u05d8\u05d9\u05dd",
     modeBrawl: "\u05e7\u05e8\u05d1 \u05d9\u05d7\u05d9\u05d3 - \u05d4\u05d0\u05d7\u05e8\u05d5\u05df \u05e9\u05e0\u05e9\u05d0\u05e8",
     modeGems: "\u05d0\u05d9\u05e1\u05d5\u05e3 \u05d9\u05d4\u05dc\u05d5\u05de\u05d9\u05dd - 10 \u05dc\u05e0\u05d9\u05e6\u05d7\u05d5\u05df",
+    modeHeist: "\u05db\u05e1\u05e4\u05ea - \u05d4\u05e8\u05d5\u05e1 \u05d0\u05ea \u05db\u05e1\u05e4\u05ea \u05d4\u05d9\u05e8\u05d9\u05d1",
     modeShowdown: "\u05e9\u05d5\u05d0\u05d5\u05d3\u05d0\u05d5\u05df - \u05d4\u05d0\u05d7\u05e8\u05d5\u05df \u05e9\u05e0\u05e9\u05d0\u05e8",
     modeCoins: "\u05de\u05e8\u05d5\u05e5 \u05de\u05d8\u05d1\u05e2\u05d5\u05ea - 15 \u05dc\u05e0\u05d9\u05e6\u05d7\u05d5\u05df",
     modeZone: "\u05e9\u05dc\u05d9\u05d8\u05d4 \u05d1\u05d0\u05d6\u05d5\u05e8 - \u05d0\u05d3\u05d5\u05dd \u05de\u05d5\u05dc \u05db\u05d7\u05d5\u05dc",
@@ -412,6 +415,12 @@ function isCharacterUnlocked(character) {
   if (isAdminUser()) return true;
   return !lockedCharacters.has(character) || unlockedCharacters().has(character);
 }
+function canRevealMasterV() {
+  return isCharacterUnlocked("masterv");
+}
+function isConcealedMasterV(character) {
+  return character === "masterv" && !canRevealMasterV();
+}
 function unlockCharacter(character) {
   const unlocked = unlockedCharacters();
   if (unlocked.has(character)) return false;
@@ -447,10 +456,15 @@ function renderCharacterLocks() {
   document.querySelectorAll("[data-character]").forEach(button => {
     const character = button.dataset.character;
     const locked = !isCharacterUnlocked(character);
+    const concealed = character === "masterv" && locked;
     button.classList.toggle("locked", locked);
+    button.classList.toggle("concealed", concealed);
     button.disabled = locked;
+    const name = button.querySelector("span[data-i18n]");
+    if (name && character === "masterv") name.textContent = concealed ? concealedCharacterLabel : t("mastervName");
     const label = button.querySelector("small");
-    if (label && locked) label.textContent = character === "boomer" ? t("unlockBoomer") : character === "pixel" ? t("unlockPixel") : adminOnlyCharacters.has(character) ? t("adminOnlyCharacter") : t("lockedCharacter");
+    if (label && concealed) label.textContent = concealedCharacterLabel;
+    else if (label && locked) label.textContent = character === "boomer" ? t("unlockBoomer") : character === "pixel" ? t("unlockPixel") : adminOnlyCharacters.has(character) ? t("adminOnlyCharacter") : t("lockedCharacter");
     else if (label && character === "boomer") label.textContent = t("boomerDesc");
     else if (label && character === "pixel") label.textContent = t("pixelDesc");
     else if (label && character === "masterv") label.textContent = t("mastervDesc");
@@ -495,7 +509,7 @@ let lastCloudSnapshot = "";
 let pendingJoinCode = (new URLSearchParams(location.search).get("join") || "").trim().toUpperCase();
 const characterImages = Object.fromEntries(["blaze", "boomer", "fangli", "pixel", "tank", "bazaar", "masterv"].map(id => {
   const image = new Image();
-  image.src = `/characters/${id}.png?v=43`;
+  image.src = `/characters/${id}.png?v=${id === "masterv" ? 77 : 43}`;
   return [id, image];
 }));
 const motionState = new Map();
@@ -1142,6 +1156,14 @@ function updateMeta() {
       : t("shareRoom");
 }
 
+function heistScoreText(meta = gameMeta) {
+  const redSafe = meta.safes?.find(safe => safe.team === "red");
+  const blueSafe = meta.safes?.find(safe => safe.team === "blue");
+  const redHp = Math.ceil(redSafe?.health || 0);
+  const blueHp = Math.ceil(blueSafe?.health || 0);
+  return `${t("red")} ${redHp} - ${blueHp} ${t("blue")}`;
+}
+
 function applyControlMode() {
   controlMode = controlModeSelect.value;
   localStorage.setItem("brawlclaui-control-mode", controlMode);
@@ -1343,6 +1365,8 @@ socket.on("game:state", next => {
     ? `${bots.length} ${bots.length === 1 ? t("botSingular") : t("botPlural")}`
     : gameMeta.mode === "zone"
       ? `${t("red")} ${Math.floor(gameMeta.zoneScore?.red || 0)} - ${Math.floor(gameMeta.zoneScore?.blue || 0)} ${t("blue")}`
+      : gameMeta.mode === "heist"
+        ? heistScoreText()
       : gameMeta.mode === "soloZone"
         ? `${t("control")} ${Math.floor(gameMeta.zoneScore?.[playerId] || 0)} / 15`
         : `${humans.length} ${humans.length === 1 ? t("playerSingular") : t("playerPlural")}`;
@@ -1369,6 +1393,7 @@ socket.on("game:meta", next => {
   updateMeta();
   if (next.mode === "survival") document.querySelector("#count").textContent = `${t("wave")} ${next.wave || 1} - ${next.survivalTime || 0}s`;
   if (next.mode === "gems") document.querySelector("#count").textContent = `${t("red")} ${Math.floor(next.gemScore?.red || 0)} - ${Math.floor(next.gemScore?.blue || 0)} ${t("blue")}`;
+  if (next.mode === "heist") document.querySelector("#count").textContent = heistScoreText(next);
   if (next.mode === "zone") document.querySelector("#count").textContent = `${t("red")} ${Math.floor(next.zoneScore?.red || 0)} - ${Math.floor(next.zoneScore?.blue || 0)} ${t("blue")}`;
   if (next.mode === "soloZone") document.querySelector("#count").textContent = `${t("control")} ${Math.floor(next.zoneScore?.[playerId] || 0)} / 15`;
 });
@@ -1600,6 +1625,34 @@ function drawCharacter(p, motion) {
   return false;
 }
 
+function drawPixelatedConcealment(p, now) {
+  const pulse = 1 + Math.sin(now / 180) * .05;
+  const blocks = [
+    [-28, -32, 18], [-7, -38, 20], [16, -31, 18],
+    [-36, -10, 20], [-13, -13, 24], [13, -13, 24], [36, -8, 20],
+    [-29, 17, 18], [-7, 20, 22], [17, 18, 18],
+    [-42, 33, 12], [34, 31, 12]
+  ];
+  ctx.save();
+  ctx.scale(pulse, pulse);
+  ctx.shadowColor = "#78f5ff";
+  ctx.shadowBlur = 16;
+  ctx.globalAlpha *= .92;
+  for (let i = 0; i < blocks.length; i++) {
+    const [x, y, size] = blocks[i];
+    const flicker = Math.sin(now / 95 + i * 1.7) * 3;
+    ctx.fillStyle = i % 3 === 0 ? "#10213fdd" : i % 3 === 1 ? "#4ecfffcc" : "#f7e36bcc";
+    ctx.fillRect(Math.round(x + flicker), Math.round(y - flicker * .6), size, size);
+  }
+  ctx.strokeStyle = "#ffffff88";
+  ctx.lineWidth = 3;
+  ctx.setLineDash([6, 5]);
+  ctx.beginPath();
+  ctx.arc(0, 0, 43, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.restore();
+}
+
 function drawRoundedRect(x, y, w, h, r) {
   ctx.beginPath();
   ctx.moveTo(x + r, y);
@@ -1778,6 +1831,61 @@ function drawObstacle(block) {
   }
 }
 
+function drawSafe(safe, now) {
+  const healthRatio = clamp((safe.health || 0) / (safe.maxHealth || 1), 0, 1);
+  const teamColor = safe.team === "red" ? "#ff5964" : "#36c8ff";
+  const shake = healthRatio < .3 ? Math.sin(now / 75) * 1.6 : 0;
+  ctx.save();
+  ctx.translate(safe.x + shake, safe.y);
+
+  ctx.fillStyle = "#0000003b";
+  ctx.beginPath();
+  ctx.ellipse(6, 45, 54, 14, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  const body = ctx.createLinearGradient(-54, -46, 54, 48);
+  body.addColorStop(0, "#d8e3e5");
+  body.addColorStop(.42, "#8b989b");
+  body.addColorStop(1, "#40494d");
+  ctx.fillStyle = body;
+  drawRoundedRect(-54, -48, 108, 96, 14);
+  ctx.fill();
+  ctx.strokeStyle = teamColor;
+  ctx.lineWidth = 5;
+  drawRoundedRect(-49, -43, 98, 86, 12);
+  ctx.stroke();
+
+  ctx.fillStyle = "#2f383d";
+  ctx.beginPath();
+  ctx.arc(0, 2, 30, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = "#cbd7d7";
+  ctx.lineWidth = 5;
+  ctx.stroke();
+
+  ctx.strokeStyle = "#efffff";
+  ctx.lineWidth = 4;
+  for (let i = 0; i < 6; i++) {
+    const angle = i * Math.PI / 3 + now / 1600;
+    ctx.beginPath();
+    ctx.moveTo(Math.cos(angle) * 8, 2 + Math.sin(angle) * 8);
+    ctx.lineTo(Math.cos(angle) * 22, 2 + Math.sin(angle) * 22);
+    ctx.stroke();
+  }
+  ctx.fillStyle = teamColor;
+  ctx.beginPath();
+  ctx.arc(0, 2, 7, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = "#162025cc";
+  drawRoundedRect(-52, -67, 104, 13, 7);
+  ctx.fill();
+  ctx.fillStyle = healthRatio > .45 ? "#52e084" : healthRatio > .2 ? "#ffd54a" : "#ff5964";
+  drawRoundedRect(-50, -65, 100 * healthRatio, 9, 5);
+  ctx.fill();
+  ctx.restore();
+}
+
 function drawArenaFloor(arena, now) {
   const centerX = arena.width / 2;
   const centerY = arena.height / 2;
@@ -1875,6 +1983,10 @@ function drawArena(now) {
 
   for (const block of arena.obstacles || []) {
     drawObstacle(block);
+  }
+
+  for (const safe of gameMeta.safes || []) {
+    drawSafe(safe, now);
   }
 
   if (gameMeta.mode === "zone" || gameMeta.mode === "soloZone") {
@@ -2124,6 +2236,7 @@ function draw() {
   for (const projectile of gameMeta.projectiles || []) drawProjectile(projectile, now);
   for (const p of players) {
     const motion = motionFor(p, now);
+    const concealedMasterV = isConcealedMasterV(p.character);
     ctx.save();
     ctx.translate(p.x, p.y);
     ctx.globalAlpha = p.alive ? 1 : .38;
@@ -2131,7 +2244,8 @@ function draw() {
     ctx.beginPath();
     ctx.ellipse(4, 18, 24, 8, 0, 0, Math.PI * 2);
     ctx.fill();
-    const imageCharacter = drawCharacter(p, motion);
+    const imageCharacter = concealedMasterV ? true : drawCharacter(p, motion);
+    if (concealedMasterV) drawPixelatedConcealment(p, now);
     if (p.team) {
       ctx.strokeStyle = p.team === "red" ? "#ff606c" : "#55bfff";
       ctx.lineWidth = 5;
@@ -2200,7 +2314,7 @@ function draw() {
       ctx.stroke();
       ctx.setLineDash([]);
     }
-    if (p.bazaarBuff) {
+    if (!concealedMasterV && p.bazaarBuff) {
       ctx.fillStyle = "#8d5524";
       drawRoundedRect(16, -45, 18, 16, 4);
       ctx.fill();
@@ -2214,7 +2328,7 @@ function draw() {
       ctx.textBaseline = "middle";
       ctx.fillText("?", 25, -37);
     }
-    if (!imageCharacter) {
+    if (!concealedMasterV && !imageCharacter) {
       ctx.fillStyle = "#fff";
       ctx.beginPath();
       ctx.arc(-7, -3, 4, 0, Math.PI * 2);
@@ -2236,7 +2350,7 @@ function draw() {
     ctx.fillStyle = "#fff";
     ctx.font = "bold 13px sans-serif";
     ctx.textAlign = "center";
-    ctx.fillText(`${p.name}${p.ghost ? " GHOST" : ""} - ${p.score}`, 0, -43);
+    ctx.fillText(`${concealedMasterV ? concealedCharacterLabel : p.name}${p.ghost ? " GHOST" : ""} - ${p.score}`, 0, -43);
     ctx.restore();
   }
   ctx.restore();
