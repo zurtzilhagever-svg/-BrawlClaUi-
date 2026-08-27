@@ -694,7 +694,7 @@ let lastCloudSnapshot = "";
 let pendingJoinCode = (new URLSearchParams(location.search).get("join") || "").trim().toUpperCase();
 const characterImages = Object.fromEntries(["blaze", "boomer", "fangli", "pixel", "tank", "bazaar", "masterv"].map(id => {
   const image = new Image();
-  image.src = `/characters/${id}.png?v=${id === "masterv" ? 77 : 43}`;
+  image.src = `/characters/${id}.png?v=78`;
   return [id, image];
 }));
 const motionState = new Map();

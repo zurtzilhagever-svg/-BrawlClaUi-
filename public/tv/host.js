@@ -3,7 +3,7 @@ const canvas = document.querySelector("#arena"), ctx = canvas.getContext("2d");
 const codeEl = document.querySelector("#room-code"), list = document.querySelector("#player-list"), count = document.querySelector("#player-count"), toast = document.querySelector("#toast");
 let players = [], roomCode = "";
 let gameMeta = { arena: { obstacles: [], bushes: [] } };
-const characterImages = Object.fromEntries(["blaze", "tank", "spark", "medic"].map(id => { const image = new Image(); image.src = `/characters/${id}.png`; return [id, image]; }));
+const characterImages = Object.fromEntries(["blaze", "boomer", "fangli", "pixel", "tank", "bazaar", "masterv"].map(id => { const image = new Image(); image.src = `/characters/${id}.png?v=78`; return [id, image]; }));
 const motionState = new Map();
 function message(text) { toast.textContent = text; toast.classList.add("show"); setTimeout(() => toast.classList.remove("show"), 1800); }
 function renderLobby() { count.textContent = `${players.length} / 8`; list.innerHTML = players.map(p => `<li class="player" style="opacity:${p.connected ? 1 : .45}"><i class="dot" style="background:${p.color}"></i>${p.name}${p.connected ? "" : " (reconnecting)"}</li>`).join(""); }
