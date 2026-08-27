@@ -3366,23 +3366,30 @@ function draw() {
   for (const decoy of gameMeta.decoys || []) {
     ctx.save();
     ctx.translate(decoy.x, decoy.y);
-    ctx.globalAlpha = .55;
+    ctx.globalAlpha = decoy.golden ? .78 : .55;
     ctx.strokeStyle = decoy.golden ? "#ffd76a" : "#ffe9a6";
-    ctx.lineWidth = 3;
+    ctx.lineWidth = decoy.golden ? 5 : 3;
     ctx.setLineDash([5, 5]);
     ctx.beginPath();
-    ctx.arc(0, 0, 25, 0, Math.PI * 2);
+    ctx.arc(0, 0, decoy.golden ? 31 : 25, 0, Math.PI * 2);
     ctx.stroke();
     ctx.setLineDash([]);
-    ctx.fillStyle = decoy.golden ? "#fff0a8" : "#ffd54a";
-    ctx.beginPath();
-    ctx.arc(0, 0, 16, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = "#5f3a12";
-    ctx.font = "bold 16px sans-serif";
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.fillText("?", 0, 1);
+    if (decoy.golden) {
+      ctx.shadowColor = "#ffd76a";
+      ctx.shadowBlur = 18;
+      drawCharacter({ character:decoy.character || "skyfalcon", color:"#ffd76a", ghost:false, giant:false }, { moving:false, bob:0, leg:0 });
+      ctx.shadowBlur = 0;
+    } else {
+      ctx.fillStyle = "#ffd54a";
+      ctx.beginPath();
+      ctx.arc(0, 0, 16, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = "#5f3a12";
+      ctx.font = "bold 16px sans-serif";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText("?", 0, 1);
+    }
     ctx.restore();
   }
   for (const projectile of gameMeta.projectiles || []) drawProjectile(projectile, now);
