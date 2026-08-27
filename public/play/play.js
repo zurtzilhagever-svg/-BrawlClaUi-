@@ -1586,14 +1586,13 @@ function renderSkyModeButton(me = players.find(p => p.id === playerId)) {
   if (!skyModeButton) return;
   const active = me?.character === "skyfalcon" && me.alive && !me.ghost;
   skyModeButton.hidden = !active;
+  skySpecialMode = me?.skyBombAvailable ? "bomb" : "clone";
   input.skyMode = skySpecialMode;
   skyModeButton.textContent = skySpecialMode === "clone" ? t("skyCloneMode") : t("skyBombMode");
   skyModeButton.classList.toggle("clone", skySpecialMode === "clone");
 }
 
 function toggleSkySpecialMode() {
-  skySpecialMode = skySpecialMode === "bomb" ? "clone" : "bomb";
-  input.skyMode = skySpecialMode;
   renderSkyModeButton();
 }
 
