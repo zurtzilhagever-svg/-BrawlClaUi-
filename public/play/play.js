@@ -1242,6 +1242,7 @@ let players = [];
 let wasPlaying = false;
 let selectedCharacter = "blaze";
 let skySpecialMode = "bomb";
+let skyBombAttackLatched = false;
 let pendingCharacter = selectedCharacter;
 let gameMeta = { items: [], zoneScore: {} };
 let lastBazaarBuff = "";
@@ -2665,7 +2666,20 @@ setInterval(() => {
     const autoAim = autoAimAtNearestBot();
     const aimX = touchAim.active ? touchAim.x : gamepadAim.active ? gamepadAim.x : autoAim?.[0] || 0;
     const aimY = touchAim.active ? touchAim.y : gamepadAim.active ? gamepadAim.y : autoAim?.[1] || 0;
-    socket.emit("player:input", [input.x, input.y, input.attack ? 1 : 0, input.special ? 1 : 0, aimX, aimY, input.skyMode]);
+    const me = players.find(p => p.id === playerId);
+    let sentSkyMode = input.skyMode;
+    if (me?.character === "skyfalcon" && input.attack && skySpecialMode === "bomb" && !skyBombAttackLatched) {
+      sentSkyMode = "bomb";
+      skyBombAttackLatched = true;
+      skySpecialMode = "clone";
+      input.skyMode = skySpecialMode;
+      renderSkyModeButton(me);
+    } else {
+      if (!input.attack) skyBombAttackLatched = false;
+      sentSkyMode = skySpecialMode;
+      input.skyMode = skySpecialMode;
+    }
+    socket.emit("player:input", [input.x, input.y, input.attack ? 1 : 0, input.special ? 1 : 0, aimX, aimY, sentSkyMode]);
   }
 }, 1000 / 60);
 function motionFor(p, now) {
