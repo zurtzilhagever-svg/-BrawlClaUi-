@@ -39,6 +39,13 @@ const newLocalPlayer = document.querySelector("#new-local-player");
 const creditsCount = document.querySelector("#credits-count");
 const powerPointsCount = document.querySelector("#power-points-count");
 const moneyCount = document.querySelector("#money-count");
+const rewardScreen = document.querySelector("#reward-screen");
+const rewardResult = document.querySelector("#reward-result");
+const rewardKillsCount = document.querySelector("#reward-kills-count");
+const rewardCredits = document.querySelector("#reward-credits");
+const rewardPowerPoints = document.querySelector("#reward-power-points");
+const rewardMoney = document.querySelector("#reward-money");
+const rewardClose = document.querySelector("#reward-close");
 const characterPickerOpen = document.querySelector("#character-picker-open");
 const characterPicker = document.querySelector("#character-picker");
 const characterPickerClose = document.querySelector("#character-picker-close");
@@ -189,6 +196,21 @@ function spendCredits(amount) {
   saveEconomy({ ...current, credits: current.credits - cost });
   return true;
 }
+function playerKillCount(player) {
+  return Math.max(0, Math.floor(Number(player?.kills ?? player?.kos ?? player?.score ?? 0) || 0));
+}
+function showRewardScreen({ reward, kills, won }) {
+  if (!rewardScreen) return;
+  if (rewardResult) rewardResult.textContent = won ? t("rewardWon") : t("rewardLost");
+  if (rewardKillsCount) rewardKillsCount.textContent = String(kills);
+  if (rewardCredits) rewardCredits.textContent = `+${reward.credits}`;
+  if (rewardPowerPoints) rewardPowerPoints.textContent = `+${reward.powerPoints}`;
+  if (rewardMoney) rewardMoney.textContent = `+${reward.money}`;
+  rewardScreen.hidden = false;
+}
+function hideRewardScreen() {
+  if (rewardScreen) rewardScreen.hidden = true;
+}
 function rewardEconomyForFinishedGame(meta) {
   if (!meta || !(meta.endedAt || meta.winner || meta.winnerTeam)) return;
   const rewardId = [roomCode || "local", meta.mode || "", meta.endedAt || "", meta.winner?.id || "", meta.winnerTeam || ""].join(":");
@@ -196,18 +218,18 @@ function rewardEconomyForFinishedGame(meta) {
   const me = players.find(player => player.id === playerId);
   if (!me) return;
   const won = meta.winner?.id === playerId || Boolean(meta.winnerTeam && me.team === meta.winnerTeam);
-  const score = Math.max(0, Number(me.score || me.gems || me.coins) || 0);
-  const survival = Math.max(0, Number(meta.survivalTime) || 0);
+  const kills = playerKillCount(me);
   const reward = {
-    credits: won ? 20 : 8,
-    powerPoints: Math.min(40, 4 + score * 2 + (won ? 6 : 0)),
-    money: 25 + score * 5 + Math.floor(survival / 10) + (won ? 20 : 0)
+    credits: 10 + (won ? 5 : 0),
+    powerPoints: 5 + (won ? 3 : 0),
+    money: 20 + (won ? 10 : 0)
   };
   addEconomy(reward);
   localStorage.setItem(progressKey(economyRewardKey), rewardId);
   const message = `+${reward.credits} ${t("creditsLabel")}  +${reward.powerPoints} ${t("powerPointsLabel")}  +${reward.money} ${t("moneyLabel")}`;
   if (error) error.textContent = message;
   document.querySelector("#help").textContent = message;
+  showRewardScreen({ reward, kills, won });
 }
 function isAdminUser(user = activeCloudUser()) {
   return adminVerified || adminEmails.has((user?.email || "").toLowerCase());
@@ -301,6 +323,11 @@ const translations = {
     moneyLabel: "Money",
     unlockWithCredits: "Unlock with",
     needCredits: "Need",
+    rewardTitle: "Match rewards",
+    rewardKills: "KOs",
+    rewardWon: "Victory",
+    rewardLost: "Game ended",
+    closeRewards: "Close",
     rarityCommon: "Common",
     rarityRare: "Rare",
     rarityEpic: "Epic",
@@ -492,6 +519,11 @@ const translations = {
     moneyLabel: "\u05db\u05e1\u05e3",
     unlockWithCredits: "\u05e4\u05ea\u05d7 \u05d1-",
     needCredits: "\u05e6\u05e8\u05d9\u05da",
+    rewardTitle: "\u05e4\u05e8\u05e1\u05d9\u05dd \u05de\u05d4\u05de\u05e9\u05d7\u05e7",
+    rewardKills: "\u05d7\u05d9\u05e1\u05d5\u05dc\u05d9\u05dd",
+    rewardWon: "\u05e0\u05d9\u05e6\u05d7\u05d5\u05df",
+    rewardLost: "\u05d4\u05de\u05e9\u05d7\u05e7 \u05e0\u05d2\u05de\u05e8",
+    closeRewards: "\u05e1\u05d2\u05d5\u05e8",
     rarityCommon: "\u05e8\u05d2\u05d9\u05dc",
     rarityRare: "\u05e0\u05d3\u05d9\u05e8",
     rarityEpic: "\u05e2\u05dc",
@@ -2179,11 +2211,13 @@ characterPickerClose?.addEventListener("click", closeCharacterPicker);
 characterConfirm?.addEventListener("click", confirmCharacterPicker);
 characterPrev?.addEventListener("click", () => movePendingCharacter(-1));
 characterNext?.addEventListener("click", () => movePendingCharacter(1));
+rewardClose?.addEventListener("click", hideRewardScreen);
 characterPicker?.addEventListener("click", event => {
   if (event.target === characterPicker) closeCharacterPicker();
 });
 document.addEventListener("keydown", event => {
   if (characterPicker?.hidden === false && event.key === "Escape") closeCharacterPicker();
+  if (rewardScreen?.hidden === false && event.key === "Escape") hideRewardScreen();
 });
 characterButtons().forEach(button => {
   button.onclick = () => {
@@ -2239,6 +2273,7 @@ if (pendingJoinCode && /^[A-Z0-9]{4}$/.test(pendingJoinCode)) codeInput.value = 
 else pendingJoinCode = "";
 function leaveGame() {
   markFirstGameCompleted();
+  hideRewardScreen();
   const leavingRoom = roomCode;
   if (leavingRoom) socket.emit("player:leave", { code: leavingRoom, playerId });
   roomCode = "";

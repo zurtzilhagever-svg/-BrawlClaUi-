@@ -18,7 +18,7 @@
   <link rel="icon" type="image/png" sizes="48x48" href="/icons/favicon-48.png?v=65">
   <link rel="apple-touch-icon" href="/icons/icon-192.png?v=65">
   <title>בראול כלווי - BrawkClaUi</title>
-  <link rel="stylesheet" href="style.css?v=91">
+  <link rel="stylesheet" href="style.css?v=92">
 </head>
 <body>
   <section id="profile-gate" class="profile-gate" aria-labelledby="profile-title">
@@ -251,11 +251,28 @@
     </section>
   </main>
 
+  <section id="reward-screen" class="reward-screen" hidden aria-live="polite">
+    <div class="reward-card">
+      <span id="reward-result" class="reward-result"></span>
+      <h2 data-i18n="rewardTitle">Match rewards</h2>
+      <div class="reward-kills">
+        <b data-i18n="rewardKills">KOs</b>
+        <strong id="reward-kills-count">0</strong>
+      </div>
+      <div class="reward-values">
+        <span><b data-i18n="creditsLabel">Credits</b><strong id="reward-credits">0</strong></span>
+        <span><b data-i18n="powerPointsLabel">Power points</b><strong id="reward-power-points">0</strong></span>
+        <span><b data-i18n="moneyLabel">Money</b><strong id="reward-money">0</strong></span>
+      </div>
+      <button id="reward-close" type="button" data-i18n="closeRewards">Close</button>
+    </div>
+  </section>
+
   <script src="/native-config.js"></script>
   <script src="/shared/runtime.js"></script>
   <script src="/socket.io/socket.io.js"></script>
   <script src="/shared/qr-generator.js"></script>
   <script src="/shared/gamepad.js?v=81"></script>
-  <script src="play.js?v=91"></script>
+  <script src="play.js?v=92"></script>
 </body>
 </html>
