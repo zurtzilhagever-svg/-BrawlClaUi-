@@ -36,6 +36,9 @@ const accountStatus = document.querySelector("#account-status");
 const googleSignIn = document.querySelector("#google-sign-in");
 const googleSignOut = document.querySelector("#google-sign-out");
 const newLocalPlayer = document.querySelector("#new-local-player");
+const creditsCount = document.querySelector("#credits-count");
+const powerPointsCount = document.querySelector("#power-points-count");
+const moneyCount = document.querySelector("#money-count");
 const characterPickerOpen = document.querySelector("#character-picker-open");
 const characterPicker = document.querySelector("#character-picker");
 const characterPickerClose = document.querySelector("#character-picker-close");
@@ -97,11 +100,31 @@ const profileGateVersion = "74";
 const languageCodes = ["system", "he", "en", "ar"];
 const rtlLanguages = new Set(["ar", "he"]);
 const survivalBestKey = "brawlclaui-survival-best";
+const economyKey = "brawlclaui-economy";
+const economyRewardKey = "brawlclaui-economy-last-reward";
 const unlockedCharactersKey = "brawlclaui-unlocked-characters";
 const nameLockedKey = "brawlclaui-name-locked";
 const renameGrantKey = "brawlclaui-can-rename";
 const firstGameCompletedKey = "brawlclaui-first-game-completed";
 const lockedCharacters = new Set(["boomer", "fangli", "pixel", "tank", "bazaar", "ari", "skyfalcon", "masterv"]);
+const characterRarities = {
+  blaze: "common",
+  boomer: "common",
+  pixel: "common",
+  fangli: "rare",
+  tank: "rare",
+  bazaar: "epic",
+  ari: "mythic",
+  skyfalcon: "legendary",
+  masterv: "special"
+};
+const rarityCreditCosts = {
+  common: 150,
+  rare: 300,
+  epic: 600,
+  mythic: 1000,
+  legendary: 1500
+};
 const adminOnlyCharacters = new Set(["masterv"]);
 const adminGrantCharacters = ["boomer", "fangli", "pixel", "tank", "bazaar", "ari", "skyfalcon", "masterv"];
 const concealedCharacterLabel = "???";
@@ -122,6 +145,69 @@ function progressKey(baseKey) {
 }
 function loadStoredPersonalBest() {
   return Number(localStorage.getItem(progressKey(survivalBestKey))) || 0;
+}
+function normalizeEconomy(value = {}) {
+  return {
+    credits: Math.max(0, Math.floor(Number(value.credits) || 0)),
+    powerPoints: Math.max(0, Math.floor(Number(value.powerPoints) || 0)),
+    money: Math.max(0, Math.floor(Number(value.money) || 0))
+  };
+}
+function loadEconomy() {
+  try {
+    return normalizeEconomy(JSON.parse(localStorage.getItem(progressKey(economyKey)) || "{}"));
+  } catch {
+    return normalizeEconomy();
+  }
+}
+function saveEconomy(next) {
+  const economy = normalizeEconomy(next);
+  localStorage.setItem(progressKey(economyKey), JSON.stringify(economy));
+  renderEconomy(economy);
+  queueCloudSave();
+  return economy;
+}
+function renderEconomy(value = loadEconomy()) {
+  const economy = normalizeEconomy(value);
+  if (creditsCount) creditsCount.textContent = String(economy.credits);
+  if (powerPointsCount) powerPointsCount.textContent = String(economy.powerPoints);
+  if (moneyCount) moneyCount.textContent = String(economy.money);
+  syncCharacterPicker();
+}
+function addEconomy(reward = {}) {
+  const current = loadEconomy();
+  return saveEconomy({
+    credits: current.credits + (Number(reward.credits) || 0),
+    powerPoints: current.powerPoints + (Number(reward.powerPoints) || 0),
+    money: current.money + (Number(reward.money) || 0)
+  });
+}
+function spendCredits(amount) {
+  const cost = Math.max(0, Math.floor(Number(amount) || 0));
+  const current = loadEconomy();
+  if (current.credits < cost) return false;
+  saveEconomy({ ...current, credits: current.credits - cost });
+  return true;
+}
+function rewardEconomyForFinishedGame(meta) {
+  if (!meta || !(meta.endedAt || meta.winner || meta.winnerTeam)) return;
+  const rewardId = [roomCode || "local", meta.mode || "", meta.endedAt || "", meta.winner?.id || "", meta.winnerTeam || ""].join(":");
+  if (!rewardId.trim() || localStorage.getItem(progressKey(economyRewardKey)) === rewardId) return;
+  const me = players.find(player => player.id === playerId);
+  if (!me) return;
+  const won = meta.winner?.id === playerId || Boolean(meta.winnerTeam && me.team === meta.winnerTeam);
+  const score = Math.max(0, Number(me.score || me.gems || me.coins) || 0);
+  const survival = Math.max(0, Number(meta.survivalTime) || 0);
+  const reward = {
+    credits: won ? 20 : 8,
+    powerPoints: Math.min(40, 4 + score * 2 + (won ? 6 : 0)),
+    money: 25 + score * 5 + Math.floor(survival / 10) + (won ? 20 : 0)
+  };
+  addEconomy(reward);
+  localStorage.setItem(progressKey(economyRewardKey), rewardId);
+  const message = `+${reward.credits} ${t("creditsLabel")}  +${reward.powerPoints} ${t("powerPointsLabel")}  +${reward.money} ${t("moneyLabel")}`;
+  if (error) error.textContent = message;
+  document.querySelector("#help").textContent = message;
 }
 function isAdminUser(user = activeCloudUser()) {
   return adminVerified || adminEmails.has((user?.email || "").toLowerCase());
@@ -210,6 +296,17 @@ const translations = {
     signInGoogle: "Sign in with Google",
     signOut: "Sign out",
     newLocalPlayer: "New local player",
+    creditsLabel: "Credits",
+    powerPointsLabel: "Power points",
+    moneyLabel: "Money",
+    unlockWithCredits: "Unlock with",
+    needCredits: "Need",
+    rarityCommon: "Common",
+    rarityRare: "Rare",
+    rarityEpic: "Epic",
+    rarityMythic: "Mythic",
+    rarityLegendary: "Legendary",
+    raritySpecial: "Special",
     chooseCharacter: "Choose character",
     chooseForGame: "Choose for game",
     closePicker: "Close",
@@ -390,6 +487,17 @@ const translations = {
     signInGoogle: "\u05d4\u05ea\u05d7\u05d1\u05e8 \u05e2\u05dd Google",
     signOut: "\u05d4\u05ea\u05e0\u05ea\u05e7",
     newLocalPlayer: "\u05e9\u05d7\u05e7\u05df \u05de\u05e7\u05d5\u05de\u05d9 \u05d7\u05d3\u05e9",
+    creditsLabel: "\u05e7\u05e8\u05d3\u05d9\u05d8\u05d9\u05dd",
+    powerPointsLabel: "\u05e0\u05e7\u05d5\u05d3\u05d5\u05ea \u05db\u05d5\u05d7",
+    moneyLabel: "\u05db\u05e1\u05e3",
+    unlockWithCredits: "\u05e4\u05ea\u05d7 \u05d1-",
+    needCredits: "\u05e6\u05e8\u05d9\u05da",
+    rarityCommon: "\u05e8\u05d2\u05d9\u05dc",
+    rarityRare: "\u05e0\u05d3\u05d9\u05e8",
+    rarityEpic: "\u05e2\u05dc",
+    rarityMythic: "\u05db\u05d5\u05db\u05d1\u05d9",
+    rarityLegendary: "\u05d0\u05d2\u05d3\u05d9",
+    raritySpecial: "\u05de\u05d9\u05d5\u05d7\u05d3",
     chooseCharacter: "\u05d1\u05d7\u05d9\u05e8\u05ea \u05d3\u05de\u05d5\u05ea",
     chooseForGame: "\u05d1\u05d7\u05e8 \u05dc\u05de\u05e9\u05d7\u05e7",
     closePicker: "\u05e1\u05d2\u05d5\u05e8",
@@ -492,84 +600,379 @@ const translations = {
   }
 };
 translations.ar = {
-  brandHebrew: "\u0628\u0631\u0627\u0648\u0644 \u0643\u0644\u0627\u0648\u064a",
+  "brandHebrew": "????? ?????",
+  "title": "BrawkClaUi",
+  "subtitle": "???? ????? ???? ??? ?????? ????.",
+  "profileKicker": "?????",
+  "profileIntro": "???? ????? ???? ??????.",
+  "profileLanguagePick": "???? ?????",
+  "profileContinue": "??????",
+  "nameRequired": "???? ???? ????????",
+  "languageLabel": "?????",
+  "languageSystem": "??????? ??? ??????",
+  "namePlaceholder": "????",
+  "nameLockedNotice": "???? ????. ???? ?????? ?????? ?????? ????.",
+  "renameAllowed": "????? ????? ????",
+  "renameSaved": "?? ??? ?????",
+  "accountLabel": "???? Google",
+  "cloudGuest": "??? ???? ??????",
+  "cloudSignedIn": "???? ?????? ????",
+  "cloudSyncing": "??? ?????? ??????...",
+  "cloudSaved": "?? ??? ??????",
+  "cloudError": "??? Google ??? ????",
+  "adminLabel": "????",
+  "adminPanelTitle": "???? ??????",
+  "adminCommandSearchLabel": "???? ???????",
+  "adminCommandSearchPlaceholder": "???? ????? ????: ???? Banana ????? Boomer",
+  "adminRunCommand": "?????",
+  "adminCommandMatches": "????? ??????",
+  "adminCommandNoMatches": "?? ???? ????? ??????",
+  "adminCommandEnterHint": "???? ????? ?? ??????",
+  "adminRoomLabel": "??????",
+  "adminPlayersLabel": "????????",
+  "adminFindSection": "????? ?? ????",
+  "adminAdminsSection": "????????",
+  "adminTargetSection": "?????? ?????",
+  "adminCharactersSection": "????????",
+  "adminLiveSection": "???? ?????",
+  "adminDangerSection": "???",
+  "adminHealth": "?????",
+  "adminCharacterStat": "???????",
+  "adminScore": "??????",
+  "adminStatusLabel": "??????",
+  "adminAlive": "??",
+  "adminDown": "???? ?????",
+  "adminConnected": "????",
+  "adminDisconnected": "??? ????",
+  "adminLobby": "??????",
+  "adminGrant": "????? ?????",
+  "adminRevoke": "????? ?????",
+  "adminAllowRename": "?????? ?????? ?????",
+  "adminHeal": "????",
+  "adminEliminate": "?????",
+  "adminFreeze": "?????",
+  "adminTeleport": "????? ???",
+  "adminResetProgress": "????? ??? ??????",
+  "adminKick": "??? ??????",
+  "adminBan": "??? ??????",
+  "adminRestart": "????? ????? ??????",
+  "adminFindGoogle": "??? ?? ????",
+  "adminGooglePlaceholder": "???? Google ?????",
+  "adminEmailPlaceholder": "???? Google ??????",
+  "adminAddAdmin": "????? ????",
+  "adminRemoveAdmin": "????? ????",
+  "adminOwnerLocked": "?? ???? ????? ?????? ???????",
+  "adminListEmpty": "?? ???? ??????",
+  "adminNoRoom": "?? ???? ???? ????",
+  "adminNoPlayers": "?? ???? ?????? ?????",
+  "adminPickPlayer": "???? ?????",
+  "adminDone": "??",
+  "adminFailed": "??? ????? ??????",
+  "adminPlayerFound": "?? ?????? ??????",
+  "adminPlayerNotFound": "?? ??? ?????? ??? ??????",
+  "adminInvalidEmail": "???? ???? Google ?????",
+  "adminGrantedNotice": "?? ??? ??????? ?????? ??????",
+  "adminRevokedNotice": "??? ????? ??????? ?????? ??????",
+  "adminProgressResetNotice": "??? ????? ??? ?????? ?????? ??????",
+  "adminKickedNotice": "?? ?????? ?? ??? ??????",
+  "adminBannedNotice": "?? ???? ?? ??? ??????",
+  "signInGoogle": "????? ?????? ???????? Google",
+  "signOut": "????? ??????",
+  "newLocalPlayer": "???? ???? ????",
+  "creditsLabel": "Credits",
+  "powerPointsLabel": "Power points",
+  "moneyLabel": "Money",
+  "unlockWithCredits": "Unlock with",
+  "needCredits": "Need",
+  "rarityCommon": "Common",
+  "rarityRare": "Rare",
+  "rarityEpic": "Epic",
+  "rarityMythic": "Mythic",
+  "rarityLegendary": "Legendary",
+  "raritySpecial": "Special",
+  "chooseCharacter": "???? ?????",
+  "chooseForGame": "???? ?????",
+  "closePicker": "?????",
+  "localPlayerCreated": "?? ????? ???? ???? ????",
+  "brawlerLabel": "??????",
+  "bobName": "???",
+  "boomerName": "????",
+  "fangliName": "??????",
+  "pixelName": "?????",
+  "auroraName": "??????",
+  "bazaarName": "?????",
+  "ariName": "???",
+  "skyFalconName": "??? ??????",
+  "mastervName": "Master V",
+  "blazeDesc": "???? ?? 3 ???? ???",
+  "boomerDesc": "???????? - ????? ?????",
+  "fangliDesc": "???? ??? ?????? ???? ??? ???????",
+  "pixelDesc": "???? ???? ???? ?? ???????",
+  "unlockBoomer": "???? ?????? 10 ???????? ???",
+  "unlockPixel": "???? ???? ????? ?????",
+  "boomerUnlocked": "?? ??? ????",
+  "pixelUnlocked": "?? ??? ?????",
+  "lockedCharacter": "????",
+  "tankDesc": "????? ????? + ??? ????",
+  "bazaarDesc": "????? ????? + ????? ?????",
+  "ariDesc": "???? ???? + ?? ???? ???????",
+  "skyFalconDesc": "???? ????? + ????? ?? ????",
+  "mastervDesc": "????? ????? ?????? ???",
+  "skyBombMode": "?????",
+  "skyCloneMode": "????",
+  "adminOnlyCharacter": "????? ????",
+  "modeLabel": "??? ??????",
+  "modeSurvival": "???? - ????? ?????",
+  "modeBrawl": "???? ???? - ??? ???? ????",
+  "modeGems": "??? ??????? - 10 ?????",
+  "modeShowdown": "?????? - ??? ???? ????",
+  "modeCoins": "???? ??????? - 15 ????",
+  "modeZone": "????? ??? ??????? - ???? ?? ????",
+  "modeSoloZone": "????? ????? ??? ??????? - 15 ?????",
+  "controlsLabel": "??????",
+  "controlTouch": "???? / ???",
+  "controlKeyboard": "???? ?????? ?????????",
+  "controlGamepad": "?? ???? Bluetooth / USB",
+  "gamepadTitle": "??? ?? ??????",
+  "gamepadWaiting": "???? ?? ?? ?? ?? ??????",
+  "gamepadConnected": "?? ????? ?? ??????",
+  "gamepadPlayStationHint": "R2 ??????? L2 ??????? ????? ?????? ???????",
+  "gamepadHelp": "??? ?? ?????? ??? Bluetooth ?? USB? ?? ???? ??? ??????.",
+  "keysMove": "??????",
+  "keysAttack": "J ????",
+  "keysSpecial": "K ????",
+  "create": "????? ????",
+  "playNow": "???? ????",
+  "roomCodeLabel": "??? ??????",
+  "serverCodeLabel": "??? ??????",
+  "findingPlayers": "??? ????? ?? ??????...",
+  "readyRoom": "???? - ???? ????? ?? ???? ???",
+  "joinDivider": "?? ???? ??? ????",
+  "codePlaceholder": "??? ?????? ?? ??????",
+  "join": "??????",
+  "install": "????? ??????",
+  "installHelp": "?????? ??????? ???? ????? ??????? ????? ????? ??????? ?? ????? ??? ?????? ????????.",
+  "leaveAria": "?????? ??????",
+  "initialObjective": "???? ??? ?????? ??????? ???",
+  "adminInvinciblePrompt": "??? ??????: ???? ????? ????? ??? ???? ???????? ?? ????? ???? ???? ????.",
+  "adminInvincibleOn": "??? ???? ??? ???? ???????",
+  "adminInvincibleOff": "??? ???? ????",
+  "attack": "????",
+  "special": "????",
+  "useItem": "?????? ??????",
+  "useBuff": "?????? ???????",
+  "gotBuff": "?? ?????? ??? ?????",
+  "ping": "?????",
+  "survivalEnded": "????? ??????",
+  "createAgain": "???? ???? ????? ???? ??? ????",
+  "shareRoom": "???? ??? ?????? ??????? ???",
+  "reconnecting": "??? ????? ???????...",
+  "ghostCharge": "??? ??? - ??? ??? ???? ?? 30 ?????",
+  "targetSelected": "?? ?????? ?????",
+  "wave": "????",
+  "survived": "???? ????",
+  "bots": "?????",
+  "botSingular": "???",
+  "botPlural": "?????",
+  "playerSingular": "????",
+  "playerPlural": "??????",
+  "room": "????",
+  "control": "????",
+  "red": "????",
+  "blue": "????",
+  "teamWins": "?????? ????",
+  "wins": "????",
+  "kos": "???????",
+  "personalBest": "??????",
+  "currentRun": "??????",
+  "globalBest": "?????",
+  "globalLeaders": "???? ??????? ??????",
+  "noLeaders": "?? ???? ????? ???",
+  "secondsShort": "?"
+};
+translations.ar = {
+  brandHebrew: "براول كلاوي",
   title: "BrawkClaUi",
-  subtitle: "\u0627\u062e\u062a\u0631 \u0634\u062e\u0635\u064a\u0629 \u0648\u0646\u0645\u0637 \u0644\u0639\u0628 \u0648\u0637\u0631\u064a\u0642\u0629 \u062a\u062d\u0643\u0645.",
-  profileKicker: "\u0645\u0631\u062d\u0628\u0627",
-  profileIntro: "\u0627\u062e\u062a\u0631 \u0627\u0644\u0644\u063a\u0629 \u0648\u0627\u0633\u0645 \u0627\u0644\u0644\u0627\u0639\u0628.",
-  profileLanguagePick: "\u0627\u062e\u062a\u0631 \u0644\u063a\u0629",
-  profileContinue: "\u0627\u0633\u062a\u0645\u0631",
-  nameRequired: "\u0627\u062e\u062a\u0631 \u0627\u0633\u0645\u0627 \u0644\u0644\u0645\u062a\u0627\u0628\u0639\u0629",
-  languageLabel: "\u0627\u0644\u0644\u063a\u0629",
-  languageSystem: "\u0644\u063a\u0629 \u0627\u0644\u062c\u0647\u0627\u0632",
-  namePlaceholder: "\u0627\u0633\u0645\u0643",
-  nameLockedNotice: "\u0627\u0644\u0627\u0633\u0645 \u0645\u0642\u0641\u0644. \u064a\u0645\u0643\u0646 \u0644\u0644\u0623\u062f\u0645\u0646 \u0627\u0644\u0633\u0645\u0627\u062d \u0628\u062a\u063a\u064a\u064a\u0631 \u0648\u0627\u062d\u062f.",
-  renameAllowed: "\u062a\u063a\u064a\u064a\u0631 \u0627\u0644\u0627\u0633\u0645 \u0645\u062a\u0627\u062d",
-  renameSaved: "\u062a\u0645 \u062d\u0641\u0638 \u0627\u0644\u0627\u0633\u0645",
-  accountLabel: "\u062d\u0633\u0627\u0628 Google",
-  cloudGuest: "\u063a\u064a\u0631 \u0645\u0633\u062c\u0644",
-  cloudSignedIn: "\u0645\u0633\u062c\u0644 \u0643\u0640",
-  signInGoogle: "\u062a\u0633\u062c\u064a\u0644 \u0628\u0640 Google",
-  signOut: "\u062e\u0631\u0648\u062c",
-  newLocalPlayer: "\u0644\u0627\u0639\u0628 \u0645\u062d\u0644\u064a \u062c\u062f\u064a\u062f",
-  chooseCharacter: "Choose character",
-  chooseForGame: "Choose for game",
-  closePicker: "Close",
-  brawlerLabel: "\u0634\u062e\u0635\u064a\u062a\u0643",
-  bobName: "Bob",
-  boomerName: "Boomer",
-  fangliName: "Fangli",
-  pixelName: "Pixel",
-  auroraName: "Aurora",
-  bazaarName: "Bazaar",
-  ariName: "Ari",
-  skyFalconName: "Sky Falcon",
+  subtitle: "اختر شخصية ونمط لعب وطريقة تحكم.",
+  profileKicker: "مرحبا",
+  profileIntro: "اختر اللغة واسم اللاعب.",
+  profileTitle: "مرحبا بك في BrawkClaUi",
+  profileLanguagePick: "اختر اللغة",
+  profileSubtitle: "اختر اسم اللاعب. يمكنك تسجيل الدخول بحساب Google لحفظ التقدم.",
+  profileNameLabel: "اسم اللاعب",
+  profileContinue: "متابعة",
+  nameRequired: "اختر اسما للمتابعة",
+  languageLabel: "اللغة",
+  languageSystem: "استخدام لغة الجهاز",
+  namePlaceholder: "اسمك",
+  nameLockedNotice: "اسمك مقفل. يمكن للمشرف السماح بتغيير واحد.",
+  renameAllowed: "تغيير الاسم متاح",
+  renameSaved: "تم حفظ الاسم",
+  accountLabel: "حساب Google",
+  cloudGuest: "غير مسجل الدخول",
+  cloudSignedIn: "مسجل الدخول باسم",
+  cloudSyncing: "جار مزامنة التقدم...",
+  cloudSaved: "تم حفظ التقدم",
+  cloudError: "حفظ Google غير متاح",
+  adminLabel: "مشرف",
+  adminPanelTitle: "لوحة المشرف",
+  adminCommandSearchLabel: "وحدة الأوامر",
+  adminCommandSearchPlaceholder: "اكتب أمرا، مثلا: أعطِ Banana شخصية Boomer",
+  adminRunCommand: "تشغيل",
+  adminCommandMatches: "أوامر موجودة",
+  adminCommandNoMatches: "لا توجد أوامر مطابقة",
+  adminCommandEnterHint: "اكتب أوامر أو مساعدة",
+  adminRoomLabel: "الغرفة",
+  adminPlayersLabel: "اللاعبون",
+  adminFindSection: "البحث عن لاعب",
+  adminAdminsSection: "المشرفون",
+  adminTargetSection: "اللاعب الهدف",
+  adminCharactersSection: "الشخصيات",
+  adminLiveSection: "تحكم مباشر",
+  adminDangerSection: "خطر",
+  adminHealth: "الصحة",
+  adminCharacterStat: "الشخصية",
+  adminScore: "النقاط",
+  adminStatusLabel: "الحالة",
+  adminAlive: "حي",
+  adminDown: "خارج اللعب",
+  adminConnected: "متصل",
+  adminDisconnected: "غير متصل",
+  adminLobby: "الردهة",
+  adminGrant: "إعطاء شخصية",
+  adminRevoke: "إزالة شخصية",
+  adminAllowRename: "السماح بتغيير الاسم",
+  adminHeal: "شفاء",
+  adminEliminate: "إقصاء",
+  adminFreeze: "تجميد",
+  adminTeleport: "أحضره هنا",
+  adminResetProgress: "إعادة ضبط التقدم",
+  adminKick: "طرد اللاعب",
+  adminBan: "حظر اللاعب",
+  adminRestart: "إعادة تشغيل اللعبة",
+  adminFindGoogle: "بحث عن لاعب",
+  adminGooglePlaceholder: "حساب Google للبحث",
+  adminEmailPlaceholder: "حساب Google للمشرف",
+  adminAddAdmin: "إضافة مشرف",
+  adminRemoveAdmin: "إزالة مشرف",
+  adminOwnerLocked: "لا يمكن إزالة المشرف الرئيسي",
+  adminListEmpty: "لا يوجد مشرفون",
+  adminNoRoom: "لا توجد غرفة نشطة",
+  adminNoPlayers: "لا يوجد لاعبون آخرون",
+  adminPickPlayer: "اختر لاعبا",
+  adminDone: "تم",
+  adminFailed: "فشل إجراء المشرف",
+  adminPlayerFound: "تم اختيار اللاعب",
+  adminPlayerNotFound: "لم يتم العثور على اللاعب",
+  adminInvalidEmail: "أدخل حساب Google صالحا",
+  adminGrantedNotice: "تم فتح الشخصية بواسطة المشرف",
+  adminRevokedNotice: "تمت إزالة الشخصية بواسطة المشرف",
+  adminProgressResetNotice: "تمت إعادة ضبط التقدم بواسطة المشرف",
+  adminKickedNotice: "تم إخراجك من هذه الغرفة",
+  adminBannedNotice: "تم حظرك من هذه الغرفة",
+  signInGoogle: "تسجيل الدخول باستخدام Google",
+  signOut: "تسجيل الخروج",
+  newLocalPlayer: "لاعب محلي جديد",
+  chooseCharacter: "اختر شخصية",
+  chooseForGame: "اختر للعبة",
+  closePicker: "إغلاق",
+  localPlayerCreated: "تم إنشاء لاعب محلي جديد",
+  brawlerLabel: "شخصيتك",
+  bobName: "بوب",
+  boomerName: "بومر",
+  fangliName: "فانغلي",
+  pixelName: "بيكسل",
+  auroraName: "أورورا",
+  bazaarName: "بازار",
+  ariName: "آري",
+  skyFalconName: "صقر السماء",
   mastervName: "Master V",
-  modeLabel: "\u0646\u0645\u0637 \u0627\u0644\u0644\u0639\u0628",
-  modeSurvival: "\u0627\u0644\u0646\u062c\u0627\u0629 - \u0645\u0648\u062c\u0627\u062a \u0628\u0648\u062a\u0627\u062a",
-  modeBrawl: "\u0642\u062a\u0627\u0644 \u0641\u0631\u062f\u064a - \u0622\u062e\u0631 \u0645\u0646 \u064a\u0628\u0642\u0649",
-  modeGems: "\u062c\u0645\u0639 \u0627\u0644\u062c\u0648\u0627\u0647\u0631 - 10",
-  modeShowdown: "\u0627\u0644\u0645\u0648\u0627\u062c\u0647\u0629 - \u0622\u062e\u0631 \u0645\u0646 \u064a\u0628\u0642\u0649",
-  modeCoins: "\u0633\u0628\u0627\u0642 \u0627\u0644\u0639\u0645\u0644\u0627\u062a - 15",
-  modeZone: "\u0627\u0644\u0633\u064a\u0637\u0631\u0629 \u0639\u0644\u0649 \u0627\u0644\u0645\u0646\u0637\u0642\u0629",
-  modeSoloZone: "\u0645\u0646\u0637\u0642\u0629 \u0641\u0631\u062f\u064a\u0629 - 15 \u062b\u0627\u0646\u064a\u0629",
-  controlsLabel: "\u0627\u0644\u062a\u062d\u0643\u0645",
-  controlTouch: "\u0647\u0627\u062a\u0641 / \u0644\u0645\u0633",
-  controlKeyboard: "\u0644\u0648\u062d\u0629 \u0645\u0641\u0627\u062a\u064a\u062d",
-  controlGamepad: "Bluetooth / USB controller",
-  gamepadTitle: "Controller mode",
-  gamepadWaiting: "Press any button on the controller",
-  gamepadConnected: "Controller connected",
-  gamepadPlayStationHint: "R2 attack, L2 super, right stick aim",
-  gamepadHelp: "Connect the controller to Bluetooth or USB, then return to the game.",
-  keysMove: "\u0627\u0644\u0623\u0633\u0647\u0645",
-  keysAttack: "J \u0647\u062c\u0648\u0645",
-  keysSpecial: "K \u0633\u0648\u0628\u0631",
-  playNow: "\u0627\u0644\u0639\u0628 \u0627\u0644\u0622\u0646",
-  roomCodeLabel: "\u0631\u0645\u0632 \u0627\u0644\u063a\u0631\u0641\u0629",
-  serverCodeLabel: "\u0631\u0645\u0632 \u0627\u0644\u062e\u0627\u062f\u0645",
-  findingPlayers: "\u062c\u0627\u0631\u064a \u0627\u0644\u0628\u062d\u062b \u0639\u0646 \u0644\u0627\u0639\u0628\u064a\u0646...",
-  joinDivider: "\u0623\u0648 \u0627\u0646\u0636\u0645 \u0644\u0635\u062f\u064a\u0642",
-  codePlaceholder: "\u0631\u0645\u0632 \u0627\u0644\u063a\u0631\u0641\u0629 \u0623\u0648 \u0627\u0644\u062e\u0627\u062f\u0645",
-  join: "\u0627\u0646\u0636\u0645",
-  install: "\u062d\u0645\u0644 \u0627\u0644\u0644\u0639\u0628\u0629",
-  installHelp: "\u0644\u062a\u062b\u0628\u064a\u062a \u0627\u0644\u0644\u0639\u0628\u0629\u060c \u0627\u0641\u062a\u062d \u0642\u0627\u0626\u0645\u0629 \u0627\u0644\u0645\u062a\u0635\u0641\u062d \u0648\u0627\u062e\u062a\u0631 \u062a\u062b\u0628\u064a\u062a \u0627\u0644\u062a\u0637\u0628\u064a\u0642 \u0623\u0648 \u0625\u0636\u0627\u0641\u0629 \u0625\u0644\u0649 \u0627\u0644\u0634\u0627\u0634\u0629 \u0627\u0644\u0631\u0626\u064a\u0633\u064a\u0629.",
-  attack: "\u0647\u062c\u0648\u0645",
-  special: "\u0633\u0648\u0628\u0631",
-  useItem: "\u0627\u0633\u062a\u062e\u062f\u0645",
-  useBuff: "\u0641\u0639\u0644 Buff",
-  mastervDesc: "\u0645\u0642\u0627\u062a\u0644 \u062e\u0627\u0635 \u0644\u0644\u0623\u062f\u0645\u0646 \u0641\u0642\u0637",
-  adminOnlyCharacter: "\u0634\u062e\u0635\u064a\u0629 \u062e\u0627\u0635\u0629",
-  adminAllowRename: "\u0627\u0633\u0645\u062d \u0628\u062a\u063a\u064a\u064a\u0631 \u0627\u0644\u0627\u0633\u0645",
-  unlockPixel: "\u0623\u0646\u0647 \u0644\u0639\u0628\u0629 \u0648\u0627\u062d\u062f\u0629 \u0644\u0641\u062a\u062d\u0647",
-  pixelUnlocked: "\u062a\u0645 \u0641\u062a\u062d Pixel",
-  gotBuff: "\u062d\u0635\u0644\u062a \u0639\u0644\u0649 Buff",
-  room: "\u063a\u0631\u0641\u0629",
-  playerSingular: "\u0644\u0627\u0639\u0628",
-  playerPlural: "\u0644\u0627\u0639\u0628\u0648\u0646",
-  botSingular: "\u0628\u0648\u062a",
-  botPlural: "\u0628\u0648\u062a\u0627\u062a",
-  secondsShort: "\u062b"
+  blazeDesc: "رشقة من 3 كرات تنس",
+  boomerDesc: "بوميرانغ - ينتظر عودته",
+  fangliDesc: "طلقة عظم بعيدة، أقوى عند الإصابة",
+  pixelDesc: "ليزر سريع يرتد من الجدران",
+  unlockBoomer: "اهزم الموجة 10 باستخدام بوب",
+  unlockPixel: "أنهِ لعبة واحدة لفتحه",
+  boomerUnlocked: "تم فتح بومر",
+  pixelUnlocked: "تم فتح بيكسل",
+  lockedCharacter: "مقفل",
+  tankDesc: "عاصفة ثلجية + حقل جليد",
+  bazaarDesc: "سلسلة عملات + صندوق تعزيز",
+  ariDesc: "ضربة مخلب + شق يكسر الجدران",
+  skyFalconDesc: "ريشة ذهبية + قنبلة أو نسخة",
+  mastervDesc: "مقاتل نهائي للمشرف فقط",
+  skyBombMode: "قنبلة",
+  skyCloneMode: "نسخة",
+  adminOnlyCharacter: "شخصية خاصة",
+  modeLabel: "نمط اللعبة",
+  modeSurvival: "نجاة - موجات بوتات",
+  modeBrawl: "قتال فردي - آخر لاعب يبقى",
+  modeGems: "جمع الجواهر - 10 جواهر",
+  modeHeist: "سرقة - دمر الخزنة",
+  modeShowdown: "مواجهة - آخر لاعب يبقى",
+  modeCoins: "سباق العملات - 15 عملة",
+  modeZone: "سيطرة على المنطقة - أحمر ضد أزرق",
+  modeSoloZone: "سيطرة فردية على المنطقة - 15 ثانية",
+  controlsLabel: "التحكم",
+  controlTouch: "هاتف / لمس",
+  controlKeyboard: "لوحة مفاتيح الكمبيوتر",
+  controlGamepad: "يد تحكم Bluetooth / USB",
+  gamepadTitle: "وضع يد التحكم",
+  gamepadWaiting: "اضغط أي زر في يد التحكم",
+  gamepadConnected: "تم توصيل يد التحكم",
+  gamepadPlayStationHint: "R2 للهجوم، L2 للسوبر، العصا اليمنى للتصويب",
+  gamepadHelp: "وصل يد التحكم عبر Bluetooth أو USB، ثم ارجع إلى اللعبة.",
+  keysMove: "الأسهم",
+  keysAttack: "J هجوم",
+  keysSpecial: "K سوبر",
+  create: "إنشاء لعبة",
+  playNow: "العب الآن",
+  roomCodeLabel: "رمز الغرفة",
+  serverCodeLabel: "رمز الخادم",
+  findingPlayers: "جار البحث عن لاعبين...",
+  readyRoom: "جاهز - شارك الرمز أو اضغط لعب",
+  joinDivider: "أو انضم إلى صديق",
+  codePlaceholder: "رمز الغرفة أو الخادم",
+  join: "انضمام",
+  install: "تثبيت اللعبة",
+  installHelp: "لتثبيت اللعبة، افتح قائمة المتصفح واختر تثبيت التطبيق أو إضافة إلى الشاشة الرئيسية.",
+  leaveAria: "مغادرة اللعبة",
+  initialObjective: "شارك رمز الغرفة لتلعبوا معا",
+  adminInvinciblePrompt: "وضع المشرف: اضغط موافق لتصبح غير قابل للإصابة، أو إلغاء للعب بشكل عادي.",
+  adminInvincibleOn: "وضع مشرف غير قابل للإصابة",
+  adminInvincibleOff: "وضع مشرف عادي",
+  attack: "هجوم",
+  special: "سوبر",
+  useItem: "استخدم العنصر",
+  useBuff: "استخدم التعزيز",
+  gotBuff: "تم الحصول على تعزيز",
+  ping: "إشارة",
+  survivalEnded: "انتهت النجاة",
+  createAgain: "أنشئ لعبة جديدة للعب مرة أخرى",
+  shareRoom: "شارك رمز الغرفة لتلعبوا معا",
+  reconnecting: "جار إعادة الاتصال...",
+  ghostCharge: "أنت شبح - يتم شحن عنصر كل 30 ثانية",
+  targetSelected: "تم اختيار الهدف",
+  wave: "موجة",
+  survived: "ثوان صمدت",
+  bots: "بوتات",
+  botSingular: "بوت",
+  botPlural: "بوتات",
+  playerSingular: "لاعب",
+  playerPlural: "لاعبون",
+  room: "غرفة",
+  control: "تحكم",
+  red: "أحمر",
+  blue: "أزرق",
+  teamWins: "الفريق يفوز",
+  wins: "يفوز",
+  kos: "إقصاءات",
+  personalBest: "الأفضل",
+  currentRun: "الحالي",
+  globalBest: "عالمي",
+  globalLeaders: "أفضل النتائج عالميا",
+  noLeaders: "لا توجد نتائج بعد",
+  secondsShort: "ث"
 };
 function supportedLanguage(language) {
   const code = String(language || "en").toLowerCase().split("-")[0];
@@ -645,6 +1048,19 @@ function isCharacterUnlocked(character) {
   if (isAdminUser()) return true;
   return !lockedCharacters.has(character) || unlockedCharacters().has(character);
 }
+function characterRarity(character) {
+  return characterRarities[character] || "common";
+}
+function rarityLabel(rarity) {
+  return t(`rarity${rarity.charAt(0).toUpperCase()}${rarity.slice(1)}`);
+}
+function characterUnlockCost(character) {
+  return Math.max(0, Number(rarityCreditCosts[characterRarity(character)]) || 0);
+}
+function characterCanUnlockWithCredits(character) {
+  const cost = characterUnlockCost(character);
+  return cost > 0 && !adminOnlyCharacters.has(character) && !isCharacterUnlocked(character) && loadEconomy().credits >= cost;
+}
 function canRevealMasterV() {
   return isCharacterUnlocked("masterv");
 }
@@ -670,7 +1086,18 @@ function syncCharacterPicker() {
   if (!pendingCharacter || !characterButton(pendingCharacter)) pendingCharacter = selectedCharacter;
   characterButtons().forEach(button => button.classList.toggle("selected", button.dataset.character === pendingCharacter));
   if (currentCharacterName) currentCharacterName.textContent = characterDisplayName(selectedCharacter);
-  if (characterConfirm) characterConfirm.disabled = !isCharacterUnlocked(pendingCharacter);
+  if (characterConfirm) {
+    const unlocked = isCharacterUnlocked(pendingCharacter);
+    const cost = characterUnlockCost(pendingCharacter);
+    characterConfirm.disabled = !unlocked && !characterCanUnlockWithCredits(pendingCharacter);
+    characterConfirm.textContent = unlocked
+      ? t("chooseForGame")
+      : adminOnlyCharacters.has(pendingCharacter) || !cost
+        ? t("lockedCharacter")
+        : characterConfirm.disabled
+          ? `${t("needCredits")} ${cost} ${t("creditsLabel")}`
+          : `${t("unlockWithCredits")} ${cost} ${t("creditsLabel")}`;
+  }
 }
 function openCharacterPicker() {
   pendingCharacter = selectedCharacter;
@@ -693,7 +1120,11 @@ function movePendingCharacter(step) {
   scrollPendingCharacterIntoView();
 }
 function confirmCharacterPicker() {
-  if (!isCharacterUnlocked(pendingCharacter)) return;
+  if (!isCharacterUnlocked(pendingCharacter)) {
+    const cost = characterUnlockCost(pendingCharacter);
+    if (!characterCanUnlockWithCredits(pendingCharacter) || !spendCredits(cost)) return;
+    unlockCharacter(pendingCharacter);
+  }
   selectedCharacter = pendingCharacter;
   syncCharacterPicker();
   closeCharacterPicker();
@@ -724,6 +1155,8 @@ function resetProgress() {
   saveUnlockedCharacters(new Set());
   personalBest = 0;
   localStorage.removeItem(progressKey(survivalBestKey));
+  localStorage.removeItem(progressKey(economyKey));
+  localStorage.removeItem(progressKey(economyRewardKey));
   localStorage.removeItem(nameLockedKey);
   localStorage.removeItem(renameGrantKey);
   localStorage.removeItem(firstGameCompletedKey);
@@ -746,8 +1179,11 @@ function markFirstGameCompleted() {
 function renderCharacterLocks() {
   document.querySelectorAll("[data-character]").forEach(button => {
     const character = button.dataset.character;
+    const rarity = characterRarity(character);
     const locked = !isCharacterUnlocked(character);
     const concealed = character === "masterv" && locked;
+    button.dataset.rarity = rarity;
+    button.dataset.rarityLabel = rarityLabel(rarity);
     button.classList.toggle("locked", locked);
     button.classList.toggle("concealed", concealed);
     button.disabled = locked;
@@ -755,7 +1191,18 @@ function renderCharacterLocks() {
     if (name && character === "masterv") name.textContent = concealed ? concealedCharacterLabel : t("mastervName");
     const label = button.querySelector("small");
     if (label && concealed) label.textContent = concealedCharacterLabel;
-    else if (label && locked) label.textContent = character === "boomer" ? t("unlockBoomer") : character === "pixel" ? t("unlockPixel") : adminOnlyCharacters.has(character) ? t("adminOnlyCharacter") : t("lockedCharacter");
+    else if (label && locked) {
+      const cost = characterUnlockCost(character);
+      label.textContent = character === "boomer"
+        ? `${rarityLabel(rarity)} / ${t("unlockBoomer")} / ${cost} ${t("creditsLabel")}`
+        : character === "pixel"
+          ? `${rarityLabel(rarity)} / ${t("unlockPixel")} / ${cost} ${t("creditsLabel")}`
+          : adminOnlyCharacters.has(character)
+            ? t("adminOnlyCharacter")
+            : cost
+              ? `${rarityLabel(rarity)} / ${cost} ${t("creditsLabel")}`
+              : t("lockedCharacter");
+    }
     else if (label && character === "boomer") label.textContent = t("boomerDesc");
     else if (label && character === "pixel") label.textContent = t("pixelDesc");
     else if (label && character === "ari") label.textContent = t("ariDesc");
@@ -782,6 +1229,7 @@ function applyLanguage() {
   updateLobbyRoom();
   renderSurvivalStats();
   updateMeta();
+  renderEconomy();
   renderCharacterLocks();
   renderAccountStatus();
   renderAdminPanel();
@@ -1062,6 +1510,7 @@ function queueAutoJoin() {
 function progressSnapshot() {
   return {
     bestSurvival: personalBest,
+    economy: loadEconomy(),
     unlockedCharacters: isAdminUser() ? [...lockedCharacters].sort() : [...unlockedCharacters()].sort(),
     firstGameCompleted: localStorage.getItem(firstGameCompletedKey) === "1",
     nameLocked: isNameLocked(),
@@ -1530,11 +1979,21 @@ function applyCloudProgress(progress) {
   }
   if (progress.nameLocked && name()) localStorage.setItem(nameLockedKey, "1");
   if (progress.canRename) localStorage.setItem(renameGrantKey, "1");
+  if (progress.economy) {
+    const local = loadEconomy();
+    const cloud = normalizeEconomy(progress.economy);
+    saveEconomy({
+      credits: Math.max(local.credits, cloud.credits),
+      powerPoints: Math.max(local.powerPoints, cloud.powerPoints),
+      money: Math.max(local.money, cloud.money)
+    });
+  }
   if (progress.firstGameCompleted) {
     localStorage.setItem(firstGameCompletedKey, "1");
     unlockCharacter("pixel");
   }
   renderSurvivalStats();
+  renderEconomy();
   renderCharacterLocks();
   updateNameLock();
 }
@@ -1578,6 +2037,7 @@ async function setupCloudProgress() {
         syncAdminState(true);
         identifyAdminInRoom();
         renderSurvivalStats();
+        renderEconomy();
         renderCharacterLocks();
         renderAccountStatus();
         renderAdminPanel();
@@ -1598,6 +2058,7 @@ async function setupCloudProgress() {
       lastCloudSnapshot = "";
       syncAdminState(true);
       renderSurvivalStats();
+      renderEconomy();
       renderCharacterLocks();
       renderAccountStatus();
       renderAdminPanel();
@@ -1614,6 +2075,7 @@ async function setupCloudProgress() {
       lastCloudSnapshot = "";
       syncAdminState(true);
       renderSurvivalStats();
+      renderEconomy();
       renderCharacterLocks();
       renderAccountStatus(activeUser ? t("cloudSyncing") : null);
       identifyAdminInRoom();
@@ -1818,6 +2280,8 @@ function createNewLocalPlayer() {
   localStorage.removeItem(nameLockedKey);
   localStorage.removeItem(renameGrantKey);
   localStorage.removeItem(firstGameCompletedKey);
+  localStorage.removeItem(progressKey(economyKey));
+  localStorage.removeItem(progressKey(economyRewardKey));
   localStorage.removeItem(profileCompletedKey);
   localStorage.removeItem(profileGateVersionKey);
   if (profileNameInput) profileNameInput.value = "";
@@ -1827,6 +2291,7 @@ function createNewLocalPlayer() {
   error.textContent = t("localPlayerCreated");
   renderAccountStatus();
   renderSurvivalStats();
+  renderEconomy();
   renderCharacterLocks();
   updateNameLock();
   updateProfileGate();
@@ -1917,7 +2382,8 @@ socket.on("game:state", next => {
   if (attack) {
     const ammo = Number.isFinite(me?.ammo) ? me.ammo : me?.ammoMax || 5;
     const ammoMax = me?.ammoMax || 5;
-    attack.textContent = `${t("attack")} ${ammo}/${ammoMax}`;
+    const attackLabel = me?.character === "skyfalcon" && skySpecialMode === "bomb" ? t("skyBombMode") : t("attack");
+    attack.textContent = `${attackLabel} ${ammo}/${ammoMax}`;
     attack.classList.toggle("charging", ammo <= 0);
   }
   const special = document.querySelector("#special");
@@ -1929,14 +2395,18 @@ socket.on("game:state", next => {
     const charge = Math.min(me?.specialCharge || 0, me?.specialRequired || 5);
     const required = me?.specialRequired || 5;
     const hasBuff = Boolean(me?.bazaarBuff);
-    special.textContent = hasBuff ? t("useBuff") : charge >= required ? t("special") : `${t("special")} ${charge}/${required}`;
+    const specialLabel = me?.character === "skyfalcon" && skySpecialMode === "clone" ? t("skyCloneMode") : t("special");
+    special.textContent = hasBuff ? t("useBuff") : charge >= required ? specialLabel : `${specialLabel} ${charge}/${required}`;
     special.classList.toggle("charging", !hasBuff && charge < required);
     special.classList.toggle("ready", hasBuff || charge >= required);
   }
 });
 socket.on("game:meta", next => {
   gameMeta = next;
-  if (wasPlaying && (next.winner || next.winnerTeam || next.endedAt)) markFirstGameCompleted();
+  if (wasPlaying && (next.winner || next.winnerTeam || next.endedAt)) {
+    markFirstGameCompleted();
+    rewardEconomyForFinishedGame(next);
+  }
   if (next.mode === "survival" && next.rewardCharacter === "boomer" && next.winner?.id === playerId) unlockCharacter("boomer");
   updateMeta();
   if (next.mode === "survival") document.querySelector("#count").textContent = `${t("wave")} ${next.wave || 1} - ${next.survivalTime || 0}s`;
@@ -2619,6 +3089,26 @@ function drawProjectile(projectile, now) {
     ctx.moveTo(-18, 0);
     ctx.lineTo(20, 0);
     ctx.stroke();
+  } else if (projectile.type === "skyBombShot") {
+    ctx.rotate(now / 120);
+    ctx.fillStyle = "#ffd76a";
+    ctx.strokeStyle = "#7d5a16";
+    ctx.shadowColor = "#ffd76a";
+    ctx.shadowBlur = 14;
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.arc(0, 0, 14, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.strokeStyle = "#fff4c8";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(-18, 0);
+    ctx.lineTo(18, 0);
+    ctx.moveTo(0, -18);
+    ctx.lineTo(0, 18);
+    ctx.stroke();
+    ctx.shadowBlur = 0;
   } else if (projectile.type === "goldFeather" || projectile.type === "featherShard") {
     const shard = projectile.type === "featherShard";
     ctx.fillStyle = projectile.color || "#ffd76a";

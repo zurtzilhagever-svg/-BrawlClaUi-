@@ -331,6 +331,37 @@ input.name-locked {
   color: #182038;
 }
 
+.economy-panel {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin: 8px 0 2px;
+}
+
+.economy-panel span {
+  display: grid;
+  gap: 3px;
+  min-height: 58px;
+  padding: 9px 7px;
+  border-radius: 8px;
+  background: linear-gradient(180deg, #263248, #172235);
+  border: 1px solid #ffffff18;
+  text-align: center;
+  box-shadow: inset 0 1px #ffffff10;
+}
+
+.economy-panel b {
+  color: #aab8d9;
+  font-size: .62rem;
+  font-weight: 900;
+}
+
+.economy-panel strong {
+  color: #ffdd4a;
+  font-size: 1.05rem;
+  font-weight: 900;
+}
+
 .admin-toggle {
   position: fixed;
   top: 12px;
@@ -707,6 +738,72 @@ input.name-locked {
   display: grid;
 }
 
+.choice-grid button::before {
+  content: attr(data-rarity-label);
+  position: absolute;
+  top: 10px;
+  inset-inline-start: 10px;
+  z-index: 2;
+  max-width: calc(100% - 56px);
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: #59657a;
+  color: #fff;
+  font-size: .68rem;
+  font-weight: 900;
+  line-height: 1;
+  box-shadow: 0 3px 8px #0004;
+}
+
+.choice-grid button[data-rarity="common"] {
+  border-color: #9aa4b2;
+}
+
+.choice-grid button[data-rarity="common"]::before {
+  background: #687386;
+}
+
+.choice-grid button[data-rarity="rare"] {
+  border-color: #49a7ff;
+}
+
+.choice-grid button[data-rarity="rare"]::before {
+  background: #1976d2;
+}
+
+.choice-grid button[data-rarity="epic"] {
+  border-color: #b76cff;
+}
+
+.choice-grid button[data-rarity="epic"]::before {
+  background: #8e35d6;
+}
+
+.choice-grid button[data-rarity="mythic"] {
+  border-color: #ff6b66;
+}
+
+.choice-grid button[data-rarity="mythic"]::before {
+  background: #cf3434;
+}
+
+.choice-grid button[data-rarity="legendary"] {
+  border-color: #ffd047;
+}
+
+.choice-grid button[data-rarity="legendary"]::before {
+  background: #d28d00;
+  color: #101724;
+}
+
+.choice-grid button[data-rarity="special"] {
+  border-color: #55ead4;
+}
+
+.choice-grid button[data-rarity="special"]::before {
+  background: #0f9f93;
+}
+
 [dir="rtl"] .choice-grid button {
   text-align: right;
 }
@@ -825,6 +922,13 @@ input.name-locked {
   background: linear-gradient(135deg, #ffd15a, #f05261);
   color: #fff;
   box-shadow: 0 12px 28px #0005;
+}
+
+#character-confirm:disabled {
+  background: #566072;
+  color: #d3dbeb;
+  box-shadow: none;
+  cursor: not-allowed;
 }
 
 #character-prev,
@@ -1499,7 +1603,8 @@ canvas {
   .lobby > input,
   .lobby > label[for="language"],
   .lobby > #language,
-  .account-panel {
+  .account-panel,
+  .economy-panel {
     grid-column: 1;
   }
 

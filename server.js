@@ -759,6 +759,10 @@ function explodeSkyFeather(room, feather) {
     pushProjectile(room, owner, Math.cos(angle), Math.sin(angle), stats, { type:"featherShard", color:"#ffd76a", originX:feather.x, originY:feather.y, start:0, speed:10, radius:5, range:125, damage:7 });
   }
 }
+function spawnSkyBomb(room, owner, x, y, now, radius = 122, duration = 2200) {
+  room.game.skyBombs ||= [];
+  room.game.skyBombs.push({ ownerId:owner.id, team:owner.team, bot:Boolean(owner.bot), x:clamp(x, radius, room.arena.width - radius), y:clamp(y, radius, room.arena.height - radius), radius, endsAt:now + duration });
+}
 function attack(room, attacker, now) {
   const stats = CHARACTERS[attacker.character], rate = stats.rate * (now < (attacker.reloadBoostUntil || 0) ? .5 : 1) * (attacker.character === "ari" && now < (attacker.clawRushUntil || 0) ? .52 : 1); if (attacker.character === "boomer" && attacker.boomerangActive) return; if (now - attacker.lastAttack < rate) return; if (!consumeAmmo(attacker, now)) return; attacker.lastAttack = now;
   const aim = aimDirection(attacker), dx = aim.x, dy = aim.y;
@@ -797,6 +801,10 @@ function attack(room, attacker, now) {
     return;
   }
   if (attacker.character === "skyfalcon") {
+    if (attacker.input.skyMode === "bomb") {
+      pushProjectile(room, attacker, dx, dy, stats, { type:"skyBombShot", color:"#ffd76a", start:34, speed:14, radius:13, range:450, damage:8 });
+      return;
+    }
     pushProjectile(room, attacker, dx, dy, stats, { type:"goldFeather", color:"#ffd76a", start:34, speed:21, radius:6 });
     return;
   }
@@ -915,13 +923,12 @@ function special(room, p, now) {
     if (mode === "clone") {
       room.game.decoys ||= [];
       const distance = 96;
-      room.game.decoys.push({ id:`${room.code}-decoy-${room.game.nextDecoyId++}`, ownerId:p.id, team:p.team, bot:Boolean(p.bot), character:p.character, x:clamp(p.x - aim.x * distance, 28, room.arena.width - 28), y:clamp(p.y - aim.y * distance, 28, room.arena.height - 28), health:85, golden:true, endsAt:now + 4200 });
+      room.game.decoys.push({ id:`${room.code}-decoy-${room.game.nextDecoyId++}`, ownerId:p.id, team:p.team, bot:Boolean(p.bot), character:p.character, x:clamp(p.x - aim.x * distance, 28, room.arena.width - 28), y:clamp(p.y - aim.y * distance, 28, room.arena.height - 28), health:stats.hp, damage:stats.damage, rate:stats.rate, golden:true, endsAt:now + 4200, lastAttack:0 });
       p.invisibleUntil = Math.max(p.invisibleUntil || 0, now + 1000);
       p.hitUntil = now + 260;
     } else {
       const radius = 132;
-      room.game.skyBombs ||= [];
-      room.game.skyBombs.push({ ownerId:p.id, team:p.team, bot:Boolean(p.bot), x:clamp(p.x + aim.x * 255, radius, room.arena.width - radius), y:clamp(p.y + aim.y * 255, radius, room.arena.height - radius), radius, endsAt:now + 2600 });
+      spawnSkyBomb(room, p, p.x + aim.x * 255, p.y + aim.y * 255, now, radius, 2600);
     }
   } else if (p.character === "masterv") {
     const aim = aimDirection(p);
@@ -1015,6 +1022,7 @@ function updateProjectiles(room) {
     if (projectile.remaining <= 0 || nextX < 0 || nextX > arena.width || nextY < 0 || nextY > arena.height || blockedPath) {
       if (projectile.type === "laser" && projectile.remaining > 0 && reflectLaser(arena, projectile, nextX, nextY)) continue;
       if (projectile.type === "goldFeather") explodeSkyFeather(room, projectile);
+      if (projectile.type === "skyBombShot" && owner) spawnSkyBomb(room, owner, projectile.x, projectile.y, Date.now(), 118, 2100);
       if (projectile.type === "boomerang" && !projectile.returning) {
         projectile.returning = true;
         projectile.remaining = Infinity;
@@ -1036,6 +1044,7 @@ function updateProjectiles(room) {
     if (victim) {
       hitWithProjectile(room, projectile, victim);
       if (projectile.type === "goldFeather") explodeSkyFeather(room, projectile);
+      if (projectile.type === "skyBombShot" && owner) spawnSkyBomb(room, owner, projectile.x, projectile.y, Date.now(), 118, 2100);
       if (projectile.type === "boomerang") {
         projectile.hitIds.push(victim.id);
         projectile.returning = true;
@@ -1148,8 +1157,15 @@ function updateDecoys(room, now) {
     const target = nearestEnemy(room, decoy);
     if (!target) continue;
     const dx = target.x - decoy.x, dy = target.y - decoy.y, len = Math.hypot(dx, dy) || 1;
-    decoy.x = clamp(decoy.x + dx / len * 4.1, 28, room.arena.width - 28);
-    decoy.y = clamp(decoy.y + dy / len * 4.1, 28, room.arena.height - 28);
+    const speed = decoy.golden ? CHARACTERS.skyfalcon.speed : 4.1;
+    decoy.x = clamp(decoy.x + dx / len * speed, 28, room.arena.width - 28);
+    decoy.y = clamp(decoy.y + dy / len * speed, 28, room.arena.height - 28);
+    if (decoy.golden && len < playerRadius(target) + 26 && now - (decoy.lastAttack || 0) > (decoy.rate || CHARACTERS.skyfalcon.rate)) {
+      decoy.lastAttack = now;
+      target.health -= (decoy.damage || CHARACTERS.skyfalcon.damage) * (decoy.bot ? BOT_DAMAGE_SCALE : 1);
+      target.hitUntil = now + 150;
+      if (target.health <= 0) kill(room, target, room.players.get(decoy.ownerId) || null);
+    }
   }
 }
 function updateFireTrails(room, now) {
