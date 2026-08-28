@@ -3486,6 +3486,7 @@ function drawProjectile(projectile, now) {
 
 function draw() {
   const now = performance.now();
+  const serverNow = Date.now();
   const arena = gameMeta.arena || fallbackArena;
   const camera = cameraFor(arena);
   drawArena(now);
@@ -3549,7 +3550,7 @@ function draw() {
     ctx.save();
     if (trail.type === "slash" && Number.isFinite(trail.x1) && Number.isFinite(trail.y1) && Number.isFinite(trail.x2) && Number.isFinite(trail.y2)) {
       const color = trail.color || "#ff9a3c";
-      const alpha = Math.max(.18, Math.min(.82, ((trail.endsAt || now) - now) / 680));
+      const alpha = Math.max(.18, Math.min(.82, ((trail.endsAt || serverNow) - serverNow) / 680));
       const dx = trail.x2 - trail.x1, dy = trail.y2 - trail.y1;
       const len = Math.hypot(dx, dy) || 1;
       const nx = -dy / len, ny = dx / len;
@@ -3614,11 +3615,11 @@ function draw() {
     ctx.restore();
   }
   for (const surge of gameMeta.sharkSurges || []) {
-    const start = surge.startAt || now;
+    const start = surge.startAt || serverNow;
     const breach = surge.breachAt || start;
-    const end = surge.endsAt || now;
-    const travel = clamp((now - start) / Math.max(1, breach - start), 0, 1);
-    const after = clamp((now - breach) / Math.max(1, end - breach), 0, 1);
+    const end = surge.endsAt || serverNow;
+    const travel = clamp((serverNow - start) / Math.max(1, breach - start), 0, 1);
+    const after = clamp((serverNow - breach) / Math.max(1, end - breach), 0, 1);
     const x = (surge.x1 || surge.x2) + ((surge.x2 || surge.x1) - (surge.x1 || surge.x2)) * travel;
     const y = (surge.y1 || surge.y2) + ((surge.y2 || surge.y1) - (surge.y1 || surge.y2)) * travel;
     const radius = surge.radius || 82;
@@ -3642,7 +3643,7 @@ function draw() {
     ctx.moveTo(x - 22, y + 3);
     ctx.quadraticCurveTo(x, y - 19, x + 22, y + 3);
     ctx.stroke();
-    if (now >= breach) {
+    if (serverNow >= breach) {
       ctx.translate(surge.x2, surge.y2);
       ctx.globalAlpha = 1 - after * .45;
       ctx.fillStyle = "#37cfff35";
