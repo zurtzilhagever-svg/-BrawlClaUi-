@@ -36,6 +36,8 @@ const CHARACTERS = {
   grunt: { name: "Grunt", hp: 70, speed: 2.35, damage: 8, range: 44, rate: 760, special: "None" }
 };
 const PLAYABLE_CHARACTERS = new Set(["blaze", "boomer", "fangli", "pixel", "tank", "bazaar", "ari", "skyfalcon", "seashark", "masterv"]);
+const MAX_CHARACTER_LEVEL = 10;
+const SKINS = new Set(["default", "gold", "shadow"]);
 const AMMO_RELOAD_MS = {
   blaze: 900,
   bazaar: 1050,
@@ -181,6 +183,13 @@ app.get("/api/network", (req, res) => {
 app.get("/api/qr", async (req, res) => { try { const value = String(req.query.value || "").slice(0, 2048); if (!value) throw Error(); res.type("image/svg+xml").send(await QRCode.toString(value, { type: "svg", margin: 1, errorCorrectionLevel: "M" })); } catch { res.status(400).json({ error: "Missing or invalid value" }); } });
 function code() { const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; let result; do result = Array.from({ length: 4 }, () => chars[Math.floor(Math.random() * chars.length)]).join(""); while (rooms.has(result)); return result; }
 function clamp(n, min, max) { return Math.max(min, Math.min(max, n)); }
+function normalizeCharacterLevel(value) { return clamp(Math.floor(Number(value) || 1), 1, MAX_CHARACTER_LEVEL); }
+function normalizeSkin(value) { return SKINS.has(String(value || "")) ? String(value) : "default"; }
+function statsFor(character, level = 1) {
+  const base = CHARACTERS[character] || CHARACTERS.blaze;
+  const boost = 1 + (normalizeCharacterLevel(level) - 1) * .05;
+  return { ...base, hp: Math.round(base.hp * boost), damage: base.damage * boost };
+}
 function normalizeEmail(value) { return String(value || "").trim().toLowerCase(); }
 function isValidEmail(value) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizeEmail(value)); }
 function isAdminEmail(value) { return ADMIN_EMAILS.has(normalizeEmail(value)); }
@@ -390,7 +399,7 @@ function firstWallPoint(arena, x, y, dx, dy, range) {
   }
   return null;
 }
-function publicPlayer(p) { const now = Date.now(); updateAmmo(p, now); return { id:p.id, name:p.name, color:p.color, team:p.team, character:p.character, characterName:CHARACTERS[p.character]?.name || p.character, bot:p.bot, admin:isAdminEmail(p.accountEmail), invincible:isOwnerAdminEmail(p.accountEmail) && Boolean(p.invincibleMode), x:p.x, y:p.y, health:Math.ceil(p.health), maxHealth:p.maxHealth, alive:p.alive, ghost:p.ghost, ghostItem:p.ghostItem, ghostItemName:p.ghostItem && GHOST_ITEM_NAMES[p.ghostItem], ghostPing:now < (p.pingUntil || 0), haunted:now < (p.hauntedUntil || 0), walled:now < (p.wallUntil || 0), inked:now < (p.inkUntil || 0), confused:now < (p.confusedUntil || 0), freezeMeter:Math.round(p.freezeMeter || 0), bazaarBuff:p.bazaarBuff || "", damageBoost:now < (p.damageBoostUntil || 0), goldenArmor:now < (p.goldenArmorUntil || 0), invisible:now < (p.invisibleUntil || 0), giant:now < (p.giantUntil || 0), phase:now < (p.phaseUntil || 0), hit:now < (p.hitUntil || 0), score:p.score, gems:p.gems, coins:p.coins, connected:p.connected, shield:now < p.shieldUntil || now < (p.goldenArmorUntil || 0), cardboardShield:now < (p.cardboardShieldUntil || 0) && (p.cardboardShieldHp || 0) > 0, ammo:p.ammo, ammoMax:AMMO_MAX, ammoReloadMs:ammoReloadMs(p, now), ammoReadyAt:p.nextAmmoAt || now, specialCharge:p.specialCharge || 0, specialRequired:SPECIAL_HITS, specialReady:(p.specialCharge || 0) >= SPECIAL_HITS }; }
+function publicPlayer(p) { const now = Date.now(); updateAmmo(p, now); return { id:p.id, name:p.name, color:p.color, team:p.team, character:p.character, characterName:CHARACTERS[p.character]?.name || p.character, characterLevel:normalizeCharacterLevel(p.characterLevel), skin:normalizeSkin(p.skin), bot:p.bot, admin:isAdminEmail(p.accountEmail), invincible:isOwnerAdminEmail(p.accountEmail) && Boolean(p.invincibleMode), x:p.x, y:p.y, health:Math.ceil(p.health), maxHealth:p.maxHealth, alive:p.alive, ghost:p.ghost, ghostItem:p.ghostItem, ghostItemName:p.ghostItem && GHOST_ITEM_NAMES[p.ghostItem], ghostPing:now < (p.pingUntil || 0), haunted:now < (p.hauntedUntil || 0), walled:now < (p.wallUntil || 0), inked:now < (p.inkUntil || 0), confused:now < (p.confusedUntil || 0), freezeMeter:Math.round(p.freezeMeter || 0), bazaarBuff:p.bazaarBuff || "", damageBoost:now < (p.damageBoostUntil || 0), goldenArmor:now < (p.goldenArmorUntil || 0), invisible:now < (p.invisibleUntil || 0), giant:now < (p.giantUntil || 0), phase:now < (p.phaseUntil || 0), hit:now < (p.hitUntil || 0), score:p.score, gems:p.gems, coins:p.coins, connected:p.connected, shield:now < p.shieldUntil || now < (p.goldenArmorUntil || 0), cardboardShield:now < (p.cardboardShieldUntil || 0) && (p.cardboardShieldHp || 0) > 0, ammo:p.ammo, ammoMax:AMMO_MAX, ammoReloadMs:ammoReloadMs(p, now), ammoReadyAt:p.nextAmmoAt || now, specialCharge:p.specialCharge || 0, specialRequired:SPECIAL_HITS, specialReady:(p.specialCharge || 0) >= SPECIAL_HITS }; }
 function players(room) { return [...room.players.values()].map(publicPlayer); }
 function humanPlayers(room) { return [...room.players.values()].filter(player => !player.bot); }
 function teamGems(room, team) { return [...room.players.values()].filter(p => p.team === team).reduce((sum, p) => sum + (p.gems || 0), 0); }
@@ -424,7 +433,7 @@ function detachSocket(socket, nextRoomCode) {
   removePlayer(room, ref.playerId);
   socketIndex.delete(socket.id);
 }
-function joinPlayer(socket, roomCode, playerId, name, character, accountEmail, invincibleMode, ack) {
+function joinPlayer(socket, roomCode, playerId, name, character, accountEmail, invincibleMode, characterLevels = {}, skin = "default", ack) {
   lobbyPlayers.delete(socket.id);
   const room = rooms.get(roomCode), id = String(playerId || "").replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 48);
   if (!room) return ack({ ok:false, error:"Room not found" }); if (!id) return ack({ ok:false, error:"Invalid player" });
@@ -434,19 +443,22 @@ function joinPlayer(socket, roomCode, playerId, name, character, accountEmail, i
   detachSocket(socket, roomCode);
   const requestedCharacter = PLAYABLE_CHARACTERS.has(character) ? character : "blaze";
   const selectedCharacter = requestedCharacter === "masterv" && !isAdminEmail(cleanEmail) ? "blaze" : requestedCharacter;
+  const selectedLevel = normalizeCharacterLevel(characterLevels?.[selectedCharacter]);
+  const selectedSkin = normalizeSkin(skin);
   let p = room.players.get(id);
   const maxHumans = isTeamCombatMode(room) ? 6 : MAX_PLAYERS;
   if (!p && humanPlayers(room).length >= maxHumans) return ack({ ok:false, error:"Room is full" });
   if (p) {
     clearTimeout(p.removeTimer); socketIndex.delete(p.socketId); p.socketId = socket.id; p.connected = true; p.accountEmail = cleanEmail || p.accountEmail || "";
     p.invincibleMode = isOwnerAdminEmail(p.accountEmail) && Boolean(invincibleMode);
-    if (p.character !== selectedCharacter) {
-      const ratio = p.maxHealth ? p.health / p.maxHealth : 1, stats = CHARACTERS[selectedCharacter];
-      p.character = selectedCharacter; p.maxHealth = stats.hp; p.health = Math.min(stats.hp, Math.max(1, Math.round(stats.hp * ratio)));
+    if (p.character !== selectedCharacter || p.characterLevel !== selectedLevel) {
+      const ratio = p.maxHealth ? p.health / p.maxHealth : 1, stats = statsFor(selectedCharacter, selectedLevel);
+      p.character = selectedCharacter; p.characterLevel = selectedLevel; p.maxHealth = stats.hp; p.health = Math.min(stats.hp, Math.max(1, Math.round(stats.hp * ratio)));
       resetAmmo(p);
     }
+    p.skin = selectedSkin;
   }
-  else { const c = selectedCharacter, stats = CHARACTERS[c], spot = randomSpot(room.arena), team=chooseTeam(room), defaultName=`Player ${humanPlayers(room).length + 1}`, displayName=String(name || "").trim().slice(0, 14) || defaultName; p = { id, socketId:socket.id, accountEmail:cleanEmail, invincibleMode:isOwnerAdminEmail(cleanEmail) && Boolean(invincibleMode), name:displayName, character:c, color:COLORS[room.players.size % COLORS.length], team, x:spot.x, y:spot.y, aimX:1, aimY:0, maxHealth:stats.hp, health:stats.hp, alive:true, score:0, gems:0, coins:0, input:{x:0,y:0,attack:false,special:false,skyMode:"bomb"}, lastAttack:0, lastSpecial:false, specialCharge:0, shieldUntil:0, bazaarBuff:"", damageBoostUntil:0, connected:true }; resetAmmo(p); room.players.set(id, p); }
+  else { const c = selectedCharacter, stats = statsFor(c, selectedLevel), spot = randomSpot(room.arena), team=chooseTeam(room), defaultName=`Player ${humanPlayers(room).length + 1}`, displayName=String(name || "").trim().slice(0, 14) || defaultName; p = { id, socketId:socket.id, accountEmail:cleanEmail, invincibleMode:isOwnerAdminEmail(cleanEmail) && Boolean(invincibleMode), name:displayName, character:c, characterLevel:selectedLevel, skin:selectedSkin, color:COLORS[room.players.size % COLORS.length], team, x:spot.x, y:spot.y, aimX:1, aimY:0, maxHealth:stats.hp, health:stats.hp, alive:true, score:0, gems:0, coins:0, input:{x:0,y:0,attack:false,special:false,skyMode:"bomb"}, lastAttack:0, lastSpecial:false, specialCharge:0, shieldUntil:0, bazaarBuff:"", damageBoostUntil:0, connected:true }; resetAmmo(p); room.players.set(id, p); }
   socketIndex.set(socket.id, { code:roomCode, playerId:id }); socket.join(roomCode); ack({ ok:true, code:roomCode, player:publicPlayer(p), players:players(room), meta:meta(room) }); broadcast(room);
 }
 function adminRoom(socket, data = {}, ack = () => {}) {
@@ -588,8 +600,9 @@ function runAdminTextCommand(socket, data = {}) {
     if (!target) return { ok:false, error:"לא מצאתי שחקן" };
     if (grantPrefix) {
       if (target.kind === "room") {
-        const ratio = target.player.maxHealth ? target.player.health / target.player.maxHealth : 1, stats = CHARACTERS[parsed.character];
+        const ratio = target.player.maxHealth ? target.player.health / target.player.maxHealth : 1, stats = statsFor(parsed.character, target.player.characterLevel);
         target.player.character = parsed.character;
+        target.player.characterLevel = normalizeCharacterLevel(target.player.characterLevel);
         target.player.maxHealth = stats.hp;
         target.player.health = Math.min(stats.hp, Math.max(1, Math.round(stats.hp * ratio)));
         resetAmmo(target.player);
@@ -599,8 +612,9 @@ function runAdminTextCommand(socket, data = {}) {
       return { ok:true, message:`נתתי ל${commandTargetLabel(target)} את ${CHARACTERS[parsed.character].name}` };
     }
     if (target.kind === "room" && target.player.character === parsed.character) {
-      const stats = CHARACTERS.blaze;
+      const stats = statsFor("blaze", target.player.characterLevel);
       target.player.character = "blaze";
+      target.player.characterLevel = normalizeCharacterLevel(target.player.characterLevel);
       target.player.maxHealth = stats.hp;
       target.player.health = Math.min(stats.hp, Math.max(1, target.player.health));
       resetAmmo(target.player);
@@ -687,7 +701,7 @@ function runAdminTextCommand(socket, data = {}) {
   return { ok:false, error:"לא זיהיתי פקודה. כתוב: פקודות" };
 }
 function resetHumanForGame(room, player) {
-  const stats = CHARACTERS[player.character] || CHARACTERS.blaze, spot = randomSpot(room.arena);
+  const stats = statsFor(player.character, player.characterLevel), spot = randomSpot(room.arena);
   Object.assign(player, {
     x:spot.x, y:spot.y, maxHealth:stats.hp, health:stats.hp, alive:true, ghost:false,
     ghostItem:false, ghostTargetId:null, score:0, gems:0, coins:0, specialCharge:0,
@@ -782,7 +796,7 @@ function explodeDepthShot(room, source, x, y, now) {
   }
 }
 function attack(room, attacker, now) {
-  const stats = CHARACTERS[attacker.character], rate = stats.rate * (now < (attacker.reloadBoostUntil || 0) ? .5 : 1) * (attacker.character === "ari" && now < (attacker.clawRushUntil || 0) ? .52 : 1); if (attacker.character === "boomer" && attacker.boomerangActive) return; if (now - attacker.lastAttack < rate) return; if (!consumeAmmo(attacker, now)) return; attacker.lastAttack = now;
+  const stats = statsFor(attacker.character, attacker.characterLevel), rate = stats.rate * (now < (attacker.reloadBoostUntil || 0) ? .5 : 1) * (attacker.character === "ari" && now < (attacker.clawRushUntil || 0) ? .52 : 1); if (attacker.character === "boomer" && attacker.boomerangActive) return; if (now - attacker.lastAttack < rate) return; if (!consumeAmmo(attacker, now)) return; attacker.lastAttack = now;
   const aim = aimDirection(attacker), dx = aim.x, dy = aim.y;
   if (attacker.character === "blaze") {
     for (const start of [26, 42, 58]) pushProjectile(room, attacker, dx, dy, stats, { type:"tennis", color:"#caff3f", start, radius:8 });
@@ -869,7 +883,7 @@ function special(room, p, now) {
   if (p.lastSpecial || (p.specialCharge || 0) < SPECIAL_HITS) return;
   if (p.character === "skyfalcon" && p.input.skyMode === "bomb") return;
   p.specialCharge = 0; p.lastSpecialAt = now;
-  const stats = CHARACTERS[p.character];
+  const stats = statsFor(p.character, p.characterLevel);
   if (p.character === "blaze") {
     const aim = aimDirection(p);
     dashPlayer(room.arena, p, aim.x * 125, aim.y * 125);
@@ -946,7 +960,7 @@ function special(room, p, now) {
     const aim = aimDirection(p);
     room.game.decoys ||= [];
     const distance = 96;
-    room.game.decoys.push({ id:`${room.code}-decoy-${room.game.nextDecoyId++}`, ownerId:p.id, team:p.team, bot:Boolean(p.bot), character:p.character, x:clamp(p.x - aim.x * distance, 28, room.arena.width - 28), y:clamp(p.y - aim.y * distance, 28, room.arena.height - 28), health:stats.hp, damage:stats.damage, rate:stats.rate, golden:true, endsAt:now + 4200, lastAttack:0 });
+      room.game.decoys.push({ id:`${room.code}-decoy-${room.game.nextDecoyId++}`, ownerId:p.id, team:p.team, bot:Boolean(p.bot), character:p.character, x:clamp(p.x - aim.x * distance, 28, room.arena.width - 28), y:clamp(p.y - aim.y * distance, 28, room.arena.height - 28), health:stats.hp, damage:stats.damage, rate:stats.rate, golden:true, endsAt:now + 4200, lastAttack:0 });
     p.invisibleUntil = Math.max(p.invisibleUntil || 0, now + 1000);
     p.hitUntil = now + 260;
   } else if (p.character === "seashark") {
@@ -1387,7 +1401,7 @@ function updateRoom(room, now) {
       continue;
     }
     if (!p.alive) { // Non-elimination modes keep their fast respawn behavior.
-      if (now-p.diedAt > 2200) { const spot=randomSpot(room.arena), s=CHARACTERS[p.character]; Object.assign(p,{x:spot.x,y:spot.y,health:s.hp,alive:true,ghost:false}); resetAmmo(p, now); }
+      if (now-p.diedAt > 2200) { const spot=randomSpot(room.arena), s=statsFor(p.character, p.characterLevel); Object.assign(p,{x:spot.x,y:spot.y,maxHealth:s.hp,health:s.hp,alive:true,ghost:false}); resetAmmo(p, now); }
       continue;
     }
     if ((p.freezeMeter || 0) > 0 && now > (p.freezeUntil || 0)) p.freezeMeter = Math.max(0, p.freezeMeter - 0.9);
@@ -1455,16 +1469,16 @@ io.on("connection", socket => {
     });
   });
   socket.on("host:create", (data={}, ack=()=>{}) => { if (typeof data === "function") { ack=data; data={}; } const room=createRoom(socket.id,data.mode); socket.join(room.code); socket.data.hostRoom=room.code; ack({ok:true,code:room.code,players:[],meta:meta(room)}); });
-  socket.on("player:create", async ({playerId,name,character,mode,authToken,invincibleMode}={}, ack=()=>{}) => { const accountEmail = await verifyAuthEmail(socket, { authToken }); const room=createRoom(null,mode); joinPlayer(socket,room.code,playerId,name,character,accountEmail,invincibleMode,ack); });
-  socket.on("player:autoJoin", async ({playerId,name,character,mode,authToken,invincibleMode}={}, ack=()=>{}) => {
+  socket.on("player:create", async ({playerId,name,character,mode,authToken,invincibleMode,characterLevels,skin}={}, ack=()=>{}) => { const accountEmail = await verifyAuthEmail(socket, { authToken }); const room=createRoom(null,mode); joinPlayer(socket,room.code,playerId,name,character,accountEmail,invincibleMode,characterLevels,skin,ack); });
+  socket.on("player:autoJoin", async ({playerId,name,character,mode,authToken,invincibleMode,characterLevels,skin}={}, ack=()=>{}) => {
     const accountEmail = await verifyAuthEmail(socket, { authToken });
     const selectedMode = MODES[mode] ? mode : "survival";
     const room = selectedMode === "survival" ? createRoom(null, selectedMode) : findOpenRoom(selectedMode) || createRoom(null, selectedMode);
-    joinPlayer(socket, room.code, playerId, name, character, accountEmail, invincibleMode, ack);
+    joinPlayer(socket, room.code, playerId, name, character, accountEmail, invincibleMode, characterLevels, skin, ack);
   });
-  socket.on("player:join", async ({code:roomCode,playerId,name,character,authToken,invincibleMode}={}, ack=()=>{}) => {
+  socket.on("player:join", async ({code:roomCode,playerId,name,character,authToken,invincibleMode,characterLevels,skin}={}, ack=()=>{}) => {
     const accountEmail = await verifyAuthEmail(socket, { authToken });
-    joinPlayer(socket,String(roomCode||"").trim().toUpperCase(),playerId,name,character,accountEmail,invincibleMode,ack);
+    joinPlayer(socket,String(roomCode||"").trim().toUpperCase(),playerId,name,character,accountEmail,invincibleMode,characterLevels,skin,ack);
   });
   socket.on("player:leave", ({code:roomCode,playerId}={}, ack=()=>{}) => {
     const ref = socketIndex.get(socket.id);
@@ -1557,8 +1571,9 @@ io.on("connection", socket => {
     if (!PLAYABLE_CHARACTERS.has(character)) return ack({ ok:false, error:"Unknown character" });
     const target = room.players.get(String(data.targetId || ""));
     if (!target || target.bot) return ack({ ok:false, error:"Player not found" });
-    const ratio = target.maxHealth ? target.health / target.maxHealth : 1, stats = CHARACTERS[character];
+    const ratio = target.maxHealth ? target.health / target.maxHealth : 1, stats = statsFor(character, target.characterLevel);
     target.character = character;
+    target.characterLevel = normalizeCharacterLevel(target.characterLevel);
     target.maxHealth = stats.hp;
     target.health = Math.min(stats.hp, Math.max(1, Math.round(stats.hp * ratio)));
     if (target.socketId) io.to(target.socketId).emit("admin:characterGranted", { character });
@@ -1580,8 +1595,9 @@ io.on("connection", socket => {
     const target = room.players.get(String(data.targetId || ""));
     if (!target || target.bot) return ack({ ok:false, error:"Player not found" });
     if (target.character === character) {
-      const stats = CHARACTERS.blaze;
+      const stats = statsFor("blaze", target.characterLevel);
       target.character = "blaze";
+      target.characterLevel = normalizeCharacterLevel(target.characterLevel);
       target.maxHealth = stats.hp;
       target.health = Math.min(stats.hp, Math.max(1, target.health));
     }

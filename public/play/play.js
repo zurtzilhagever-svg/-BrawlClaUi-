@@ -52,6 +52,10 @@ const characterPickerClose = document.querySelector("#character-picker-close");
 const characterConfirm = document.querySelector("#character-confirm");
 const characterPrev = document.querySelector("#character-prev");
 const characterNext = document.querySelector("#character-next");
+const characterLevelEl = document.querySelector("#character-level");
+const characterUpgrade = document.querySelector("#character-upgrade");
+const characterSkinEl = document.querySelector("#character-skin");
+const characterSkinAction = document.querySelector("#character-skin-action");
 const currentCharacterName = document.querySelector("#current-character-name");
 const adminToggle = document.querySelector("#admin-toggle");
 const adminPanel = document.querySelector("#admin-panel");
@@ -110,6 +114,9 @@ const survivalBestKey = "brawlclaui-survival-best";
 const economyKey = "brawlclaui-economy";
 const economyRewardKey = "brawlclaui-economy-last-reward";
 const unlockedCharactersKey = "brawlclaui-unlocked-characters";
+const characterLevelsKey = "brawlclaui-character-levels";
+const ownedSkinsKey = "brawlclaui-owned-skins";
+const selectedSkinsKey = "brawlclaui-selected-skins";
 const nameLockedKey = "brawlclaui-name-locked";
 const renameGrantKey = "brawlclaui-can-rename";
 const firstGameCompletedKey = "brawlclaui-first-game-completed";
@@ -133,6 +140,9 @@ const rarityCreditCosts = {
   mythic: 1000,
   legendary: 1500
 };
+const maxCharacterLevel = 10;
+const skinOrder = ["default", "gold", "shadow"];
+const skinCosts = { default: 0, gold: 120, shadow: 180 };
 const adminOnlyCharacters = new Set(["masterv"]);
 const adminGrantCharacters = ["boomer", "fangli", "pixel", "tank", "bazaar", "ari", "skyfalcon", "seashark", "masterv"];
 const concealedCharacterLabel = "???";
@@ -195,6 +205,106 @@ function spendCredits(amount) {
   const current = loadEconomy();
   if (current.credits < cost) return false;
   saveEconomy({ ...current, credits: current.credits - cost });
+  return true;
+}
+function spendPowerPoints(amount) {
+  const cost = Math.max(0, Math.floor(Number(amount) || 0));
+  const current = loadEconomy();
+  if (current.powerPoints < cost) return false;
+  saveEconomy({ ...current, powerPoints: current.powerPoints - cost });
+  return true;
+}
+function spendMoney(amount) {
+  const cost = Math.max(0, Math.floor(Number(amount) || 0));
+  const current = loadEconomy();
+  if (current.money < cost) return false;
+  saveEconomy({ ...current, money: current.money - cost });
+  return true;
+}
+function loadCharacterLevels() {
+  try {
+    return JSON.parse(localStorage.getItem(progressKey(characterLevelsKey)) || "{}") || {};
+  } catch {
+    return {};
+  }
+}
+function saveCharacterLevels(levels) {
+  localStorage.setItem(progressKey(characterLevelsKey), JSON.stringify(levels || {}));
+  syncCharacterPicker();
+  queueCloudSave();
+}
+function characterLevel(character) {
+  const levels = loadCharacterLevels();
+  return clamp(Math.floor(Number(levels[character]) || 1), 1, maxCharacterLevel);
+}
+function characterUpgradeCost(character) {
+  const level = characterLevel(character);
+  return level >= maxCharacterLevel ? 0 : level * 20;
+}
+function upgradeCharacter(character) {
+  if (!isCharacterUnlocked(character)) return false;
+  const level = characterLevel(character);
+  const cost = characterUpgradeCost(character);
+  if (!cost || !spendPowerPoints(cost)) return false;
+  const levels = loadCharacterLevels();
+  levels[character] = Math.min(maxCharacterLevel, level + 1);
+  saveCharacterLevels(levels);
+  return true;
+}
+function loadOwnedSkins() {
+  try {
+    return JSON.parse(localStorage.getItem(progressKey(ownedSkinsKey)) || "{}") || {};
+  } catch {
+    return {};
+  }
+}
+function saveOwnedSkins(value) {
+  localStorage.setItem(progressKey(ownedSkinsKey), JSON.stringify(value || {}));
+  queueCloudSave();
+}
+function loadSelectedSkins() {
+  try {
+    return JSON.parse(localStorage.getItem(progressKey(selectedSkinsKey)) || "{}") || {};
+  } catch {
+    return {};
+  }
+}
+function saveSelectedSkins(value) {
+  localStorage.setItem(progressKey(selectedSkinsKey), JSON.stringify(value || {}));
+  syncCharacterPicker();
+  queueCloudSave();
+}
+function ownedSkins(character) {
+  const list = loadOwnedSkins()[character];
+  return new Set(["default", ...(Array.isArray(list) ? list.filter(skin => skinOrder.includes(skin)) : [])]);
+}
+function selectedSkin(character) {
+  const skin = loadSelectedSkins()[character] || "default";
+  return ownedSkins(character).has(skin) ? skin : "default";
+}
+function skinLabel(skin) {
+  return t(`skin${skin.charAt(0).toUpperCase()}${skin.slice(1)}`);
+}
+function nextSkin(character) {
+  const current = selectedSkin(character);
+  const index = Math.max(0, skinOrder.indexOf(current));
+  return skinOrder[(index + 1) % skinOrder.length];
+}
+function buyOrSelectNextSkin(character) {
+  if (!isCharacterUnlocked(character)) return false;
+  const skin = nextSkin(character);
+  const owned = loadOwnedSkins();
+  const characterOwned = ownedSkins(character);
+  if (!characterOwned.has(skin)) {
+    const cost = skinCosts[skin] || 0;
+    if (!spendMoney(cost)) return false;
+    characterOwned.add(skin);
+    owned[character] = [...characterOwned].filter(item => item !== "default");
+    saveOwnedSkins(owned);
+  }
+  const selected = loadSelectedSkins();
+  selected[character] = skin;
+  saveSelectedSkins(selected);
   return true;
 }
 function playerKillCount(player) {
@@ -329,6 +439,16 @@ const translations = {
     rewardWon: "Victory",
     rewardLost: "Game ended",
     closeRewards: "Close",
+    levelLabel: "Level",
+    skinLabel: "Skin",
+    skinDefault: "Default",
+    skinGold: "Gold",
+    skinShadow: "Shadow",
+    upgradeMax: "Max level",
+    upgradeWithPower: "Upgrade with",
+    needPower: "Need",
+    buySkinWithMoney: "Buy",
+    chooseSkin: "Choose",
     rarityCommon: "Common",
     rarityRare: "Rare",
     rarityEpic: "Epic",
@@ -527,6 +647,16 @@ const translations = {
     rewardWon: "\u05e0\u05d9\u05e6\u05d7\u05d5\u05df",
     rewardLost: "\u05d4\u05de\u05e9\u05d7\u05e7 \u05e0\u05d2\u05de\u05e8",
     closeRewards: "\u05e1\u05d2\u05d5\u05e8",
+    levelLabel: "\u05e8\u05de\u05d4",
+    skinLabel: "\u05e1\u05e7\u05d9\u05df",
+    skinDefault: "\u05e8\u05d2\u05d9\u05dc",
+    skinGold: "\u05d6\u05d4\u05d1",
+    skinShadow: "\u05e6\u05dc",
+    upgradeMax: "\u05e8\u05de\u05d4 \u05de\u05e7\u05e1\u05d9\u05de\u05dc\u05d9\u05ea",
+    upgradeWithPower: "\u05e9\u05d3\u05e8\u05d2 \u05d1-",
+    needPower: "\u05e6\u05e8\u05d9\u05da",
+    buySkinWithMoney: "\u05e7\u05e0\u05d4",
+    chooseSkin: "\u05d1\u05d7\u05e8",
     rarityCommon: "\u05e8\u05d2\u05d9\u05dc",
     rarityRare: "\u05e0\u05d3\u05d9\u05e8",
     rarityEpic: "\u05e2\u05dc",
@@ -1123,11 +1253,40 @@ function syncCharacterPicker() {
   if (!pendingCharacter || !characterButton(pendingCharacter)) pendingCharacter = selectedCharacter;
   characterButtons().forEach(button => button.classList.toggle("selected", button.dataset.character === pendingCharacter));
   if (currentCharacterName) currentCharacterName.textContent = characterDisplayName(selectedCharacter);
+  const unlockedPending = isCharacterUnlocked(pendingCharacter);
+  const level = characterLevel(pendingCharacter);
+  const upgradeCost = characterUpgradeCost(pendingCharacter);
+  const economy = loadEconomy();
+  const skin = selectedSkin(pendingCharacter);
+  const next = nextSkin(pendingCharacter);
+  const nextSkinOwned = ownedSkins(pendingCharacter).has(next);
+  const nextSkinCost = skinCosts[next] || 0;
+  if (characterLevelEl) characterLevelEl.textContent = `${level}/${maxCharacterLevel}`;
+  if (characterSkinEl) characterSkinEl.textContent = skinLabel(skin);
+  if (characterUpgrade) {
+    characterUpgrade.disabled = !unlockedPending || !upgradeCost || economy.powerPoints < upgradeCost;
+    characterUpgrade.textContent = !unlockedPending
+      ? t("lockedCharacter")
+      : !upgradeCost
+        ? t("upgradeMax")
+        : characterUpgrade.disabled
+          ? `${t("needPower")} ${upgradeCost} ${t("powerPointsLabel")}`
+          : `${t("upgradeWithPower")} ${upgradeCost} ${t("powerPointsLabel")}`;
+  }
+  if (characterSkinAction) {
+    characterSkinAction.disabled = !unlockedPending || (!nextSkinOwned && economy.money < nextSkinCost);
+    characterSkinAction.textContent = !unlockedPending
+      ? t("lockedCharacter")
+      : nextSkinOwned
+        ? `${t("chooseSkin")} ${skinLabel(next)}`
+        : characterSkinAction.disabled
+          ? `${t("needCredits")} ${nextSkinCost} ${t("moneyLabel")}`
+          : `${t("buySkinWithMoney")} ${skinLabel(next)} - ${nextSkinCost} ${t("moneyLabel")}`;
+  }
   if (characterConfirm) {
-    const unlocked = isCharacterUnlocked(pendingCharacter);
     const cost = characterUnlockCost(pendingCharacter);
-    characterConfirm.disabled = !unlocked && !characterCanUnlockWithCredits(pendingCharacter);
-    characterConfirm.textContent = unlocked
+    characterConfirm.disabled = !unlockedPending && !characterCanUnlockWithCredits(pendingCharacter);
+    characterConfirm.textContent = unlockedPending
       ? t("chooseForGame")
       : adminOnlyCharacters.has(pendingCharacter) || !cost
         ? t("lockedCharacter")
@@ -1167,6 +1326,12 @@ function confirmCharacterPicker() {
   closeCharacterPicker();
   queueAutoJoin();
 }
+function upgradePendingCharacter() {
+  if (upgradeCharacter(pendingCharacter)) syncCharacterPicker();
+}
+function buyOrSelectPendingSkin() {
+  if (buyOrSelectNextSkin(pendingCharacter)) syncCharacterPicker();
+}
 function unlockCharacter(character) {
   const unlocked = unlockedCharacters();
   if (unlocked.has(character)) return false;
@@ -1194,6 +1359,9 @@ function resetProgress() {
   localStorage.removeItem(progressKey(survivalBestKey));
   localStorage.removeItem(progressKey(economyKey));
   localStorage.removeItem(progressKey(economyRewardKey));
+  localStorage.removeItem(progressKey(characterLevelsKey));
+  localStorage.removeItem(progressKey(ownedSkinsKey));
+  localStorage.removeItem(progressKey(selectedSkinsKey));
   localStorage.removeItem(nameLockedKey);
   localStorage.removeItem(renameGrantKey);
   localStorage.removeItem(firstGameCompletedKey);
@@ -1427,6 +1595,8 @@ function playerJoinPayload(extra = {}, options = {}) {
     playerId,
     name: name(),
     character: selectedCharacter,
+    characterLevels: loadCharacterLevels(),
+    skin: selectedSkin(selectedCharacter),
     authToken: cloudAuthToken,
     invincibleMode: adminInvincibleMode,
     ...extra
@@ -1549,6 +1719,9 @@ function progressSnapshot() {
   return {
     bestSurvival: personalBest,
     economy: loadEconomy(),
+    characterLevels: loadCharacterLevels(),
+    ownedSkins: loadOwnedSkins(),
+    selectedSkins: loadSelectedSkins(),
     unlockedCharacters: isAdminUser() ? [...lockedCharacters].sort() : [...unlockedCharacters()].sort(),
     firstGameCompleted: localStorage.getItem(firstGameCompletedKey) === "1",
     nameLocked: isNameLocked(),
@@ -2027,6 +2200,30 @@ function applyCloudProgress(progress) {
       money: Math.max(local.money, cloud.money)
     });
   }
+  if (progress.characterLevels && typeof progress.characterLevels === "object") {
+    const local = loadCharacterLevels();
+    const merged = { ...local };
+    for (const [character, level] of Object.entries(progress.characterLevels)) {
+      merged[character] = Math.max(characterLevel(character), clamp(Math.floor(Number(level) || 1), 1, maxCharacterLevel));
+    }
+    saveCharacterLevels(merged);
+  }
+  if (progress.ownedSkins && typeof progress.ownedSkins === "object") {
+    const merged = loadOwnedSkins();
+    for (const [character, skins] of Object.entries(progress.ownedSkins)) {
+      const list = Array.isArray(skins) ? skins : [];
+      const set = new Set([...(Array.isArray(merged[character]) ? merged[character] : []), ...list].filter(skin => skinOrder.includes(skin) && skin !== "default"));
+      if (set.size) merged[character] = [...set];
+    }
+    saveOwnedSkins(merged);
+  }
+  if (progress.selectedSkins && typeof progress.selectedSkins === "object") {
+    const selected = loadSelectedSkins();
+    for (const [character, skin] of Object.entries(progress.selectedSkins)) {
+      if (skinOrder.includes(skin) && ownedSkins(character).has(skin)) selected[character] = skin;
+    }
+    saveSelectedSkins(selected);
+  }
   if (progress.firstGameCompleted) {
     localStorage.setItem(firstGameCompletedKey, "1");
     unlockCharacter("pixel");
@@ -2217,6 +2414,8 @@ characterPickerClose?.addEventListener("click", closeCharacterPicker);
 characterConfirm?.addEventListener("click", confirmCharacterPicker);
 characterPrev?.addEventListener("click", () => movePendingCharacter(-1));
 characterNext?.addEventListener("click", () => movePendingCharacter(1));
+characterUpgrade?.addEventListener("click", upgradePendingCharacter);
+characterSkinAction?.addEventListener("click", buyOrSelectPendingSkin);
 rewardClose?.addEventListener("click", hideRewardScreen);
 characterPicker?.addEventListener("click", event => {
   if (event.target === characterPicker) closeCharacterPicker();
@@ -2324,6 +2523,9 @@ function createNewLocalPlayer() {
   localStorage.removeItem(firstGameCompletedKey);
   localStorage.removeItem(progressKey(economyKey));
   localStorage.removeItem(progressKey(economyRewardKey));
+  localStorage.removeItem(progressKey(characterLevelsKey));
+  localStorage.removeItem(progressKey(ownedSkinsKey));
+  localStorage.removeItem(progressKey(selectedSkinsKey));
   localStorage.removeItem(profileCompletedKey);
   localStorage.removeItem(profileGateVersionKey);
   if (profileNameInput) profileNameInput.value = "";
@@ -2608,6 +2810,12 @@ function gamepadName(id = "") {
   return id ? id.split("(")[0].trim() || t("gamepadConnected") : t("gamepadConnected");
 }
 
+function skinTint(skin) {
+  if (skin === "gold") return "#ffd54a";
+  if (skin === "shadow") return "#7357ff";
+  return "";
+}
+
 function updateGamepadStatus(id = "") {
   if (!gamepadStatus) return;
   const label = gamepadName(id);
@@ -2727,6 +2935,7 @@ function motionFor(p, now) {
 
 function drawCharacter(p, motion) {
   const image = characterImages[p.character];
+  const tint = skinTint(p.skin);
   if (image?.complete && image.naturalWidth) {
     const size = p.giant ? 58 : 48;
     ctx.save();
@@ -2734,11 +2943,17 @@ function drawCharacter(p, motion) {
     ctx.arc(0, 0, size / 2, 0, Math.PI * 2);
     ctx.clip();
     ctx.drawImage(image, -size / 2, -size / 2, size, size);
+    if (tint) {
+      ctx.globalCompositeOperation = "source-atop";
+      ctx.globalAlpha = p.skin === "gold" ? .34 : .42;
+      ctx.fillStyle = tint;
+      ctx.fillRect(-size / 2, -size / 2, size, size);
+    }
     ctx.restore();
     return true;
   }
 
-  const fill = p.ghost ? "#b8d9ff" : p.color;
+  const fill = p.ghost ? "#b8d9ff" : tint || p.color;
   ctx.fillStyle = fill;
   ctx.beginPath();
   if (p.character === "tank") {

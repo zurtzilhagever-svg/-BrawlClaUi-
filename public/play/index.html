@@ -18,7 +18,7 @@
   <link rel="icon" type="image/png" sizes="48x48" href="/icons/favicon-48.png?v=65">
   <link rel="apple-touch-icon" href="/icons/icon-192.png?v=65">
   <title>בראול כלווי - BrawkClaUi</title>
-  <link rel="stylesheet" href="style.css?v=95">
+  <link rel="stylesheet" href="style.css?v=96">
 </head>
 <body>
   <section id="profile-gate" class="profile-gate" aria-labelledby="profile-title">
@@ -85,6 +85,18 @@
       <button data-character="skyfalcon" class="locked"><span class="portrait skyfalcon"></span><img class="char-img" src="/characters/skyfalcon.png?v=87" alt="" onerror="this.hidden=true"><span data-i18n="skyFalconName">Sky Falcon</span><small data-i18n="skyFalconDesc">Gold feather + air super modes</small></button>
       <button data-character="seashark" class="locked"><span class="portrait seashark"></span><img class="char-img" src="/characters/seashark.png?v=95" alt="" onerror="this.hidden=true"><span data-i18n="seaSharkName">Sea Shark</span><small data-i18n="seaSharkDesc">Abyss shot + predator breach</small></button>
       <button data-character="masterv" class="locked"><span class="portrait masterv"></span><img class="char-img" src="/characters/masterv.png?v=77" alt="" onerror="this.hidden=true"><span data-i18n="mastervName">???</span><small data-i18n="mastervDesc">???</small></button>
+      </div>
+      <div class="character-upgrade-panel">
+        <div>
+          <span data-i18n="levelLabel">Level</span>
+          <strong id="character-level">1/10</strong>
+        </div>
+        <button id="character-upgrade" type="button">Upgrade</button>
+        <div>
+          <span data-i18n="skinLabel">Skin</span>
+          <strong id="character-skin">Default</strong>
+        </div>
+        <button id="character-skin-action" type="button">Skin</button>
       </div>
       <div class="character-picker-actions">
         <button id="character-prev" type="button" aria-label="Previous character">‹</button>
@@ -274,6 +286,6 @@
   <script src="/socket.io/socket.io.js"></script>
   <script src="/shared/qr-generator.js"></script>
   <script src="/shared/gamepad.js?v=81"></script>
-  <script src="play.js?v=95"></script>
+  <script src="play.js?v=96"></script>
 </body>
 </html>
