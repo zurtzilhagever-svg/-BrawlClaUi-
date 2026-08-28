@@ -1466,7 +1466,7 @@ let pendingJoinCode = (new URLSearchParams(location.search).get("join") || "").t
 let profileIntroResetApplied = false;
 const characterImages = Object.fromEntries(["blaze", "boomer", "fangli", "pixel", "tank", "bazaar", "ari", "skyfalcon", "seashark", "masterv", "mash"].map(id => {
   const image = new Image();
-  image.src = `/characters/${id}.png?v=${id === "seashark" ? 95 : id === "skyfalcon" ? 87 : id === "ari" ? 97 : id === "masterv" ? 77 : 62}`;
+  image.src = `/characters/${id}.png?v=${id === "seashark" ? 95 : id === "skyfalcon" ? 98 : id === "ari" ? 97 : id === "masterv" ? 77 : 62}`;
   return [id, image];
 }));
 const motionState = new Map();
