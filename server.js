@@ -833,11 +833,6 @@ function attack(room, attacker, now) {
     return;
   }
   if (attacker.character === "skyfalcon") {
-    if (attacker.input.skyMode === "bomb" && (attacker.specialCharge || 0) >= SPECIAL_HITS) {
-      attacker.specialCharge = 0;
-      pushProjectile(room, attacker, dx, dy, stats, { type:"skyBombShot", color:"#ffd76a", start:34, speed:14, radius:13, range:450, damage:8 });
-      return;
-    }
     pushProjectile(room, attacker, dx, dy, stats, { type:"goldFeather", color:"#ffd76a", start:34, speed:21, radius:6 });
     return;
   }
@@ -881,7 +876,6 @@ function special(room, p, now) {
     return;
   }
   if (p.lastSpecial || (p.specialCharge || 0) < SPECIAL_HITS) return;
-  if (p.character === "skyfalcon" && p.input.skyMode === "bomb") return;
   p.specialCharge = 0; p.lastSpecialAt = now;
   const stats = statsFor(p.character, p.characterLevel);
   if (p.character === "blaze") {
@@ -958,11 +952,15 @@ function special(room, p, now) {
     }
   } else if (p.character === "skyfalcon") {
     const aim = aimDirection(p);
-    room.game.decoys ||= [];
-    const distance = 96;
+    if (Math.random() < .5) {
+      pushProjectile(room, p, aim.x, aim.y, stats, { type:"skyBombShot", color:"#ffd76a", start:34, speed:14, radius:13, range:450, damage:8 });
+    } else {
+      room.game.decoys ||= [];
+      const distance = 96;
       room.game.decoys.push({ id:`${room.code}-decoy-${room.game.nextDecoyId++}`, ownerId:p.id, team:p.team, bot:Boolean(p.bot), character:p.character, x:clamp(p.x - aim.x * distance, 28, room.arena.width - 28), y:clamp(p.y - aim.y * distance, 28, room.arena.height - 28), health:stats.hp, damage:stats.damage, rate:stats.rate, golden:true, endsAt:now + 4200, lastAttack:0 });
-    p.invisibleUntil = Math.max(p.invisibleUntil || 0, now + 1000);
-    p.hitUntil = now + 260;
+      p.invisibleUntil = Math.max(p.invisibleUntil || 0, now + 1000);
+      p.hitUntil = now + 260;
+    }
   } else if (p.character === "seashark") {
     const aim = aimDirection(p), target = firstTargetOnLine(room, p, aim.x, aim.y, 520);
     const endX = target ? target.x : p.x + aim.x * 430;

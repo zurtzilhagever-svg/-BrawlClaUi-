@@ -485,6 +485,7 @@ const translations = {
     skyFalconDesc: "Gold feather + bomb or clone",
     seaSharkDesc: "Glowing abyss shot + predator breach",
     mastervDesc: "Admin-only ultimate brawler",
+    ultimateReady: "ULTI CHARGED",
     skyBombMode: "BOMB",
     skyCloneMode: "CLONE",
     adminOnlyCharacter: "Special character",
@@ -693,6 +694,7 @@ const translations = {
     skyFalconDesc: "\u05e0\u05d5\u05e6\u05ea \u05d6\u05d4\u05d1 + \u05e4\u05e6\u05e6\u05d4 \u05d0\u05d5 \u05db\u05e4\u05d9\u05dc",
     seaSharkDesc: "\u05d9\u05e8\u05d9\u05d9\u05ea \u05de\u05e6\u05d5\u05dc\u05d5\u05ea + \u05db\u05e8\u05d9\u05e9 \u05d8\u05d5\u05e8\u05e3",
     mastervDesc: "\u05dc\u05d5\u05d7\u05dd \u05d0\u05d5\u05dc\u05d8\u05d9\u05de\u05d8\u05d9\u05d1\u05d9 \u05dc\u05d0\u05d3\u05de\u05d9\u05df \u05d1\u05dc\u05d1\u05d3",
+    ultimateReady: "\u05d9\u05e9 \u05d0\u05d5\u05dc\u05d8\u05d9 \u05d8\u05e2\u05d5\u05df",
     skyBombMode: "\u05e4\u05e6\u05e6\u05d4",
     skyCloneMode: "\u05db\u05e4\u05d9\u05dc",
     adminOnlyCharacter: "\u05d3\u05de\u05d5\u05ea \u05de\u05d9\u05d5\u05d7\u05d3\u05ea",
@@ -1763,8 +1765,7 @@ function characterLabel(character) {
 
 function renderSkyModeButton(me = players.find(p => p.id === playerId)) {
   if (!skyModeButton) return;
-  const active = me?.character === "skyfalcon" && me.alive && !me.ghost;
-  skyModeButton.hidden = !active;
+  skyModeButton.hidden = true;
   input.skyMode = skySpecialMode;
   skyModeButton.textContent = skySpecialMode === "clone" ? t("skyCloneMode") : t("skyBombMode");
   skyModeButton.classList.toggle("clone", skySpecialMode === "clone");
@@ -2626,9 +2627,7 @@ socket.on("game:state", next => {
   if (attack) {
     const ammo = Number.isFinite(me?.ammo) ? me.ammo : me?.ammoMax || 5;
     const ammoMax = me?.ammoMax || 5;
-    const skyBombReady = me?.character === "skyfalcon" && skySpecialMode === "bomb" && (me?.specialReady || (me?.specialCharge || 0) >= (me?.specialRequired || 5));
-    const attackLabel = skyBombReady ? t("skyBombMode") : t("attack");
-    attack.textContent = `${attackLabel} ${ammo}/${ammoMax}`;
+    attack.textContent = `${t("attack")} ${ammo}/${ammoMax}`;
     attack.classList.toggle("charging", ammo <= 0);
   }
   const special = document.querySelector("#special");
@@ -2640,8 +2639,8 @@ socket.on("game:state", next => {
     const charge = Math.min(me?.specialCharge || 0, me?.specialRequired || 5);
     const required = me?.specialRequired || 5;
     const hasBuff = Boolean(me?.bazaarBuff);
-    const specialLabel = me?.character === "skyfalcon" && skySpecialMode === "clone" ? t("skyCloneMode") : t("special");
-    special.textContent = hasBuff ? t("useBuff") : charge >= required ? specialLabel : `${specialLabel} ${charge}/${required}`;
+    const specialLabel = t("special");
+    special.textContent = hasBuff ? t("useBuff") : charge >= required ? t("ultimateReady") : `${specialLabel} ${charge}/${required}`;
     special.classList.toggle("charging", !hasBuff && charge < required);
     special.classList.toggle("ready", hasBuff || charge >= required);
   }
