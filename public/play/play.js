@@ -1274,7 +1274,6 @@ let players = [];
 let wasPlaying = false;
 let selectedCharacter = "blaze";
 let skySpecialMode = "bomb";
-let skyBombAttackLatched = false;
 let pendingCharacter = selectedCharacter;
 let gameMeta = { items: [], zoneScore: {} };
 let lastBazaarBuff = "";
@@ -1586,13 +1585,14 @@ function renderSkyModeButton(me = players.find(p => p.id === playerId)) {
   if (!skyModeButton) return;
   const active = me?.character === "skyfalcon" && me.alive && !me.ghost;
   skyModeButton.hidden = !active;
-  skySpecialMode = me?.skyBombAvailable ? "bomb" : "clone";
   input.skyMode = skySpecialMode;
   skyModeButton.textContent = skySpecialMode === "clone" ? t("skyCloneMode") : t("skyBombMode");
   skyModeButton.classList.toggle("clone", skySpecialMode === "clone");
 }
 
 function toggleSkySpecialMode() {
+  skySpecialMode = skySpecialMode === "bomb" ? "clone" : "bomb";
+  input.skyMode = skySpecialMode;
   renderSkyModeButton();
 }
 
@@ -2417,7 +2417,8 @@ socket.on("game:state", next => {
   if (attack) {
     const ammo = Number.isFinite(me?.ammo) ? me.ammo : me?.ammoMax || 5;
     const ammoMax = me?.ammoMax || 5;
-    const attackLabel = me?.character === "skyfalcon" && skySpecialMode === "bomb" ? t("skyBombMode") : t("attack");
+    const skyBombReady = me?.character === "skyfalcon" && skySpecialMode === "bomb" && (me?.specialReady || (me?.specialCharge || 0) >= (me?.specialRequired || 5));
+    const attackLabel = skyBombReady ? t("skyBombMode") : t("attack");
     attack.textContent = `${attackLabel} ${ammo}/${ammoMax}`;
     attack.classList.toggle("charging", ammo <= 0);
   }
@@ -2700,20 +2701,8 @@ setInterval(() => {
     const autoAim = autoAimAtNearestBot();
     const aimX = touchAim.active ? touchAim.x : gamepadAim.active ? gamepadAim.x : autoAim?.[0] || 0;
     const aimY = touchAim.active ? touchAim.y : gamepadAim.active ? gamepadAim.y : autoAim?.[1] || 0;
-    const me = players.find(p => p.id === playerId);
-    let sentSkyMode = input.skyMode;
-    if (me?.character === "skyfalcon" && input.attack && skySpecialMode === "bomb" && !skyBombAttackLatched) {
-      sentSkyMode = "bomb";
-      skyBombAttackLatched = true;
-      skySpecialMode = "clone";
-      input.skyMode = skySpecialMode;
-      renderSkyModeButton(me);
-    } else {
-      if (!input.attack) skyBombAttackLatched = false;
-      sentSkyMode = skySpecialMode;
-      input.skyMode = skySpecialMode;
-    }
-    socket.emit("player:input", [input.x, input.y, input.attack ? 1 : 0, input.special ? 1 : 0, aimX, aimY, sentSkyMode]);
+    input.skyMode = skySpecialMode;
+    socket.emit("player:input", [input.x, input.y, input.attack ? 1 : 0, input.special ? 1 : 0, aimX, aimY, input.skyMode]);
   }
 }, 1000 / 60);
 function motionFor(p, now) {

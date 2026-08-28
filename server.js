@@ -388,7 +388,7 @@ function firstWallPoint(arena, x, y, dx, dy, range) {
   }
   return null;
 }
-function publicPlayer(p) { const now = Date.now(); updateAmmo(p, now); return { id:p.id, name:p.name, color:p.color, team:p.team, character:p.character, characterName:CHARACTERS[p.character]?.name || p.character, bot:p.bot, admin:isAdminEmail(p.accountEmail), invincible:isOwnerAdminEmail(p.accountEmail) && Boolean(p.invincibleMode), x:p.x, y:p.y, health:Math.ceil(p.health), maxHealth:p.maxHealth, alive:p.alive, ghost:p.ghost, ghostItem:p.ghostItem, ghostItemName:p.ghostItem && GHOST_ITEM_NAMES[p.ghostItem], ghostPing:now < (p.pingUntil || 0), haunted:now < (p.hauntedUntil || 0), walled:now < (p.wallUntil || 0), inked:now < (p.inkUntil || 0), confused:now < (p.confusedUntil || 0), freezeMeter:Math.round(p.freezeMeter || 0), bazaarBuff:p.bazaarBuff || "", damageBoost:now < (p.damageBoostUntil || 0), goldenArmor:now < (p.goldenArmorUntil || 0), invisible:now < (p.invisibleUntil || 0), giant:now < (p.giantUntil || 0), phase:now < (p.phaseUntil || 0), hit:now < (p.hitUntil || 0), score:p.score, gems:p.gems, coins:p.coins, connected:p.connected, skyBombAvailable:p.character === "skyfalcon" && !p.skyBombUsed, shield:now < p.shieldUntil || now < (p.goldenArmorUntil || 0), cardboardShield:now < (p.cardboardShieldUntil || 0) && (p.cardboardShieldHp || 0) > 0, ammo:p.ammo, ammoMax:AMMO_MAX, ammoReloadMs:ammoReloadMs(p, now), ammoReadyAt:p.nextAmmoAt || now, specialCharge:p.specialCharge || 0, specialRequired:SPECIAL_HITS, specialReady:(p.specialCharge || 0) >= SPECIAL_HITS }; }
+function publicPlayer(p) { const now = Date.now(); updateAmmo(p, now); return { id:p.id, name:p.name, color:p.color, team:p.team, character:p.character, characterName:CHARACTERS[p.character]?.name || p.character, bot:p.bot, admin:isAdminEmail(p.accountEmail), invincible:isOwnerAdminEmail(p.accountEmail) && Boolean(p.invincibleMode), x:p.x, y:p.y, health:Math.ceil(p.health), maxHealth:p.maxHealth, alive:p.alive, ghost:p.ghost, ghostItem:p.ghostItem, ghostItemName:p.ghostItem && GHOST_ITEM_NAMES[p.ghostItem], ghostPing:now < (p.pingUntil || 0), haunted:now < (p.hauntedUntil || 0), walled:now < (p.wallUntil || 0), inked:now < (p.inkUntil || 0), confused:now < (p.confusedUntil || 0), freezeMeter:Math.round(p.freezeMeter || 0), bazaarBuff:p.bazaarBuff || "", damageBoost:now < (p.damageBoostUntil || 0), goldenArmor:now < (p.goldenArmorUntil || 0), invisible:now < (p.invisibleUntil || 0), giant:now < (p.giantUntil || 0), phase:now < (p.phaseUntil || 0), hit:now < (p.hitUntil || 0), score:p.score, gems:p.gems, coins:p.coins, connected:p.connected, shield:now < p.shieldUntil || now < (p.goldenArmorUntil || 0), cardboardShield:now < (p.cardboardShieldUntil || 0) && (p.cardboardShieldHp || 0) > 0, ammo:p.ammo, ammoMax:AMMO_MAX, ammoReloadMs:ammoReloadMs(p, now), ammoReadyAt:p.nextAmmoAt || now, specialCharge:p.specialCharge || 0, specialRequired:SPECIAL_HITS, specialReady:(p.specialCharge || 0) >= SPECIAL_HITS }; }
 function players(room) { return [...room.players.values()].map(publicPlayer); }
 function humanPlayers(room) { return [...room.players.values()].filter(player => !player.bot); }
 function teamGems(room, team) { return [...room.players.values()].filter(p => p.team === team).reduce((sum, p) => sum + (p.gems || 0), 0); }
@@ -441,11 +441,10 @@ function joinPlayer(socket, roomCode, playerId, name, character, accountEmail, i
     if (p.character !== selectedCharacter) {
       const ratio = p.maxHealth ? p.health / p.maxHealth : 1, stats = CHARACTERS[selectedCharacter];
       p.character = selectedCharacter; p.maxHealth = stats.hp; p.health = Math.min(stats.hp, Math.max(1, Math.round(stats.hp * ratio)));
-      p.skyBombUsed = false;
       resetAmmo(p);
     }
   }
-  else { const c = selectedCharacter, stats = CHARACTERS[c], spot = randomSpot(room.arena), team=chooseTeam(room), defaultName=`Player ${humanPlayers(room).length + 1}`, displayName=String(name || "").trim().slice(0, 14) || defaultName; p = { id, socketId:socket.id, accountEmail:cleanEmail, invincibleMode:isOwnerAdminEmail(cleanEmail) && Boolean(invincibleMode), name:displayName, character:c, color:COLORS[room.players.size % COLORS.length], team, x:spot.x, y:spot.y, aimX:1, aimY:0, maxHealth:stats.hp, health:stats.hp, alive:true, score:0, gems:0, coins:0, input:{x:0,y:0,attack:false,special:false,skyMode:"bomb"}, lastAttack:0, lastSpecial:false, specialCharge:0, skyBombUsed:false, shieldUntil:0, bazaarBuff:"", damageBoostUntil:0, connected:true }; resetAmmo(p); room.players.set(id, p); }
+  else { const c = selectedCharacter, stats = CHARACTERS[c], spot = randomSpot(room.arena), team=chooseTeam(room), defaultName=`Player ${humanPlayers(room).length + 1}`, displayName=String(name || "").trim().slice(0, 14) || defaultName; p = { id, socketId:socket.id, accountEmail:cleanEmail, invincibleMode:isOwnerAdminEmail(cleanEmail) && Boolean(invincibleMode), name:displayName, character:c, color:COLORS[room.players.size % COLORS.length], team, x:spot.x, y:spot.y, aimX:1, aimY:0, maxHealth:stats.hp, health:stats.hp, alive:true, score:0, gems:0, coins:0, input:{x:0,y:0,attack:false,special:false,skyMode:"bomb"}, lastAttack:0, lastSpecial:false, specialCharge:0, shieldUntil:0, bazaarBuff:"", damageBoostUntil:0, connected:true }; resetAmmo(p); room.players.set(id, p); }
   socketIndex.set(socket.id, { code:roomCode, playerId:id }); socket.join(roomCode); ack({ ok:true, code:roomCode, player:publicPlayer(p), players:players(room), meta:meta(room) }); broadcast(room);
 }
 function adminRoom(socket, data = {}, ack = () => {}) {
@@ -689,7 +688,7 @@ function resetHumanForGame(room, player) {
     x:spot.x, y:spot.y, maxHealth:stats.hp, health:stats.hp, alive:true, ghost:false,
     ghostItem:false, ghostTargetId:null, score:0, gems:0, coins:0, specialCharge:0,
     shieldUntil:0, cardboardShieldUntil:0, cardboardShieldHp:0, hauntedUntil:0, wallUntil:0,
-    inkUntil:0, confusedUntil:0, freezeMeter:0, freezeUntil:0, bazaarBuff:"", damageBoostUntil:0, coinMagnetUntil:0, desertSpiceUntil:0, goldenArmorUntil:0, reloadBoostUntil:0, phaseUntil:0, bouncyUntil:0, giantUntil:0, giantBonusHp:0, giantDamageUntil:0, invisibleUntil:0, iceVx:0, iceVy:0, clawRushUntil:0, skyBombUsed:false, hitUntil:0, input:{x:0,y:0,attack:false,special:false,skyMode:"bomb"}
+    inkUntil:0, confusedUntil:0, freezeMeter:0, freezeUntil:0, bazaarBuff:"", damageBoostUntil:0, coinMagnetUntil:0, desertSpiceUntil:0, goldenArmorUntil:0, reloadBoostUntil:0, phaseUntil:0, bouncyUntil:0, giantUntil:0, giantBonusHp:0, giantDamageUntil:0, invisibleUntil:0, iceVx:0, iceVy:0, clawRushUntil:0, hitUntil:0, input:{x:0,y:0,attack:false,special:false,skyMode:"bomb"}
   });
   resetAmmo(player);
 }
@@ -802,9 +801,9 @@ function attack(room, attacker, now) {
     return;
   }
   if (attacker.character === "skyfalcon") {
-    if (attacker.input.skyMode === "bomb" && !attacker.skyBombUsed) {
+    if (attacker.input.skyMode === "bomb" && (attacker.specialCharge || 0) >= SPECIAL_HITS) {
+      attacker.specialCharge = 0;
       pushProjectile(room, attacker, dx, dy, stats, { type:"skyBombShot", color:"#ffd76a", start:34, speed:14, radius:13, range:450, damage:8 });
-      attacker.skyBombUsed = true;
       return;
     }
     pushProjectile(room, attacker, dx, dy, stats, { type:"goldFeather", color:"#ffd76a", start:34, speed:21, radius:6 });
@@ -846,6 +845,7 @@ function special(room, p, now) {
     return;
   }
   if (p.lastSpecial || (p.specialCharge || 0) < SPECIAL_HITS) return;
+  if (p.character === "skyfalcon" && p.input.skyMode === "bomb") return;
   p.specialCharge = 0; p.lastSpecialAt = now;
   const stats = CHARACTERS[p.character];
   if (p.character === "blaze") {
@@ -921,18 +921,12 @@ function special(room, p, now) {
       if (target.health <= 0) kill(room, target, p);
     }
   } else if (p.character === "skyfalcon") {
-    const aim = aimDirection(p), mode = !p.skyBombUsed && p.input.skyMode === "bomb" ? "bomb" : "clone";
-    if (mode === "clone") {
-      room.game.decoys ||= [];
-      const distance = 96;
-      room.game.decoys.push({ id:`${room.code}-decoy-${room.game.nextDecoyId++}`, ownerId:p.id, team:p.team, bot:Boolean(p.bot), character:p.character, x:clamp(p.x - aim.x * distance, 28, room.arena.width - 28), y:clamp(p.y - aim.y * distance, 28, room.arena.height - 28), health:stats.hp, damage:stats.damage, rate:stats.rate, golden:true, endsAt:now + 4200, lastAttack:0 });
-      p.invisibleUntil = Math.max(p.invisibleUntil || 0, now + 1000);
-      p.hitUntil = now + 260;
-    } else {
-      const radius = 132;
-      spawnSkyBomb(room, p, p.x + aim.x * 255, p.y + aim.y * 255, now, radius, 2600);
-      p.skyBombUsed = true;
-    }
+    const aim = aimDirection(p);
+    room.game.decoys ||= [];
+    const distance = 96;
+    room.game.decoys.push({ id:`${room.code}-decoy-${room.game.nextDecoyId++}`, ownerId:p.id, team:p.team, bot:Boolean(p.bot), character:p.character, x:clamp(p.x - aim.x * distance, 28, room.arena.width - 28), y:clamp(p.y - aim.y * distance, 28, room.arena.height - 28), health:stats.hp, damage:stats.damage, rate:stats.rate, golden:true, endsAt:now + 4200, lastAttack:0 });
+    p.invisibleUntil = Math.max(p.invisibleUntil || 0, now + 1000);
+    p.hitUntil = now + 260;
   } else if (p.character === "masterv") {
     const aim = aimDirection(p);
     dashPlayer(room.arena, p, aim.x * 150, aim.y * 150);
@@ -1329,7 +1323,7 @@ function updateRoom(room, now) {
       continue;
     }
     if (!p.alive) { // Non-elimination modes keep their fast respawn behavior.
-      if (now-p.diedAt > 2200) { const spot=randomSpot(room.arena), s=CHARACTERS[p.character]; Object.assign(p,{x:spot.x,y:spot.y,health:s.hp,alive:true,ghost:false,skyBombUsed:false}); resetAmmo(p, now); }
+      if (now-p.diedAt > 2200) { const spot=randomSpot(room.arena), s=CHARACTERS[p.character]; Object.assign(p,{x:spot.x,y:spot.y,health:s.hp,alive:true,ghost:false}); resetAmmo(p, now); }
       continue;
     }
     if ((p.freezeMeter || 0) > 0 && now > (p.freezeUntil || 0)) p.freezeMeter = Math.max(0, p.freezeMeter - 0.9);
