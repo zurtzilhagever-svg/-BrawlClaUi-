@@ -656,8 +656,9 @@ input.name-locked {
   z-index: 70;
   inset: 0;
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr) auto;
-  gap: 12px;
+  grid-template-rows: auto minmax(0, 1fr) auto auto;
+  grid-auto-rows: min-content;
+  gap: 10px;
   padding: max(16px, env(safe-area-inset-top)) max(14px, env(safe-area-inset-right)) max(16px, env(safe-area-inset-bottom)) max(14px, env(safe-area-inset-left));
   background: #101827f2;
   backdrop-filter: blur(16px);
@@ -1014,20 +1015,22 @@ input.name-locked {
 
 .character-upgrade-panel {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1.5fr);
-  gap: 8px;
+  grid-template-columns: .72fr 1.28fr .72fr 1.28fr;
+  gap: 7px;
   width: min(86vw, 420px);
   justify-self: center;
+  align-items: stretch;
 }
 
 .character-upgrade-panel div {
   display: grid;
   gap: 3px;
-  min-height: 52px;
-  padding: 8px 10px;
+  min-height: 44px;
+  padding: 7px 8px;
   border-radius: 8px;
-  background: #0d1426;
+  background: #172235;
   border: 1px solid #ffffff14;
+  align-content: center;
 }
 
 .character-upgrade-panel span {
@@ -1043,17 +1046,31 @@ input.name-locked {
 }
 
 .character-upgrade-panel button {
-  min-height: 52px;
+  min-height: 44px;
+  padding: 7px 8px;
   border: 0;
   border-radius: 8px;
+  background: #263248;
+  color: #fff;
+  font-weight: 900;
+  font-size: .74rem;
+  line-height: 1.15;
+  box-shadow: inset 0 -3px #0002;
+  overflow-wrap: anywhere;
+}
+
+#character-upgrade {
   background: #70d7ff;
   color: #122033;
-  font-weight: 900;
-  box-shadow: inset 0 -3px #0002;
+}
+
+#character-skin-action {
+  background: #ffd34f;
+  color: #172033;
 }
 
 .character-upgrade-panel button:disabled {
-  background: #566072;
+  background: #2a3448;
   color: #d3dbeb;
   box-shadow: none;
 }
