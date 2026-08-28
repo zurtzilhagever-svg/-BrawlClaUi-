@@ -113,7 +113,7 @@ const unlockedCharactersKey = "brawlclaui-unlocked-characters";
 const nameLockedKey = "brawlclaui-name-locked";
 const renameGrantKey = "brawlclaui-can-rename";
 const firstGameCompletedKey = "brawlclaui-first-game-completed";
-const lockedCharacters = new Set(["boomer", "fangli", "pixel", "tank", "bazaar", "ari", "skyfalcon", "masterv"]);
+const lockedCharacters = new Set(["boomer", "fangli", "pixel", "tank", "bazaar", "ari", "skyfalcon", "seashark", "masterv"]);
 const characterRarities = {
   blaze: "common",
   boomer: "common",
@@ -123,6 +123,7 @@ const characterRarities = {
   bazaar: "epic",
   ari: "mythic",
   skyfalcon: "legendary",
+  seashark: "mythic",
   masterv: "special"
 };
 const rarityCreditCosts = {
@@ -133,7 +134,7 @@ const rarityCreditCosts = {
   legendary: 1500
 };
 const adminOnlyCharacters = new Set(["masterv"]);
-const adminGrantCharacters = ["boomer", "fangli", "pixel", "tank", "bazaar", "ari", "skyfalcon", "masterv"];
+const adminGrantCharacters = ["boomer", "fangli", "pixel", "tank", "bazaar", "ari", "skyfalcon", "seashark", "masterv"];
 const concealedCharacterLabel = "???";
 const ownerAdminEmail = "zurtzilhagever@gmail.com";
 const adminEmails = new Set(["zurtzilhagever@gmail.com"]);
@@ -347,6 +348,7 @@ const translations = {
     bazaarName: "Bazaar",
     ariName: "Ari",
     skyFalconName: "Sky Falcon",
+    seaSharkName: "Sea Shark",
     mastervName: "Master V",
     blazeDesc: "3 tennis-ball volley",
     boomerDesc: "Boomerang - waits for return",
@@ -361,6 +363,7 @@ const translations = {
     bazaarDesc: "Coin chain + buff box",
     ariDesc: "Claw punch + wall-breaking slash",
     skyFalconDesc: "Gold feather + bomb or clone",
+    seaSharkDesc: "Glowing abyss shot + predator breach",
     mastervDesc: "Admin-only ultimate brawler",
     skyBombMode: "BOMB",
     skyCloneMode: "CLONE",
@@ -543,6 +546,7 @@ const translations = {
     bazaarName: "\u05d1\u05d0\u05d6\u05d0\u05e8",
     ariName: "\u05d0\u05e8\u05d9",
     skyFalconName: "\u05d1\u05d6 \u05d4\u05e9\u05de\u05d9\u05d9\u05dd",
+    seaSharkName: "\u05db\u05e8\u05d9\u05e9 \u05d4\u05d9\u05dd",
     mastervName: "Master V",
     blazeDesc: "\u05de\u05d8\u05d7 3 \u05db\u05d3\u05d5\u05e8\u05d9 \u05d8\u05e0\u05d9\u05e1",
     boomerDesc: "\u05d1\u05d5\u05de\u05e8\u05e0\u05d2 - \u05de\u05d7\u05db\u05d4 \u05e9\u05d9\u05d7\u05d6\u05d5\u05e8",
@@ -557,6 +561,7 @@ const translations = {
     bazaarDesc: "\u05e9\u05e8\u05e9\u05e8\u05ea \u05de\u05d8\u05d1\u05e2\u05d5\u05ea + \u05ea\u05d9\u05d1\u05ea Buff",
     ariDesc: "\u05d0\u05d2\u05e8\u05d5\u05e3 \u05d8\u05d5\u05e4\u05e8 + \u05d7\u05d9\u05ea\u05d5\u05da \u05e9\u05d5\u05d1\u05e8 \u05e7\u05d9\u05e8\u05d5\u05ea",
     skyFalconDesc: "\u05e0\u05d5\u05e6\u05ea \u05d6\u05d4\u05d1 + \u05e4\u05e6\u05e6\u05d4 \u05d0\u05d5 \u05db\u05e4\u05d9\u05dc",
+    seaSharkDesc: "\u05d9\u05e8\u05d9\u05d9\u05ea \u05de\u05e6\u05d5\u05dc\u05d5\u05ea + \u05db\u05e8\u05d9\u05e9 \u05d8\u05d5\u05e8\u05e3",
     mastervDesc: "\u05dc\u05d5\u05d7\u05dd \u05d0\u05d5\u05dc\u05d8\u05d9\u05de\u05d8\u05d9\u05d1\u05d9 \u05dc\u05d0\u05d3\u05de\u05d9\u05df \u05d1\u05dc\u05d1\u05d3",
     skyBombMode: "\u05e4\u05e6\u05e6\u05d4",
     skyCloneMode: "\u05db\u05e4\u05d9\u05dc",
@@ -1239,6 +1244,7 @@ function renderCharacterLocks() {
     else if (label && character === "pixel") label.textContent = t("pixelDesc");
     else if (label && character === "ari") label.textContent = t("ariDesc");
     else if (label && character === "skyfalcon") label.textContent = t("skyFalconDesc");
+    else if (label && character === "seashark") label.textContent = t("seaSharkDesc");
     else if (label && character === "masterv") label.textContent = t("mastervDesc");
     if (locked && character === selectedCharacter) {
       selectedCharacter = "blaze";
@@ -1290,9 +1296,9 @@ let cloudSaveTimer = 0;
 let lastCloudSnapshot = "";
 let pendingJoinCode = (new URLSearchParams(location.search).get("join") || "").trim().toUpperCase();
 let profileIntroResetApplied = false;
-const characterImages = Object.fromEntries(["blaze", "boomer", "fangli", "pixel", "tank", "bazaar", "ari", "skyfalcon", "masterv", "mash"].map(id => {
+const characterImages = Object.fromEntries(["blaze", "boomer", "fangli", "pixel", "tank", "bazaar", "ari", "skyfalcon", "seashark", "masterv", "mash"].map(id => {
   const image = new Image();
-  image.src = `/characters/${id}.png?v=${id === "skyfalcon" ? 87 : id === "ari" ? 85 : id === "masterv" ? 77 : 62}`;
+  image.src = `/characters/${id}.png?v=${id === "seashark" ? 95 : id === "skyfalcon" ? 87 : id === "ari" ? 85 : id === "masterv" ? 77 : 62}`;
   return [id, image];
 }));
 const motionState = new Map();
@@ -1577,6 +1583,7 @@ function characterLabel(character) {
   if (character === "bazaar") return t("bazaarName");
   if (character === "ari") return t("ariName");
   if (character === "skyfalcon") return t("skyFalconName");
+  if (character === "seashark") return t("seaSharkName");
   if (character === "masterv") return t("mastervName");
   return character.charAt(0).toUpperCase() + character.slice(1);
 }
@@ -2748,6 +2755,11 @@ function drawCharacter(p, motion) {
     ctx.lineTo(0, 27);
     ctx.lineTo(-19, 18);
     ctx.closePath();
+  } else if (p.character === "seashark") {
+    ctx.moveTo(0, -29);
+    ctx.bezierCurveTo(26, -20, 25, 22, 0, 28);
+    ctx.bezierCurveTo(-25, 22, -26, -20, 0, -29);
+    ctx.closePath();
   } else if (p.character === "masterv") {
     ctx.moveTo(0, -30);
     ctx.lineTo(27, -7);
@@ -2792,6 +2804,20 @@ function drawCharacter(p, motion) {
     ctx.beginPath();
     ctx.arc(0, -5, 7, 0, Math.PI * 2);
     ctx.fill();
+  } else if (p.character === "seashark") {
+    ctx.fillStyle = "#0d2f5f";
+    ctx.fillRect(-15, -3, 30, 12);
+    ctx.fillStyle = "#74e8ff";
+    ctx.beginPath();
+    ctx.arc(0, -8, 7, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = "#9af4ff";
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(0, -23);
+    ctx.lineTo(10, -39);
+    ctx.lineTo(7, -16);
+    ctx.stroke();
   } else if (p.character === "masterv") {
     ctx.fillStyle = "#ffe66d";
     ctx.beginPath();
@@ -3161,6 +3187,27 @@ function drawProjectile(projectile, now) {
     ctx.fill();
     ctx.stroke();
     ctx.shadowBlur = 0;
+  } else if (projectile.type === "depthShot") {
+    ctx.fillStyle = projectile.color || "#37cfff";
+    ctx.shadowColor = projectile.color || "#37cfff";
+    ctx.shadowBlur = 18;
+    ctx.beginPath();
+    ctx.ellipse(0, 0, 18, 10, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = "#d9fbff";
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.arc(5, 0, 6, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.globalAlpha = .6;
+    ctx.fillStyle = "#7ee9ff";
+    ctx.beginPath();
+    ctx.moveTo(-15, -5);
+    ctx.lineTo(-32, 0);
+    ctx.lineTo(-15, 5);
+    ctx.closePath();
+    ctx.fill();
+    ctx.shadowBlur = 0;
   } else if (projectile.type === "plasma") {
     ctx.fillStyle = projectile.color || "#6eeaff";
     ctx.shadowColor = projectile.color || "#6eeaff";
@@ -3349,6 +3396,61 @@ function draw() {
     ctx.beginPath();
     ctx.arc(0, 0, 48, -1.2, 1.7);
     ctx.stroke();
+    ctx.restore();
+  }
+  for (const surge of gameMeta.sharkSurges || []) {
+    const start = surge.startAt || now;
+    const breach = surge.breachAt || start;
+    const end = surge.endsAt || now;
+    const travel = clamp((now - start) / Math.max(1, breach - start), 0, 1);
+    const after = clamp((now - breach) / Math.max(1, end - breach), 0, 1);
+    const x = (surge.x1 || surge.x2) + ((surge.x2 || surge.x1) - (surge.x1 || surge.x2)) * travel;
+    const y = (surge.y1 || surge.y2) + ((surge.y2 || surge.y1) - (surge.y1 || surge.y2)) * travel;
+    const radius = surge.radius || 82;
+    ctx.save();
+    ctx.globalCompositeOperation = "screen";
+    ctx.strokeStyle = "#37cfff88";
+    ctx.lineWidth = 9;
+    ctx.setLineDash([18, 10]);
+    ctx.beginPath();
+    ctx.moveTo(surge.x1, surge.y1);
+    ctx.lineTo(x, y);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = "#102a4f88";
+    ctx.beginPath();
+    ctx.ellipse(x, y + 8, 34, 13, now / 400, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = "#a9f6ffcc";
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(x - 22, y + 3);
+    ctx.quadraticCurveTo(x, y - 19, x + 22, y + 3);
+    ctx.stroke();
+    if (now >= breach) {
+      ctx.translate(surge.x2, surge.y2);
+      ctx.globalAlpha = 1 - after * .45;
+      ctx.fillStyle = "#37cfff35";
+      ctx.beginPath();
+      ctx.arc(0, 0, radius * (.55 + after * .65), 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = "#103a72";
+      ctx.beginPath();
+      ctx.moveTo(0, -54 + after * 18);
+      ctx.quadraticCurveTo(37, -12, 17, 32);
+      ctx.lineTo(-17, 32);
+      ctx.quadraticCurveTo(-37, -12, 0, -54 + after * 18);
+      ctx.fill();
+      ctx.fillStyle = "#dffbff";
+      for (const tx of [-12, -4, 4, 12]) {
+        ctx.beginPath();
+        ctx.moveTo(tx, 5);
+        ctx.lineTo(tx + 4, 19);
+        ctx.lineTo(tx - 4, 19);
+        ctx.closePath();
+        ctx.fill();
+      }
+    }
     ctx.restore();
   }
   for (const decoy of gameMeta.decoys || []) {
