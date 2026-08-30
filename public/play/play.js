@@ -118,7 +118,7 @@ const selectedSkinsKey = "brawlclaui-selected-skins";
 const nameLockedKey = "brawlclaui-name-locked";
 const renameGrantKey = "brawlclaui-can-rename";
 const firstGameCompletedKey = "brawlclaui-first-game-completed";
-const lockedCharacters = new Set(["boomer", "fangli", "pixel", "tank", "bazaar", "ari", "skyfalcon", "seashark", "shoopi", "masterv"]);
+const lockedCharacters = new Set(["boomer", "fangli", "pixel", "tank", "bazaar", "ari", "skyfalcon", "seashark", "shoopi", "tuli", "masterv"]);
 const characterRarities = {
   blaze: "common",
   boomer: "common",
@@ -130,6 +130,7 @@ const characterRarities = {
   skyfalcon: "legendary",
   seashark: "mythic",
   shoopi: "epic",
+  tuli: "epic",
   masterv: "special"
 };
 const rarityCreditCosts = {
@@ -143,7 +144,7 @@ const maxCharacterLevel = 10;
 const skinOrder = ["default", "gold", "shadow"];
 const skinCosts = { default: 0, gold: 120, shadow: 180 };
 const adminOnlyCharacters = new Set(["masterv"]);
-const adminGrantCharacters = ["boomer", "fangli", "pixel", "tank", "bazaar", "ari", "skyfalcon", "seashark", "shoopi", "masterv"];
+const adminGrantCharacters = ["boomer", "fangli", "pixel", "tank", "bazaar", "ari", "skyfalcon", "seashark", "shoopi", "tuli", "masterv"];
 const concealedCharacterLabel = "???";
 const ownerAdminEmail = "zurtzilhagever@gmail.com";
 const adminEmails = new Set(["zurtzilhagever@gmail.com"]);
@@ -470,6 +471,7 @@ const translations = {
     skyFalconName: "Sky Falcon",
     seaSharkName: "Sea Shark",
     shoopiName: "Shoopi",
+    tuliName: "Tuli Tuli",
     mastervName: "Master V",
     blazeDesc: "3 tennis-ball volley",
     boomerDesc: "Boomerang - waits for return",
@@ -486,6 +488,7 @@ const translations = {
     skyFalconDesc: "Gold feather + bomb or clone",
     seaSharkDesc: "Glowing abyss shot + predator breach",
     shoopiDesc: "Binding feathers + wind spiral",
+    tuliDesc: "Ricochet yarn + invincible run",
     mastervDesc: "Admin-only ultimate brawler",
     ultimateReady: "ULTI CHARGED",
     skyBombMode: "BOMB",
@@ -682,6 +685,7 @@ const translations = {
     skyFalconName: "\u05d1\u05d6 \u05d4\u05e9\u05de\u05d9\u05d9\u05dd",
     seaSharkName: "\u05db\u05e8\u05d9\u05e9 \u05d4\u05d9\u05dd",
     shoopiName: "\u05e9\u05d5\u05e4\u05d9",
+    tuliName: "\u05ea\u05d5\u05dc\u05d9 \u05ea\u05d5\u05dc\u05d9",
     mastervName: "Master V",
     blazeDesc: "\u05de\u05d8\u05d7 3 \u05db\u05d3\u05d5\u05e8\u05d9 \u05d8\u05e0\u05d9\u05e1",
     boomerDesc: "\u05d1\u05d5\u05de\u05e8\u05e0\u05d2 - \u05de\u05d7\u05db\u05d4 \u05e9\u05d9\u05d7\u05d6\u05d5\u05e8",
@@ -698,6 +702,7 @@ const translations = {
     skyFalconDesc: "\u05e0\u05d5\u05e6\u05ea \u05d6\u05d4\u05d1 + \u05e4\u05e6\u05e6\u05d4 \u05d0\u05d5 \u05db\u05e4\u05d9\u05dc",
     seaSharkDesc: "\u05d9\u05e8\u05d9\u05d9\u05ea \u05de\u05e6\u05d5\u05dc\u05d5\u05ea + \u05db\u05e8\u05d9\u05e9 \u05d8\u05d5\u05e8\u05e3",
     shoopiDesc: "\u05e0\u05d5\u05e6\u05d5\u05ea \u05db\u05d5\u05d1\u05dc\u05d5\u05ea + \u05e1\u05e4\u05d9\u05e8\u05dc\u05ea \u05e8\u05d5\u05d7",
+    tuliDesc: "\u05db\u05d3\u05d5\u05e8\u05d9 \u05e6\u05de\u05e8 \u05e7\u05d5\u05e4\u05e6\u05d9\u05dd + \u05e8\u05d9\u05e6\u05ea \u05d7\u05ea\u05d5\u05dc",
     mastervDesc: "\u05dc\u05d5\u05d7\u05dd \u05d0\u05d5\u05dc\u05d8\u05d9\u05de\u05d8\u05d9\u05d1\u05d9 \u05dc\u05d0\u05d3\u05de\u05d9\u05df \u05d1\u05dc\u05d1\u05d3",
     ultimateReady: "\u05d9\u05e9 \u05d0\u05d5\u05dc\u05d8\u05d9 \u05d8\u05e2\u05d5\u05df",
     skyBombMode: "\u05e4\u05e6\u05e6\u05d4",
@@ -1405,6 +1410,7 @@ function renderCharacterLocks() {
     else if (label && character === "skyfalcon") label.textContent = t("skyFalconDesc");
     else if (label && character === "seashark") label.textContent = t("seaSharkDesc");
     else if (label && character === "shoopi") label.textContent = t("shoopiDesc");
+    else if (label && character === "tuli") label.textContent = t("tuliDesc");
     else if (label && character === "masterv") label.textContent = t("mastervDesc");
     if (locked && character === selectedCharacter) {
       selectedCharacter = "blaze";
@@ -1456,9 +1462,9 @@ let cloudSaveTimer = 0;
 let lastCloudSnapshot = "";
 let pendingJoinCode = (new URLSearchParams(location.search).get("join") || "").trim().toUpperCase();
 let profileIntroResetApplied = false;
-const characterImages = Object.fromEntries(["blaze", "boomer", "fangli", "pixel", "tank", "bazaar", "ari", "skyfalcon", "seashark", "shoopi", "masterv", "mash"].map(id => {
+const characterImages = Object.fromEntries(["blaze", "boomer", "fangli", "pixel", "tank", "bazaar", "ari", "skyfalcon", "seashark", "shoopi", "tuli", "masterv", "mash"].map(id => {
   const image = new Image();
-  image.src = `/characters/${id}.png?v=${id === "shoopi" ? 103 : id === "seashark" ? 95 : id === "skyfalcon" ? 98 : id === "ari" ? 97 : id === "masterv" ? 77 : 62}`;
+  image.src = `/characters/${id}.png?v=${id === "tuli" ? 105 : id === "shoopi" ? 103 : id === "seashark" ? 95 : id === "skyfalcon" ? 98 : id === "ari" ? 97 : id === "masterv" ? 77 : 62}`;
   return [id, image];
 }));
 const motionState = new Map();
@@ -1750,6 +1756,7 @@ function characterLabel(character) {
   if (character === "skyfalcon") return t("skyFalconName");
   if (character === "seashark") return t("seaSharkName");
   if (character === "shoopi") return t("shoopiName");
+  if (character === "tuli") return t("tuliName");
   if (character === "masterv") return t("mastervName");
   return character.charAt(0).toUpperCase() + character.slice(1);
 }
@@ -2969,6 +2976,14 @@ function drawCharacter(p, motion) {
     ctx.bezierCurveTo(19, -20, 17, 20, 0, 27);
     ctx.bezierCurveTo(-17, 20, -19, -20, 0, -28);
     ctx.closePath();
+  } else if (p.character === "tuli") {
+    ctx.moveTo(0, -30);
+    ctx.lineTo(18, -16);
+    ctx.lineTo(16, 22);
+    ctx.lineTo(0, 29);
+    ctx.lineTo(-16, 22);
+    ctx.lineTo(-18, -16);
+    ctx.closePath();
   } else if (p.character === "masterv") {
     ctx.moveTo(0, -30);
     ctx.lineTo(27, -7);
@@ -3042,6 +3057,28 @@ function drawCharacter(p, motion) {
     ctx.beginPath();
     ctx.arc(-6, -8, 5, 0, Math.PI * 2);
     ctx.arc(6, -8, 5, 0, Math.PI * 2);
+    ctx.fill();
+  } else if (p.character === "tuli") {
+    ctx.fillStyle = "#77d8ff";
+    ctx.beginPath();
+    ctx.moveTo(-12, -19);
+    ctx.lineTo(-20, -35);
+    ctx.lineTo(-4, -25);
+    ctx.moveTo(12, -19);
+    ctx.lineTo(20, -35);
+    ctx.lineTo(4, -25);
+    ctx.fill();
+    ctx.strokeStyle = "#4fd2ff";
+    ctx.lineWidth = 4;
+    ctx.lineCap = "round";
+    ctx.beginPath();
+    ctx.moveTo(12, 14);
+    ctx.quadraticCurveTo(34, 28, 22, 43);
+    ctx.stroke();
+    ctx.fillStyle = "#bff6ff";
+    ctx.beginPath();
+    ctx.arc(-7, -8, 5, 0, Math.PI * 2);
+    ctx.arc(7, -8, 5, 0, Math.PI * 2);
     ctx.fill();
   } else if (p.character === "masterv") {
     ctx.fillStyle = "#ffe66d";
@@ -3297,6 +3334,21 @@ function drawProjectile(projectile, now) {
     ctx.beginPath();
     ctx.arc(-2, 0, 5, -Math.PI / 2, Math.PI / 2);
     ctx.arc(2, 0, 5, Math.PI / 2, Math.PI * 1.5);
+    ctx.stroke();
+  } else if (projectile.type === "yarnBall") {
+    ctx.fillStyle = "#4fc3ff";
+    ctx.shadowColor = "#57dcff";
+    ctx.shadowBlur = 12;
+    ctx.beginPath();
+    ctx.arc(0, 0, projectile.radius || 9, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+    ctx.strokeStyle = "#d7fbff";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(0, 0, 6, -Math.PI * .15, Math.PI * .85);
+    ctx.moveTo(-7, 2);
+    ctx.quadraticCurveTo(0, -7, 8, -1);
     ctx.stroke();
   } else if (projectile.type === "bone") {
     ctx.fillStyle = "#ead9bf";
@@ -3801,6 +3853,19 @@ function draw() {
       ctx.moveTo(-23, 20);
       ctx.quadraticCurveTo(0, 32, 23, 20);
       ctx.stroke();
+    }
+    if (p.catRush) {
+      ctx.strokeStyle = "#40c8ff";
+      ctx.lineWidth = 6;
+      ctx.setLineDash([12, 7]);
+      ctx.beginPath();
+      ctx.arc(0, 0, 39, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle = "#bdf7ff44";
+      ctx.beginPath();
+      ctx.arc(0, 0, 35, 0, Math.PI * 2);
+      ctx.fill();
     }
     if (p.haunted) {
       ctx.strokeStyle = "#8d60ff";
