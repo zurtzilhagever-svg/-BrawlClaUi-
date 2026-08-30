@@ -118,7 +118,7 @@ const selectedSkinsKey = "brawlclaui-selected-skins";
 const nameLockedKey = "brawlclaui-name-locked";
 const renameGrantKey = "brawlclaui-can-rename";
 const firstGameCompletedKey = "brawlclaui-first-game-completed";
-const lockedCharacters = new Set(["boomer", "fangli", "pixel", "tank", "bazaar", "ari", "skyfalcon", "seashark", "masterv"]);
+const lockedCharacters = new Set(["boomer", "fangli", "pixel", "tank", "bazaar", "ari", "skyfalcon", "seashark", "shoopi", "masterv"]);
 const characterRarities = {
   blaze: "common",
   boomer: "common",
@@ -129,6 +129,7 @@ const characterRarities = {
   ari: "mythic",
   skyfalcon: "legendary",
   seashark: "mythic",
+  shoopi: "epic",
   masterv: "special"
 };
 const rarityCreditCosts = {
@@ -142,7 +143,7 @@ const maxCharacterLevel = 10;
 const skinOrder = ["default", "gold", "shadow"];
 const skinCosts = { default: 0, gold: 120, shadow: 180 };
 const adminOnlyCharacters = new Set(["masterv"]);
-const adminGrantCharacters = ["boomer", "fangli", "pixel", "tank", "bazaar", "ari", "skyfalcon", "seashark", "masterv"];
+const adminGrantCharacters = ["boomer", "fangli", "pixel", "tank", "bazaar", "ari", "skyfalcon", "seashark", "shoopi", "masterv"];
 const concealedCharacterLabel = "???";
 const ownerAdminEmail = "zurtzilhagever@gmail.com";
 const adminEmails = new Set(["zurtzilhagever@gmail.com"]);
@@ -445,6 +446,7 @@ const translations = {
     upgradeMax: "Max level",
     upgradeWithPower: "Upgrade with",
     needPower: "Need",
+    chooseAction: "Choose",
     buySkinWithMoney: "Buy",
     chooseSkin: "Choose",
     rarityCommon: "Common",
@@ -467,6 +469,7 @@ const translations = {
     ariName: "Ari",
     skyFalconName: "Sky Falcon",
     seaSharkName: "Sea Shark",
+    shoopiName: "Shoopi",
     mastervName: "Master V",
     blazeDesc: "3 tennis-ball volley",
     boomerDesc: "Boomerang - waits for return",
@@ -482,6 +485,7 @@ const translations = {
     ariDesc: "Claw punch + wall-breaking slash",
     skyFalconDesc: "Gold feather + bomb or clone",
     seaSharkDesc: "Glowing abyss shot + predator breach",
+    shoopiDesc: "Binding feathers + wind spiral",
     mastervDesc: "Admin-only ultimate brawler",
     ultimateReady: "ULTI CHARGED",
     skyBombMode: "BOMB",
@@ -654,6 +658,7 @@ const translations = {
     upgradeMax: "\u05e8\u05de\u05d4 \u05de\u05e7\u05e1\u05d9\u05de\u05dc\u05d9\u05ea",
     upgradeWithPower: "\u05e9\u05d3\u05e8\u05d2 \u05d1-",
     needPower: "\u05e6\u05e8\u05d9\u05da",
+    chooseAction: "\u05d1\u05d7\u05e8",
     buySkinWithMoney: "\u05e7\u05e0\u05d4",
     chooseSkin: "\u05d1\u05d7\u05e8",
     rarityCommon: "\u05e8\u05d2\u05d9\u05dc",
@@ -676,6 +681,7 @@ const translations = {
     ariName: "\u05d0\u05e8\u05d9",
     skyFalconName: "\u05d1\u05d6 \u05d4\u05e9\u05de\u05d9\u05d9\u05dd",
     seaSharkName: "\u05db\u05e8\u05d9\u05e9 \u05d4\u05d9\u05dd",
+    shoopiName: "\u05e9\u05d5\u05e4\u05d9",
     mastervName: "Master V",
     blazeDesc: "\u05de\u05d8\u05d7 3 \u05db\u05d3\u05d5\u05e8\u05d9 \u05d8\u05e0\u05d9\u05e1",
     boomerDesc: "\u05d1\u05d5\u05de\u05e8\u05e0\u05d2 - \u05de\u05d7\u05db\u05d4 \u05e9\u05d9\u05d7\u05d6\u05d5\u05e8",
@@ -691,6 +697,7 @@ const translations = {
     ariDesc: "\u05d0\u05d2\u05e8\u05d5\u05e3 \u05d8\u05d5\u05e4\u05e8 + \u05d7\u05d9\u05ea\u05d5\u05da \u05e9\u05d5\u05d1\u05e8 \u05e7\u05d9\u05e8\u05d5\u05ea",
     skyFalconDesc: "\u05e0\u05d5\u05e6\u05ea \u05d6\u05d4\u05d1 + \u05e4\u05e6\u05e6\u05d4 \u05d0\u05d5 \u05db\u05e4\u05d9\u05dc",
     seaSharkDesc: "\u05d9\u05e8\u05d9\u05d9\u05ea \u05de\u05e6\u05d5\u05dc\u05d5\u05ea + \u05db\u05e8\u05d9\u05e9 \u05d8\u05d5\u05e8\u05e3",
+    shoopiDesc: "\u05e0\u05d5\u05e6\u05d5\u05ea \u05db\u05d5\u05d1\u05dc\u05d5\u05ea + \u05e1\u05e4\u05d9\u05e8\u05dc\u05ea \u05e8\u05d5\u05d7",
     mastervDesc: "\u05dc\u05d5\u05d7\u05dd \u05d0\u05d5\u05dc\u05d8\u05d9\u05de\u05d8\u05d9\u05d1\u05d9 \u05dc\u05d0\u05d3\u05de\u05d9\u05df \u05d1\u05dc\u05d1\u05d3",
     ultimateReady: "\u05d9\u05e9 \u05d0\u05d5\u05dc\u05d8\u05d9 \u05d8\u05e2\u05d5\u05df",
     skyBombMode: "\u05e4\u05e6\u05e6\u05d4",
@@ -1261,19 +1268,20 @@ function syncCharacterPicker() {
   if (characterUpgrade) {
     characterUpgrade.disabled = !unlockedPending || !upgradeCost || economy.powerPoints < upgradeCost;
     const levelText = `${t("levelLabel")} ${level}/${maxCharacterLevel}`;
+    const boostText = `+${(level - 1) * 5}%`;
     characterUpgrade.textContent = !unlockedPending
       ? t("lockedCharacter")
       : !upgradeCost
-        ? `${levelText} · ${t("upgradeMax")}`
+        ? `${levelText} · ${boostText} · ${t("upgradeMax")}`
         : characterUpgrade.disabled
-          ? `${levelText} · ${t("needPower")} ${upgradeCost}`
-          : `${levelText} · ${t("upgradeWithPower")} ${upgradeCost}`;
+          ? `${levelText} · ${boostText} · ${t("needPower")} ${upgradeCost}`
+          : `${levelText} · ${boostText} · ${t("upgradeWithPower")} ${upgradeCost}`;
   }
   if (characterConfirm) {
     const cost = characterUnlockCost(pendingCharacter);
     characterConfirm.disabled = !unlockedPending && !characterCanUnlockWithCredits(pendingCharacter);
     characterConfirm.textContent = unlockedPending
-      ? t("chooseForGame")
+      ? t("chooseAction")
       : adminOnlyCharacters.has(pendingCharacter) || !cost
         ? t("lockedCharacter")
         : characterConfirm.disabled
@@ -1396,6 +1404,7 @@ function renderCharacterLocks() {
     else if (label && character === "ari") label.textContent = t("ariDesc");
     else if (label && character === "skyfalcon") label.textContent = t("skyFalconDesc");
     else if (label && character === "seashark") label.textContent = t("seaSharkDesc");
+    else if (label && character === "shoopi") label.textContent = t("shoopiDesc");
     else if (label && character === "masterv") label.textContent = t("mastervDesc");
     if (locked && character === selectedCharacter) {
       selectedCharacter = "blaze";
@@ -1447,9 +1456,9 @@ let cloudSaveTimer = 0;
 let lastCloudSnapshot = "";
 let pendingJoinCode = (new URLSearchParams(location.search).get("join") || "").trim().toUpperCase();
 let profileIntroResetApplied = false;
-const characterImages = Object.fromEntries(["blaze", "boomer", "fangli", "pixel", "tank", "bazaar", "ari", "skyfalcon", "seashark", "masterv", "mash"].map(id => {
+const characterImages = Object.fromEntries(["blaze", "boomer", "fangli", "pixel", "tank", "bazaar", "ari", "skyfalcon", "seashark", "shoopi", "masterv", "mash"].map(id => {
   const image = new Image();
-  image.src = `/characters/${id}.png?v=${id === "seashark" ? 95 : id === "skyfalcon" ? 98 : id === "ari" ? 97 : id === "masterv" ? 77 : 62}`;
+  image.src = `/characters/${id}.png?v=${id === "shoopi" ? 103 : id === "seashark" ? 95 : id === "skyfalcon" ? 98 : id === "ari" ? 97 : id === "masterv" ? 77 : 62}`;
   return [id, image];
 }));
 const motionState = new Map();
@@ -1740,6 +1749,7 @@ function characterLabel(character) {
   if (character === "ari") return t("ariName");
   if (character === "skyfalcon") return t("skyFalconName");
   if (character === "seashark") return t("seaSharkName");
+  if (character === "shoopi") return t("shoopiName");
   if (character === "masterv") return t("mastervName");
   return character.charAt(0).toUpperCase() + character.slice(1);
 }
@@ -2954,6 +2964,11 @@ function drawCharacter(p, motion) {
     ctx.bezierCurveTo(26, -20, 25, 22, 0, 28);
     ctx.bezierCurveTo(-25, 22, -26, -20, 0, -29);
     ctx.closePath();
+  } else if (p.character === "shoopi") {
+    ctx.moveTo(0, -28);
+    ctx.bezierCurveTo(19, -20, 17, 20, 0, 27);
+    ctx.bezierCurveTo(-17, 20, -19, -20, 0, -28);
+    ctx.closePath();
   } else if (p.character === "masterv") {
     ctx.moveTo(0, -30);
     ctx.lineTo(27, -7);
@@ -3012,6 +3027,22 @@ function drawCharacter(p, motion) {
     ctx.lineTo(10, -39);
     ctx.lineTo(7, -16);
     ctx.stroke();
+  } else if (p.character === "shoopi") {
+    ctx.strokeStyle = "#ffb5e5";
+    ctx.lineWidth = 5;
+    ctx.lineCap = "round";
+    for (const side of [-1, 1]) {
+      ctx.beginPath();
+      ctx.moveTo(side * 8, -5);
+      ctx.quadraticCurveTo(side * 37, -31, side * 54, -17);
+      ctx.quadraticCurveTo(side * 34, -2, side * 13, 8);
+      ctx.stroke();
+    }
+    ctx.fillStyle = "#fff1fb";
+    ctx.beginPath();
+    ctx.arc(-6, -8, 5, 0, Math.PI * 2);
+    ctx.arc(6, -8, 5, 0, Math.PI * 2);
+    ctx.fill();
   } else if (p.character === "masterv") {
     ctx.fillStyle = "#ffe66d";
     ctx.beginPath();
@@ -3381,6 +3412,26 @@ function drawProjectile(projectile, now) {
     ctx.fill();
     ctx.stroke();
     ctx.shadowBlur = 0;
+  } else if (projectile.type === "bindingFeather") {
+    ctx.fillStyle = projectile.color || "#ff83d1";
+    ctx.strokeStyle = "#fff0fb";
+    ctx.shadowColor = "#ff83d1";
+    ctx.shadowBlur = 16;
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.moveTo(24, 0);
+    ctx.quadraticCurveTo(0, -11, -24, -5);
+    ctx.quadraticCurveTo(-8, 2, 24, 0);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    ctx.strokeStyle = "#8fdcff";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(-10, 0);
+    ctx.quadraticCurveTo(4, 9, 19, 1);
+    ctx.stroke();
+    ctx.shadowBlur = 0;
   } else if (projectile.type === "depthShot") {
     const color = projectile.color || "#37cfff";
     const glow = ctx.createRadialGradient(0, 0, 2, 0, 0, 24);
@@ -3569,6 +3620,31 @@ function draw() {
     }
     ctx.restore();
   }
+  for (const burst of gameMeta.windBursts || []) {
+    const radius = burst.radius || 210;
+    const age = clamp((serverNow - (burst.startsAt || serverNow)) / Math.max(1, (burst.endsAt || serverNow) - (burst.startsAt || serverNow)), 0, 1);
+    ctx.save();
+    ctx.translate(burst.x, burst.y);
+    ctx.globalCompositeOperation = "screen";
+    ctx.globalAlpha = 1 - age * .62;
+    ctx.strokeStyle = "#ff9fddcc";
+    ctx.lineWidth = 7;
+    for (let i = 0; i < 3; i++) {
+      ctx.beginPath();
+      ctx.arc(0, 0, radius * (.3 + age * .72) + i * 24, -Math.PI * .72 + i * .18, Math.PI * .72 + i * .18);
+      ctx.stroke();
+    }
+    ctx.strokeStyle = "#bfeaffbb";
+    ctx.lineWidth = 4;
+    for (let i = 0; i < 6; i++) {
+      const angle = now / 360 + i * Math.PI / 3;
+      ctx.beginPath();
+      ctx.moveTo(Math.cos(angle) * 24, Math.sin(angle) * 24);
+      ctx.quadraticCurveTo(Math.cos(angle + .35) * radius * .45, Math.sin(angle + .35) * radius * .45, Math.cos(angle + .75) * radius * (.62 + age * .28), Math.sin(angle + .75) * radius * (.62 + age * .28));
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
   for (const bomb of gameMeta.skyBombs || []) {
     const radius = bomb.radius || 132;
     const pulse = 1 + Math.sin(now / 95) * .08;
@@ -3710,6 +3786,21 @@ function draw() {
       ctx.arc(0, 0, 34, 0, Math.PI * 2);
       ctx.stroke();
       ctx.setLineDash([]);
+    }
+    if (p.rooted) {
+      ctx.strokeStyle = "#ff83d1";
+      ctx.lineWidth = 5;
+      ctx.setLineDash([4, 4]);
+      ctx.beginPath();
+      ctx.arc(0, 0, 33, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.strokeStyle = "#bfeaff";
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(-23, 20);
+      ctx.quadraticCurveTo(0, 32, 23, 20);
+      ctx.stroke();
     }
     if (p.haunted) {
       ctx.strokeStyle = "#8d60ff";

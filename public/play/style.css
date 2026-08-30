@@ -1156,6 +1156,17 @@ input.name-locked {
   text-shadow: 0 1px 4px #061524;
 }
 
+.portrait.shoopi {
+  background: linear-gradient(145deg, #ffd2f0, #f04b9a 48%, #255bd7);
+  border-radius: 50% 50% 14px 14px;
+}
+
+.portrait.shoopi:before {
+  content: "S";
+  color: #fff5fb;
+  text-shadow: 0 1px 4px #5a1240;
+}
+
 .portrait.masterv {
   background: transparent;
   border-radius: 10px;
