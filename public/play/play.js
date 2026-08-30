@@ -4021,12 +4021,13 @@ function draw() {
   }
   for (const projectile of gameMeta.projectiles || []) drawProjectile(projectile, now);
   for (const p of players) {
-    if (p.invisible) continue;
+    const localInvisible = p.invisible && p.id === playerId;
+    if (p.invisible && !localInvisible) continue;
     const motion = motionFor(p, now);
     const concealedMasterV = isConcealedMasterV(p.character);
     ctx.save();
     ctx.translate(p.x, p.y);
-    ctx.globalAlpha = p.alive ? 1 : .38;
+    ctx.globalAlpha = localInvisible ? .32 : p.alive ? 1 : .38;
     ctx.fillStyle = "#0005";
     ctx.beginPath();
     ctx.ellipse(4, 18, 24, 8, 0, 0, Math.PI * 2);
