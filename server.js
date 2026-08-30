@@ -917,6 +917,14 @@ function attack(room, attacker, now) {
   pushProjectile(room, attacker, dx, dy, stats);
 }
 function special(room, p, now) {
+  if (p.character === "gack") {
+    if (p.lastSpecial || now < (p.gackCloakReadyAt || 0)) return;
+    p.invisibleUntil = now + 20000;
+    p.gackCloakReadyAt = now + 24000;
+    p.hitUntil = now + 260;
+    p.lastSpecialAt = now;
+    return;
+  }
   if (p.character === "mash" && p.bot) {
     if (now - (p.lastSpecialAt || 0) < 9000) return;
     p.lastSpecialAt = now;
@@ -935,10 +943,8 @@ function special(room, p, now) {
     return;
   }
   const unlimitedSpecial = hasUnlimitedSpecial(p);
-  const gackCloak = p.character === "gack";
-  if (gackCloak && now < (p.gackCloakReadyAt || 0)) return;
-  if (p.lastSpecial || (!unlimitedSpecial && !gackCloak && (p.specialCharge || 0) < SPECIAL_HITS)) return;
-  if (!unlimitedSpecial && !gackCloak) p.specialCharge = 0;
+  if (p.lastSpecial || (!unlimitedSpecial && (p.specialCharge || 0) < SPECIAL_HITS)) return;
+  if (!unlimitedSpecial) p.specialCharge = 0;
   p.lastSpecialAt = now;
   const stats = statsFor(p.character, p.characterLevel);
   if (p.character === "blaze") {
@@ -1066,10 +1072,6 @@ function special(room, p, now) {
     p.catRushUntil = Math.max(p.catRushUntil || 0, now + 4200);
     p.hitUntil = now + 380;
     dashPlayer(room.arena, p, aim.x * 175, aim.y * 175);
-  } else if (p.character === "gack") {
-    p.invisibleUntil = now + 20000;
-    p.gackCloakReadyAt = now + 24000;
-    p.hitUntil = now + 260;
   } else if (p.character === "masterv") {
     const aim = aimDirection(p);
     dashPlayer(room.arena, p, aim.x * 150, aim.y * 150);
