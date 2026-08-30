@@ -2939,11 +2939,14 @@ function drawCharacter(p, motion) {
   const tint = skinTint(p.skin);
   if (image?.complete && image.naturalWidth) {
     const size = p.giant ? 58 : 48;
+    const crop = p.character === "shoopi"
+      ? { x:image.naturalWidth * .35, y:0, w:image.naturalWidth * .58, h:image.naturalHeight }
+      : { x:0, y:0, w:image.naturalWidth, h:image.naturalHeight };
     ctx.save();
     ctx.beginPath();
     ctx.arc(0, 0, size / 2, 0, Math.PI * 2);
     ctx.clip();
-    ctx.drawImage(image, -size / 2, -size / 2, size, size);
+    ctx.drawImage(image, crop.x, crop.y, crop.w, crop.h, -size / 2, -size / 2, size, size);
     if (tint) {
       ctx.globalCompositeOperation = "source-atop";
       ctx.globalAlpha = p.skin === "gold" ? .34 : .42;

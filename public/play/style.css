@@ -1200,6 +1200,10 @@ input.name-locked {
   box-shadow: 0 4px 10px #0004;
 }
 
+.character-carousel button[data-character="shoopi"] .char-img {
+  object-position: 86% center;
+}
+
 .char-img:not([hidden]) + span {
   grid-column: 2;
 }
