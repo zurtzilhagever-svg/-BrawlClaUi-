@@ -144,7 +144,7 @@ const rarityCreditCosts = {
 const maxCharacterLevel = 10;
 const skinOrder = ["default", "gold", "shadow"];
 const skinCosts = { default: 0, gold: 120, shadow: 180 };
-const adminOnlyCharacters = new Set(["masterv"]);
+const adminOnlyCharacters = new Set(["ari", "skyfalcon", "seashark", "masterv"]);
 const adminGrantCharacters = ["boomer", "fangli", "pixel", "tank", "bazaar", "ari", "skyfalcon", "seashark", "shoopi", "tuli", "gack", "masterv"];
 const concealedCharacterLabel = "???";
 const ownerAdminEmail = "zurtzilhagever@gmail.com";
@@ -353,7 +353,7 @@ const translations = {
   en: {
     brandHebrew: "\u05d1\u05e8\u05d0\u05d5\u05dc \u05db\u05dc\u05d5\u05d5\u05d9",
     title: "BrawkClaUi",
-    subtitle: "Choose a brawler, game mode, and controls.",
+    subtitle: "Survive bot waves, collect core shards, and push toward MASH.",
     profileKicker: "Welcome",
     profileIntro: "Choose your language and player name.",
     profileLanguagePick: "Choose language",
@@ -498,7 +498,7 @@ const translations = {
     skyCloneMode: "CLONE",
     adminOnlyCharacter: "Special character",
     modeLabel: "GAME MODE",
-    modeSurvival: "Survival - bot waves",
+    modeSurvival: "Survival - bot waves only",
     modeBrawl: "Solo Brawl - last alive",
     modeGems: "Gem Grab - 10 gems",
     modeShowdown: "Showdown - last alive",
@@ -518,10 +518,10 @@ const translations = {
     keysAttack: "J ATTACK",
     keysSpecial: "K SUPER",
     create: "CREATE A GAME",
-    playNow: "PLAY NOW",
+    playNow: "START SURVIVAL",
     roomCodeLabel: "ROOM CODE",
     serverCodeLabel: "SERVER CODE",
-    findingPlayers: "Finding players...",
+    findingPlayers: "Preparing bot survival...",
     readyRoom: "Ready - share this code or press Play",
     joinDivider: "OR JOIN A FRIEND",
     codePlaceholder: "ROOM OR SERVER CODE",
@@ -569,7 +569,7 @@ const translations = {
   he: {
     brandHebrew: "\u05d1\u05e8\u05d0\u05d5\u05dc \u05db\u05dc\u05d5\u05d5\u05d9",
     title: "BrawkClaUi",
-    subtitle: "\u05d1\u05d7\u05e8 \u05d3\u05de\u05d5\u05ea, \u05de\u05e6\u05d1 \u05de\u05e9\u05d7\u05e7 \u05d5\u05e9\u05dc\u05d9\u05d8\u05d4.",
+    subtitle: "שרוד גלי בוטים, אסוף שברי ליבה והתקדם אל מאש.",
     profileKicker: "\u05d1\u05e8\u05d5\u05da \u05d4\u05d1\u05d0",
     profileIntro: "\u05d1\u05d7\u05e8 \u05e9\u05e4\u05d4 \u05d5\u05e9\u05dd \u05e9\u05d7\u05e7\u05df.",
     profileLanguagePick: "\u05d1\u05d7\u05e8 \u05e9\u05e4\u05d4",
@@ -714,7 +714,7 @@ const translations = {
     skyCloneMode: "\u05db\u05e4\u05d9\u05dc",
     adminOnlyCharacter: "\u05d3\u05de\u05d5\u05ea \u05de\u05d9\u05d5\u05d7\u05d3\u05ea",
     modeLabel: "\u05de\u05e6\u05d1 \u05de\u05e9\u05d7\u05e7",
-    modeSurvival: "\u05d4\u05d9\u05e9\u05e8\u05d3\u05d5\u05ea - \u05d2\u05dc\u05d9 \u05d1\u05d5\u05d8\u05d9\u05dd",
+    modeSurvival: "הישרדות - גלי בוטים בלבד",
     modeBrawl: "\u05e7\u05e8\u05d1 \u05d9\u05d7\u05d9\u05d3 - \u05d4\u05d0\u05d7\u05e8\u05d5\u05df \u05e9\u05e0\u05e9\u05d0\u05e8",
     modeGems: "\u05d0\u05d9\u05e1\u05d5\u05e3 \u05d9\u05d4\u05dc\u05d5\u05de\u05d9\u05dd - 10 \u05dc\u05e0\u05d9\u05e6\u05d7\u05d5\u05df",
     modeShowdown: "\u05e9\u05d5\u05d0\u05d5\u05d3\u05d0\u05d5\u05df - \u05d4\u05d0\u05d7\u05e8\u05d5\u05df \u05e9\u05e0\u05e9\u05d0\u05e8",
@@ -734,10 +734,10 @@ const translations = {
     keysAttack: "J \u05d4\u05ea\u05e7\u05e4\u05d4",
     keysSpecial: "K \u05e1\u05d5\u05e4\u05e8",
     create: "\u05e6\u05d5\u05e8 \u05de\u05e9\u05d7\u05e7",
-    playNow: "\u05e9\u05d7\u05e7 \u05e2\u05db\u05e9\u05d9\u05d5",
+    playNow: "התחל הישרדות",
     roomCodeLabel: "\u05e7\u05d5\u05d3 \u05d7\u05d3\u05e8",
     serverCodeLabel: "\u05e7\u05d5\u05d3 \u05e9\u05e8\u05ea",
-    findingPlayers: "\u05de\u05d7\u05e4\u05e9 \u05e9\u05d7\u05e7\u05e0\u05d9\u05dd...",
+    findingPlayers: "מכין הישרדות בוטים...",
     readyRoom: "\u05de\u05d5\u05db\u05df - \u05e9\u05ea\u05e3 \u05d0\u05ea \u05d4\u05e7\u05d5\u05d3 \u05d0\u05d5 \u05dc\u05d7\u05e5 \u05e9\u05d7\u05e7",
     joinDivider: "\u05d0\u05d5 \u05d4\u05e6\u05d8\u05e8\u05e3 \u05dc\u05d7\u05d1\u05e8",
     codePlaceholder: "\u05e7\u05d5\u05d3 \u05d7\u05d3\u05e8 \u05d0\u05d5 \u05e9\u05e8\u05ea",
@@ -1252,10 +1252,10 @@ function isConcealedMasterV(character) {
   return character === "masterv" && !canRevealMasterV();
 }
 function characterButtons() {
-  return [...document.querySelectorAll("[data-character]")];
+  return [...document.querySelectorAll("[data-character]")].filter(button => !button.hidden);
 }
 function characterButton(character) {
-  return characterButtons().find(button => button.dataset.character === character);
+  return [...document.querySelectorAll("[data-character]")].find(button => button.dataset.character === character);
 }
 function characterDisplayName(character) {
   const button = characterButton(character);
@@ -1385,6 +1385,12 @@ function markFirstGameCompleted() {
 function renderCharacterLocks() {
   document.querySelectorAll("[data-character]").forEach(button => {
     const character = button.dataset.character;
+    const hiddenForPlayers = adminOnlyCharacters.has(character) && !isAdminUser();
+    button.hidden = hiddenForPlayers;
+    if (hiddenForPlayers && (selectedCharacter === character || pendingCharacter === character)) {
+      selectedCharacter = "blaze";
+      pendingCharacter = selectedCharacter;
+    }
     const rarity = characterRarity(character);
     const locked = !isCharacterUnlocked(character);
     const concealed = character === "masterv" && locked;

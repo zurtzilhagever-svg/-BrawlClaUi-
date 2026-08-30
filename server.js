@@ -39,6 +39,7 @@ const CHARACTERS = {
   grunt: { name: "Grunt", hp: 70, speed: 2.35, damage: 8, range: 44, rate: 760, special: "None" }
 };
 const PLAYABLE_CHARACTERS = new Set(["blaze", "boomer", "fangli", "pixel", "tank", "bazaar", "ari", "skyfalcon", "seashark", "shoopi", "tuli", "gack", "masterv"]);
+const ADMIN_ONLY_CHARACTERS = new Set(["ari", "skyfalcon", "seashark", "masterv"]);
 const MAX_CHARACTER_LEVEL = 10;
 const SKINS = new Set(["default", "gold", "shadow"]);
 const AMMO_RELOAD_MS = {
@@ -485,7 +486,7 @@ function joinPlayer(socket, roomCode, playerId, name, character, accountEmail, i
   if (character && !PLAYABLE_CHARACTERS.has(character)) return ack({ ok:false, error:"Unknown character" });
   detachSocket(socket, roomCode);
   const requestedCharacter = PLAYABLE_CHARACTERS.has(character) ? character : "blaze";
-  const selectedCharacter = requestedCharacter === "masterv" && !isAdminEmail(cleanEmail) ? "blaze" : requestedCharacter;
+  const selectedCharacter = ADMIN_ONLY_CHARACTERS.has(requestedCharacter) && !isAdminEmail(cleanEmail) ? "blaze" : requestedCharacter;
   const selectedLevel = normalizeCharacterLevel(characterLevels?.[selectedCharacter]);
   const selectedSkin = normalizeSkin(skin);
   let p = room.players.get(id);

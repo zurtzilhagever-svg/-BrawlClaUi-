@@ -18,7 +18,7 @@
   <link rel="icon" type="image/png" sizes="48x48" href="/icons/favicon-48.png?v=65">
   <link rel="apple-touch-icon" href="/icons/icon-192.png?v=65">
   <title>בראול כלווי - BrawkClaUi</title>
-  <link rel="stylesheet" href="style.css?v=107">
+  <link rel="stylesheet" href="style.css?v=109">
 </head>
 <body>
   <section id="profile-gate" class="profile-gate" aria-labelledby="profile-title">
@@ -41,7 +41,7 @@
   <section id="lobby" class="lobby">
     <img class="brand-logo" src="/logo.png?v=65" alt="BrawkClaUi">
     <h1 data-i18n="title">BrawkClaUi</h1>
-    <p data-i18n="subtitle">Choose a brawler, game mode, and controls.</p>
+    <p data-i18n="subtitle">שרוד גלי בוטים, אסוף שברי ליבה והתקדם אל מאש.</p>
     <label for="language" data-i18n="languageLabel" hidden>LANGUAGE</label>
     <select id="language" hidden>
       <option value="system" data-i18n="languageSystem">Use device language</option>
@@ -63,6 +63,24 @@
       <span><b data-i18n="creditsLabel">Credits</b><strong id="credits-count">0</strong></span>
       <span><b data-i18n="powerPointsLabel">Power points</b><strong id="power-points-count">0</strong></span>
       <span><b data-i18n="moneyLabel">Money</b><strong id="money-count">0</strong></span>
+    </section>
+    <section class="season-panel" aria-label="Season story">
+      <div class="season-head">
+        <span>עונה 1</span>
+        <strong>הליבה הקפואה</strong>
+      </div>
+      <p>מאש חטף את היוצר ונעל אותו בתוך הליבה. כדי להגיע אליו צריך להביס את ניסוי 001: מלך הכפור.</p>
+      <div class="season-goal">
+        <b>מטרה ראשית</b>
+        <span>הבס את מלך הכפור והשג את שבר הליבה הראשון.</span>
+      </div>
+      <ol class="season-quests">
+        <li>אסוף 3 שברי ליבה</li>
+        <li>עצור את הקרח שמתפשט בזירה</li>
+        <li>הבס 10 יצורי כפור</li>
+        <li>פתח את שער הארמון הקפוא</li>
+        <li>הבס את מלך הכפור</li>
+      </ol>
     </section>
     <label data-i18n="brawlerLabel">YOUR BRAWLER</label>
     <button id="character-picker-open" class="character-picker-open" type="button">
@@ -97,8 +115,8 @@
       </div>
     </section>
 
-    <label data-i18n="modeLabel">GAME MODE</label>
-    <select id="mode">
+    <label data-i18n="modeLabel" hidden>GAME MODE</label>
+    <select id="mode" hidden>
       <option value="survival" data-i18n="modeSurvival">Survival - bot waves</option>
     </select>
 
@@ -272,6 +290,6 @@
   <script src="/socket.io/socket.io.js"></script>
   <script src="/shared/qr-generator.js"></script>
   <script src="/shared/gamepad.js?v=81"></script>
-  <script src="play.js?v=108"></script>
+  <script src="play.js?v=109"></script>
 </body>
 </html>
