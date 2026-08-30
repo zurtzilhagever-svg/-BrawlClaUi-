@@ -413,7 +413,7 @@ function firstWallPoint(arena, x, y, dx, dy, range) {
 function hasUnlimitedSpecial(player) {
   return isAdminEmail(player?.accountEmail);
 }
-function publicPlayer(p) { const now = Date.now(), unlimitedSpecial = hasUnlimitedSpecial(p); updateAmmo(p, now); return { id:p.id, name:p.name, color:p.color, team:p.team, character:p.character, characterName:CHARACTERS[p.character]?.name || p.character, characterLevel:normalizeCharacterLevel(p.characterLevel), skin:normalizeSkin(p.skin), bot:p.bot, admin:isAdminEmail(p.accountEmail), invincible:isOwnerAdminEmail(p.accountEmail) && Boolean(p.invincibleMode), x:p.x, y:p.y, health:Math.ceil(p.health), maxHealth:p.maxHealth, alive:p.alive, ghost:p.ghost, ghostItem:p.ghostItem, ghostItemName:p.ghostItem && GHOST_ITEM_NAMES[p.ghostItem], ghostPing:now < (p.pingUntil || 0), haunted:now < (p.hauntedUntil || 0), walled:now < (p.wallUntil || 0), rooted:now < (p.rootUntil || 0), catRush:now < (p.catRushUntil || 0), inked:now < (p.inkUntil || 0), confused:now < (p.confusedUntil || 0), freezeMeter:Math.round(p.freezeMeter || 0), bazaarBuff:p.bazaarBuff || "", damageBoost:now < (p.damageBoostUntil || 0), goldenArmor:now < (p.goldenArmorUntil || 0), invisible:now < (p.invisibleUntil || 0), giant:now < (p.giantUntil || 0), phase:now < (p.phaseUntil || 0), hit:now < (p.hitUntil || 0), score:p.score, gems:p.gems, coins:p.coins, connected:p.connected, shield:now < p.shieldUntil || now < (p.goldenArmorUntil || 0), cardboardShield:now < (p.cardboardShieldUntil || 0) && (p.cardboardShieldHp || 0) > 0, ammo:p.ammo, ammoMax:AMMO_MAX, ammoReloadMs:ammoReloadMs(p, now), ammoReadyAt:p.nextAmmoAt || now, specialCharge:unlimitedSpecial ? SPECIAL_HITS : p.specialCharge || 0, specialRequired:SPECIAL_HITS, specialReady:unlimitedSpecial || (p.specialCharge || 0) >= SPECIAL_HITS }; }
+function publicPlayer(p) { const now = Date.now(), unlimitedSpecial = hasUnlimitedSpecial(p), gackCloakReady = p.character === "gack" && now >= (p.gackCloakReadyAt || 0); updateAmmo(p, now); return { id:p.id, name:p.name, color:p.color, team:p.team, character:p.character, characterName:CHARACTERS[p.character]?.name || p.character, characterLevel:normalizeCharacterLevel(p.characterLevel), skin:normalizeSkin(p.skin), bot:p.bot, admin:isAdminEmail(p.accountEmail), invincible:isOwnerAdminEmail(p.accountEmail) && Boolean(p.invincibleMode), x:p.x, y:p.y, health:Math.ceil(p.health), maxHealth:p.maxHealth, alive:p.alive, ghost:p.ghost, ghostItem:p.ghostItem, ghostItemName:p.ghostItem && GHOST_ITEM_NAMES[p.ghostItem], ghostPing:now < (p.pingUntil || 0), haunted:now < (p.hauntedUntil || 0), walled:now < (p.wallUntil || 0), rooted:now < (p.rootUntil || 0), catRush:now < (p.catRushUntil || 0), inked:now < (p.inkUntil || 0), confused:now < (p.confusedUntil || 0), freezeMeter:Math.round(p.freezeMeter || 0), bazaarBuff:p.bazaarBuff || "", damageBoost:now < (p.damageBoostUntil || 0), goldenArmor:now < (p.goldenArmorUntil || 0), invisible:now < (p.invisibleUntil || 0), giant:now < (p.giantUntil || 0), phase:now < (p.phaseUntil || 0), hit:now < (p.hitUntil || 0), score:p.score, gems:p.gems, coins:p.coins, connected:p.connected, shield:now < p.shieldUntil || now < (p.goldenArmorUntil || 0), cardboardShield:now < (p.cardboardShieldUntil || 0) && (p.cardboardShieldHp || 0) > 0, ammo:p.ammo, ammoMax:AMMO_MAX, ammoReloadMs:ammoReloadMs(p, now), ammoReadyAt:p.nextAmmoAt || now, specialCharge:unlimitedSpecial || gackCloakReady ? SPECIAL_HITS : p.specialCharge || 0, specialRequired:SPECIAL_HITS, specialReady:unlimitedSpecial || gackCloakReady || (p.specialCharge || 0) >= SPECIAL_HITS }; }
 function players(room) { return [...room.players.values()].map(publicPlayer); }
 function humanPlayers(room) { return [...room.players.values()].filter(player => !player.bot); }
 function teamGems(room, team) { return [...room.players.values()].filter(p => p.team === team).reduce((sum, p) => sum + (p.gems || 0), 0); }
@@ -935,8 +935,10 @@ function special(room, p, now) {
     return;
   }
   const unlimitedSpecial = hasUnlimitedSpecial(p);
-  if (p.lastSpecial || (!unlimitedSpecial && (p.specialCharge || 0) < SPECIAL_HITS)) return;
-  if (!unlimitedSpecial) p.specialCharge = 0;
+  const gackCloak = p.character === "gack";
+  if (gackCloak && now < (p.gackCloakReadyAt || 0)) return;
+  if (p.lastSpecial || (!unlimitedSpecial && !gackCloak && (p.specialCharge || 0) < SPECIAL_HITS)) return;
+  if (!unlimitedSpecial && !gackCloak) p.specialCharge = 0;
   p.lastSpecialAt = now;
   const stats = statsFor(p.character, p.characterLevel);
   if (p.character === "blaze") {
@@ -1065,7 +1067,8 @@ function special(room, p, now) {
     p.hitUntil = now + 380;
     dashPlayer(room.arena, p, aim.x * 175, aim.y * 175);
   } else if (p.character === "gack") {
-    p.invisibleUntil = Math.max(p.invisibleUntil || 0, now + 20000);
+    p.invisibleUntil = now + 20000;
+    p.gackCloakReadyAt = now + 24000;
     p.hitUntil = now + 260;
   } else if (p.character === "masterv") {
     const aim = aimDirection(p);
