@@ -1178,6 +1178,17 @@ input.name-locked {
   text-shadow: 0 1px 4px #061d44;
 }
 
+.portrait.gack {
+  background: linear-gradient(145deg, #d8ffc0, #74ff3f 42%, #20311f);
+  border-radius: 48% 48% 18px 18px;
+}
+
+.portrait.gack:before {
+  content: "G";
+  color: #09200d;
+  text-shadow: 0 1px 3px #c8ff9c;
+}
+
 .portrait.masterv {
   background: transparent;
   border-radius: 10px;

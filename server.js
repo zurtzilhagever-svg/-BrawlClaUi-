@@ -33,11 +33,12 @@ const CHARACTERS = {
   seashark: { name: "\u05db\u05e8\u05d9\u05e9 \u05d4\u05d9\u05dd", hp: 124, speed: 3.78, damage: 17, range: 440, rate: 680, special: "Abyss Predator" },
   shoopi: { name: "\u05e9\u05d5\u05e4\u05d9", hp: 86, speed: 4.32, damage: 13, range: 585, rate: 720, special: "Wind Spiral" },
   tuli: { name: "\u05ea\u05d5\u05dc\u05d9 \u05ea\u05d5\u05dc\u05d9", hp: 94, speed: 4.45, damage: 12, range: 520, rate: 610, special: "Invincible Cat Run" },
+  gack: { name: "\u05d2\u05d0\u05e7", hp: 132, speed: 3.65, damage: 16, range: 430, rate: 760, special: "Chameleon Cloak" },
   masterv: { name: "Master V", hp: 128, speed: 3.9, damage: 18, range: 470, rate: 620, special: "Ultimate Master" },
   mash: { name: "\u05de\u05d0\u05e9", hp: 78, speed: 2.8, damage: 7, range: 295, rate: 1050, special: "Star Drill" },
   grunt: { name: "Grunt", hp: 70, speed: 2.35, damage: 8, range: 44, rate: 760, special: "None" }
 };
-const PLAYABLE_CHARACTERS = new Set(["blaze", "boomer", "fangli", "pixel", "tank", "bazaar", "ari", "skyfalcon", "seashark", "shoopi", "tuli", "masterv"]);
+const PLAYABLE_CHARACTERS = new Set(["blaze", "boomer", "fangli", "pixel", "tank", "bazaar", "ari", "skyfalcon", "seashark", "shoopi", "tuli", "gack", "masterv"]);
 const MAX_CHARACTER_LEVEL = 10;
 const SKINS = new Set(["default", "gold", "shadow"]);
 const AMMO_RELOAD_MS = {
@@ -53,6 +54,7 @@ const AMMO_RELOAD_MS = {
   seashark: 1450,
   shoopi: 1350,
   tuli: 1180,
+  gack: 1500,
   masterv: 1250,
   grunt: 1300
 };
@@ -326,7 +328,7 @@ function randomSpot(arena) {
 }
 function makeItems(arena, amount, type) { return Array.from({ length: amount }, () => ({ ...randomSpot(arena), type })); }
 function gameFor(mode, arena = arenaFor(mode)) { return { startedAt: Date.now(), winner: null, winnerTeam: null, rewardCharacter: null, items: mode === "gems" ? makeItems(arena, 12, "gem") : mode === "coins" ? makeItems(arena, 18, "coin") : [], projectiles: [], pixelZones: [], iceZones: [], bazaarBoxes: [], skyBombs: [], sharkSurges: [], windBursts: [], fireTrails: [], decoys: [], nextProjectileId: 0, nextDecoyId: 0, zoneScore: { red: 0, blue: 0 }, safeRadius: arenaSafeRadius(arena), nextItemAt: 0, nextBotAt: 0, botSerial: 0, wave: 0 }; }
-function playerRadius(p) { const base = p.character === "ari" ? 27 : p.character === "skyfalcon" ? 21 : p.character === "seashark" ? 25 : p.character === "shoopi" ? 20 : p.character === "tuli" ? 21 : p.character === "tank" ? 26 : p.character === "grunt" ? 18 : p.character === "mash" ? 22 : 23; return Date.now() < (p.giantUntil || 0) ? base * 1.2 : base; }
+function playerRadius(p) { const base = p.character === "ari" ? 27 : p.character === "skyfalcon" ? 21 : p.character === "seashark" ? 25 : p.character === "shoopi" ? 20 : p.character === "tuli" ? 21 : p.character === "gack" ? 26 : p.character === "tank" ? 26 : p.character === "grunt" ? 18 : p.character === "mash" ? 22 : 23; return Date.now() < (p.giantUntil || 0) ? base * 1.2 : base; }
 function movePlayer(arena, p, dx, dy) {
   const radius = playerRadius(p);
   const nextX = clamp(p.x + dx, 28, arena.width - 28);
@@ -804,6 +806,7 @@ function pushProjectile(room, attacker, dx, dy, stats, options = {}) {
     bounces:options.bounces || 0,
     freezeBuild:options.freezeBuild || 0,
     rootMs:options.rootMs || 0,
+    pierce:Boolean(options.pierce),
     returnSpeed:options.returnSpeed || options.speed || PROJECTILE_SPEED,
     returning:Boolean(options.returning),
     hitIds:[]
@@ -889,6 +892,10 @@ function attack(room, attacker, now) {
   }
   if (attacker.character === "tuli") {
     pushProjectile(room, attacker, dx, dy, stats, { type:"yarnBall", color:"#43b7ff", start:34, speed:17, radius:9, bounces:3, range:stats.range, damage:stats.damage });
+    return;
+  }
+  if (attacker.character === "gack") {
+    pushProjectile(room, attacker, dx, dy, stats, { type:"gackWave", color:"#76ff47", start:38, speed:15, radius:24, range:stats.range, damage:stats.damage, pierce:true });
     return;
   }
   if (attacker.character === "mash") {
@@ -1056,6 +1063,9 @@ function special(room, p, now) {
     p.catRushUntil = Math.max(p.catRushUntil || 0, now + 4200);
     p.hitUntil = now + 380;
     dashPlayer(room.arena, p, aim.x * 175, aim.y * 175);
+  } else if (p.character === "gack") {
+    p.invisibleUntil = Math.max(p.invisibleUntil || 0, now + 20000);
+    p.hitUntil = now + 260;
   } else if (p.character === "masterv") {
     const aim = aimDirection(p);
     dashPlayer(room.arena, p, aim.x * 150, aim.y * 150);
@@ -1178,6 +1188,8 @@ function updateProjectiles(room) {
         projectile.hitIds.push(victim.id);
         projectile.returning = true;
         projectile.remaining = Infinity;
+      } else if (projectile.pierce) {
+        projectile.hitIds.push(victim.id);
       } else {
         room.game.projectiles.splice(i, 1);
       }

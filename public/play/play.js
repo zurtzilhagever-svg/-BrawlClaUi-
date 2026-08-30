@@ -118,7 +118,7 @@ const selectedSkinsKey = "brawlclaui-selected-skins";
 const nameLockedKey = "brawlclaui-name-locked";
 const renameGrantKey = "brawlclaui-can-rename";
 const firstGameCompletedKey = "brawlclaui-first-game-completed";
-const lockedCharacters = new Set(["boomer", "fangli", "pixel", "tank", "bazaar", "ari", "skyfalcon", "seashark", "shoopi", "tuli", "masterv"]);
+const lockedCharacters = new Set(["boomer", "fangli", "pixel", "tank", "bazaar", "ari", "skyfalcon", "seashark", "shoopi", "tuli", "gack", "masterv"]);
 const characterRarities = {
   blaze: "common",
   boomer: "common",
@@ -131,6 +131,7 @@ const characterRarities = {
   seashark: "mythic",
   shoopi: "epic",
   tuli: "epic",
+  gack: "mythic",
   masterv: "special"
 };
 const rarityCreditCosts = {
@@ -144,7 +145,7 @@ const maxCharacterLevel = 10;
 const skinOrder = ["default", "gold", "shadow"];
 const skinCosts = { default: 0, gold: 120, shadow: 180 };
 const adminOnlyCharacters = new Set(["masterv"]);
-const adminGrantCharacters = ["boomer", "fangli", "pixel", "tank", "bazaar", "ari", "skyfalcon", "seashark", "shoopi", "tuli", "masterv"];
+const adminGrantCharacters = ["boomer", "fangli", "pixel", "tank", "bazaar", "ari", "skyfalcon", "seashark", "shoopi", "tuli", "gack", "masterv"];
 const concealedCharacterLabel = "???";
 const ownerAdminEmail = "zurtzilhagever@gmail.com";
 const adminEmails = new Set(["zurtzilhagever@gmail.com"]);
@@ -472,6 +473,7 @@ const translations = {
     seaSharkName: "Sea Shark",
     shoopiName: "Shoopi",
     tuliName: "Tuli Tuli",
+    gackName: "Gack",
     mastervName: "Master V",
     blazeDesc: "3 tennis-ball volley",
     boomerDesc: "Boomerang - waits for return",
@@ -489,6 +491,7 @@ const translations = {
     seaSharkDesc: "Glowing abyss shot + predator breach",
     shoopiDesc: "Binding feathers + wind spiral",
     tuliDesc: "Ricochet yarn + invincible run",
+    gackDesc: "Piercing tail wave + 20s invisibility",
     mastervDesc: "Admin-only ultimate brawler",
     ultimateReady: "ULTI READY",
     skyBombMode: "BOMB",
@@ -686,6 +689,7 @@ const translations = {
     seaSharkName: "\u05db\u05e8\u05d9\u05e9 \u05d4\u05d9\u05dd",
     shoopiName: "\u05e9\u05d5\u05e4\u05d9",
     tuliName: "\u05ea\u05d5\u05dc\u05d9 \u05ea\u05d5\u05dc\u05d9",
+    gackName: "\u05d2\u05d0\u05e7",
     mastervName: "Master V",
     blazeDesc: "\u05de\u05d8\u05d7 3 \u05db\u05d3\u05d5\u05e8\u05d9 \u05d8\u05e0\u05d9\u05e1",
     boomerDesc: "\u05d1\u05d5\u05de\u05e8\u05e0\u05d2 - \u05de\u05d7\u05db\u05d4 \u05e9\u05d9\u05d7\u05d6\u05d5\u05e8",
@@ -703,6 +707,7 @@ const translations = {
     seaSharkDesc: "\u05d9\u05e8\u05d9\u05d9\u05ea \u05de\u05e6\u05d5\u05dc\u05d5\u05ea + \u05db\u05e8\u05d9\u05e9 \u05d8\u05d5\u05e8\u05e3",
     shoopiDesc: "\u05e0\u05d5\u05e6\u05d5\u05ea \u05db\u05d5\u05d1\u05dc\u05d5\u05ea + \u05e1\u05e4\u05d9\u05e8\u05dc\u05ea \u05e8\u05d5\u05d7",
     tuliDesc: "\u05db\u05d3\u05d5\u05e8\u05d9 \u05e6\u05de\u05e8 \u05e7\u05d5\u05e4\u05e6\u05d9\u05dd + \u05e8\u05d9\u05e6\u05ea \u05d7\u05ea\u05d5\u05dc",
+    gackDesc: "\u05d2\u05dc \u05d6\u05e0\u05d1 \u05d7\u05d5\u05d3\u05e8 + \u05d4\u05e1\u05d5\u05d5\u05d0\u05d4 20 \u05e9\u05e0\u05d9\u05d5\u05ea",
     mastervDesc: "\u05dc\u05d5\u05d7\u05dd \u05d0\u05d5\u05dc\u05d8\u05d9\u05de\u05d8\u05d9\u05d1\u05d9 \u05dc\u05d0\u05d3\u05de\u05d9\u05df \u05d1\u05dc\u05d1\u05d3",
     ultimateReady: "\u05d9\u05e9 \u05d0\u05d5\u05dc\u05d8\u05d9",
     skyBombMode: "\u05e4\u05e6\u05e6\u05d4",
@@ -1411,6 +1416,7 @@ function renderCharacterLocks() {
     else if (label && character === "seashark") label.textContent = t("seaSharkDesc");
     else if (label && character === "shoopi") label.textContent = t("shoopiDesc");
     else if (label && character === "tuli") label.textContent = t("tuliDesc");
+    else if (label && character === "gack") label.textContent = t("gackDesc");
     else if (label && character === "masterv") label.textContent = t("mastervDesc");
     if (locked && character === selectedCharacter) {
       selectedCharacter = "blaze";
@@ -1462,15 +1468,17 @@ let cloudSaveTimer = 0;
 let lastCloudSnapshot = "";
 let pendingJoinCode = (new URLSearchParams(location.search).get("join") || "").trim().toUpperCase();
 let profileIntroResetApplied = false;
-const characterImages = Object.fromEntries(["blaze", "boomer", "fangli", "pixel", "tank", "bazaar", "ari", "skyfalcon", "seashark", "shoopi", "tuli", "masterv", "mash"].map(id => {
+const characterImages = Object.fromEntries(["blaze", "boomer", "fangli", "pixel", "tank", "bazaar", "ari", "skyfalcon", "seashark", "shoopi", "tuli", "gack", "masterv", "mash"].map(id => {
   const image = new Image();
-  image.src = `/characters/${id}.png?v=${id === "tuli" ? 105 : id === "shoopi" ? 103 : id === "seashark" ? 95 : id === "skyfalcon" ? 98 : id === "ari" ? 97 : id === "masterv" ? 77 : 62}`;
+  image.src = `/characters/${id}.png?v=${id === "gack" ? 107 : id === "tuli" ? 107 : id === "shoopi" ? 103 : id === "seashark" ? 95 : id === "skyfalcon" ? 98 : id === "ari" ? 97 : id === "masterv" ? 77 : 62}`;
   return [id, image];
 }));
 const entryVehicleImages = {
-  tuli: new Image()
+  tuli: new Image(),
+  gack: new Image()
 };
 entryVehicleImages.tuli.src = "/characters/tuli-car.png?v=105";
+entryVehicleImages.gack.src = "/characters/gack-car.png?v=107";
 const motionState = new Map();
 const entryTransformState = new Map();
 const fallbackArena = { width: 1200, height: 900, zoneRadius: 95, obstacles: [], bushes: [], spawnPoints: [] };
@@ -1762,6 +1770,7 @@ function characterLabel(character) {
   if (character === "seashark") return t("seaSharkName");
   if (character === "shoopi") return t("shoopiName");
   if (character === "tuli") return t("tuliName");
+  if (character === "gack") return t("gackName");
   if (character === "masterv") return t("mastervName");
   return character.charAt(0).toUpperCase() + character.slice(1);
 }
@@ -2993,6 +3002,14 @@ function drawCharacter(p, motion) {
     ctx.lineTo(-16, 22);
     ctx.lineTo(-18, -16);
     ctx.closePath();
+  } else if (p.character === "gack") {
+    ctx.moveTo(0, -30);
+    ctx.lineTo(22, -18);
+    ctx.lineTo(25, 19);
+    ctx.lineTo(0, 30);
+    ctx.lineTo(-25, 19);
+    ctx.lineTo(-22, -18);
+    ctx.closePath();
   } else if (p.character === "masterv") {
     ctx.moveTo(0, -30);
     ctx.lineTo(27, -7);
@@ -3088,6 +3105,20 @@ function drawCharacter(p, motion) {
     ctx.beginPath();
     ctx.arc(-7, -8, 5, 0, Math.PI * 2);
     ctx.arc(7, -8, 5, 0, Math.PI * 2);
+    ctx.fill();
+  } else if (p.character === "gack") {
+    ctx.strokeStyle = "#98ff62";
+    ctx.lineWidth = 5;
+    ctx.lineCap = "round";
+    ctx.beginPath();
+    ctx.moveTo(-13, 13);
+    ctx.quadraticCurveTo(-48, 20, -54, -12);
+    ctx.quadraticCurveTo(-31, -5, -19, -17);
+    ctx.stroke();
+    ctx.fillStyle = "#b8ff7a";
+    ctx.beginPath();
+    ctx.arc(-7, -7, 4, 0, Math.PI * 2);
+    ctx.arc(7, -7, 4, 0, Math.PI * 2);
     ctx.fill();
   } else if (p.character === "masterv") {
     ctx.fillStyle = "#ffe66d";
@@ -3493,6 +3524,23 @@ function drawProjectile(projectile, now) {
     ctx.quadraticCurveTo(4, 9, 19, 1);
     ctx.stroke();
     ctx.shadowBlur = 0;
+  } else if (projectile.type === "gackWave") {
+    const color = projectile.color || "#76ff47";
+    ctx.globalCompositeOperation = "screen";
+    ctx.fillStyle = `${color}66`;
+    ctx.strokeStyle = "#d9ffc8";
+    ctx.shadowColor = color;
+    ctx.shadowBlur = 18;
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(28, 0);
+    ctx.quadraticCurveTo(0, -25, -34, -13);
+    ctx.quadraticCurveTo(-15, 0, -34, 13);
+    ctx.quadraticCurveTo(0, 25, 28, 0);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    ctx.shadowBlur = 0;
   } else if (projectile.type === "depthShot") {
     const color = projectile.color || "#37cfff";
     const glow = ctx.createRadialGradient(0, 0, 2, 0, 0, 24);
@@ -3581,7 +3629,7 @@ function drawProjectile(projectile, now) {
 }
 
 function entryTransformProgress(p, now) {
-  if ((p.character !== "shoopi" && p.character !== "tuli") || !p.alive) {
+  if ((p.character !== "shoopi" && p.character !== "tuli" && p.character !== "gack") || !p.alive) {
     entryTransformState.delete(p.id);
     return 1;
   }
@@ -3675,12 +3723,45 @@ function drawTuliCar(progress) {
   ctx.restore();
 }
 
+function drawGackTruck(progress) {
+  const image = entryVehicleImages.gack;
+  ctx.save();
+  ctx.scale(1 - progress * .08, 1 - progress * .14);
+  if (image?.complete && image.naturalWidth) {
+    ctx.save();
+    ctx.beginPath();
+    ctx.roundRect?.(-45, -25, 90, 50, 9);
+    if (!ctx.roundRect) drawRoundedRect(-45, -25, 90, 50, 9);
+    ctx.clip();
+    ctx.drawImage(image, -45, -25, 90, 50);
+    ctx.restore();
+  } else {
+    ctx.fillStyle = "#5d8f42";
+    drawRoundedRect(-42, -17, 84, 34, 7);
+    ctx.fill();
+    ctx.fillStyle = "#a3ff65";
+    ctx.fillRect(8, -13, 19, 11);
+  }
+  ctx.fillStyle = "#151d18";
+  ctx.beginPath();
+  ctx.arc(-25, 18, 9, 0, Math.PI * 2);
+  ctx.arc(26, 18, 9, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = "#83ff4e";
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.arc(39, 0, 20, -1.2, 1.2);
+  ctx.stroke();
+  ctx.restore();
+}
+
 function drawEntryTransform(p, progress, now) {
   ctx.save();
   ctx.globalAlpha = 1 - Math.max(0, progress - .65) / .35;
   ctx.rotate(Math.atan2(p.aimY || 0, p.aimX || 1));
   if (p.character === "shoopi") drawShoopiJet(progress, now);
   else if (p.character === "tuli") drawTuliCar(progress);
+  else if (p.character === "gack") drawGackTruck(progress);
   ctx.restore();
   if (progress > .55) {
     ctx.save();
@@ -3932,11 +4013,12 @@ function draw() {
   }
   for (const projectile of gameMeta.projectiles || []) drawProjectile(projectile, now);
   for (const p of players) {
+    if (p.invisible && p.id !== playerId) continue;
     const motion = motionFor(p, now);
     const concealedMasterV = isConcealedMasterV(p.character);
     ctx.save();
     ctx.translate(p.x, p.y);
-    ctx.globalAlpha = p.alive ? p.invisible ? .24 : 1 : .38;
+    ctx.globalAlpha = p.alive ? p.invisible ? .22 : 1 : .38;
     ctx.fillStyle = "#0005";
     ctx.beginPath();
     ctx.ellipse(4, 18, 24, 8, 0, 0, Math.PI * 2);
