@@ -724,7 +724,7 @@ function resetHumanForGame(room, player) {
 function end(room, winner) { if (room.game.winner || !winner) return; room.game.winner = winner.id; broadcast(room); }
 function endTeam(room, team) { if (room.game.winner || room.game.winnerTeam) return; room.game.winnerTeam = team; broadcast(room); }
 function kill(room, victim, killer) {
-  if (protectInvinciblePlayer(victim)) return;
+  if (hasFullInvincibility(victim)) return;
   if (!victim.alive) return; victim.alive = false; victim.health = 0; victim.diedAt = Date.now();
   victim.specialCharge = 0;
   if (victim.bot) {
@@ -772,6 +772,7 @@ function pushProjectile(room, attacker, dx, dy, stats, options = {}) {
     traveled:0,
     bounces:options.bounces || 0,
     freezeBuild:options.freezeBuild || 0,
+    rootMs:options.rootMs || 0,
     returnSpeed:options.returnSpeed || options.speed || PROJECTILE_SPEED,
     returning:Boolean(options.returning),
     hitIds:[]

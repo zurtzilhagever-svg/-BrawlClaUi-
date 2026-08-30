@@ -1167,6 +1167,17 @@ input.name-locked {
   text-shadow: 0 1px 4px #5a1240;
 }
 
+.portrait.tuli {
+  background: linear-gradient(145deg, #bff7ff, #2f9dff 48%, #162c67);
+  border-radius: 50% 50% 16px 16px;
+}
+
+.portrait.tuli:before {
+  content: "T";
+  color: #eefcff;
+  text-shadow: 0 1px 4px #061d44;
+}
+
 .portrait.masterv {
   background: transparent;
   border-radius: 10px;
