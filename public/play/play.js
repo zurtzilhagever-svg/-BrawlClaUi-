@@ -1467,7 +1467,12 @@ const characterImages = Object.fromEntries(["blaze", "boomer", "fangli", "pixel"
   image.src = `/characters/${id}.png?v=${id === "tuli" ? 105 : id === "shoopi" ? 103 : id === "seashark" ? 95 : id === "skyfalcon" ? 98 : id === "ari" ? 97 : id === "masterv" ? 77 : 62}`;
   return [id, image];
 }));
+const entryVehicleImages = {
+  tuli: new Image()
+};
+entryVehicleImages.tuli.src = "/characters/tuli-car.png?v=105";
 const motionState = new Map();
+const entryTransformState = new Map();
 const fallbackArena = { width: 1200, height: 900, zoneRadius: 95, obstacles: [], bushes: [], spawnPoints: [] };
 const viewport = { width: 800, height: 600 };
 function clamp(n, min, max) {
@@ -3571,6 +3576,117 @@ function drawProjectile(projectile, now) {
   ctx.restore();
 }
 
+function entryTransformProgress(p, now) {
+  if ((p.character !== "shoopi" && p.character !== "tuli") || !p.alive) {
+    entryTransformState.delete(p.id);
+    return 1;
+  }
+  const previous = entryTransformState.get(p.id);
+  const movedSpawn = previous && now - previous.startedAt < 2200 ? Math.hypot((p.x || 0) - previous.x, (p.y || 0) - previous.y) > 180 : false;
+  if (!previous || previous.character !== p.character || !previous.alive || movedSpawn) {
+    entryTransformState.set(p.id, { character:p.character, alive:true, x:p.x || 0, y:p.y || 0, startedAt:now });
+    return 0;
+  }
+  previous.alive = true;
+  return clamp((now - previous.startedAt) / 1800, 0, 1);
+}
+
+function drawShoopiJet(progress, now) {
+  const lift = Math.sin(now / 90) * 2;
+  ctx.save();
+  ctx.translate(0, lift);
+  ctx.scale(1 - progress * .12, 1 - progress * .18);
+  ctx.fillStyle = "#ff5aa8";
+  ctx.strokeStyle = "#ffc7ef";
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(31, 0);
+  ctx.lineTo(-16, -14);
+  ctx.lineTo(-28, 0);
+  ctx.lineTo(-16, 14);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+  ctx.fillStyle = "#ffd8f2";
+  ctx.beginPath();
+  ctx.moveTo(-5, -8);
+  ctx.lineTo(-39, -25);
+  ctx.lineTo(-23, -2);
+  ctx.closePath();
+  ctx.moveTo(-5, 8);
+  ctx.lineTo(-39, 25);
+  ctx.lineTo(-23, 2);
+  ctx.closePath();
+  ctx.fill();
+  ctx.fillStyle = "#91ecff";
+  ctx.beginPath();
+  ctx.ellipse(9, -3, 12, 6, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = "#ffb0df";
+  ctx.beginPath();
+  ctx.moveTo(-28, -1);
+  ctx.lineTo(-45, -12);
+  ctx.lineTo(-36, 0);
+  ctx.lineTo(-45, 12);
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
+}
+
+function drawTuliCar(progress) {
+  const image = entryVehicleImages.tuli;
+  ctx.save();
+  ctx.scale(1 - progress * .08, 1 - progress * .16);
+  if (image?.complete && image.naturalWidth) {
+    ctx.save();
+    ctx.beginPath();
+    ctx.roundRect?.(-38, -22, 76, 44, 9);
+    if (!ctx.roundRect) drawRoundedRect(-38, -22, 76, 44, 9);
+    ctx.clip();
+    ctx.drawImage(image, -38, -22, 76, 44);
+    ctx.restore();
+  } else {
+    ctx.fillStyle = "#208cff";
+    drawRoundedRect(-35, -15, 70, 30, 8);
+    ctx.fill();
+    ctx.fillStyle = "#7be9ff";
+    ctx.beginPath();
+    ctx.moveTo(-10, -15);
+    ctx.lineTo(-18, -29);
+    ctx.lineTo(1, -17);
+    ctx.moveTo(10, -15);
+    ctx.lineTo(18, -29);
+    ctx.lineTo(-1, -17);
+    ctx.fill();
+  }
+  ctx.fillStyle = "#11234d";
+  ctx.beginPath();
+  ctx.arc(-21, 16, 8, 0, Math.PI * 2);
+  ctx.arc(23, 16, 8, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = "#9ef6ff";
+  ctx.beginPath();
+  ctx.arc(26, -2, 5, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+}
+
+function drawEntryTransform(p, progress, now) {
+  ctx.save();
+  ctx.globalAlpha = 1 - Math.max(0, progress - .65) / .35;
+  ctx.rotate(Math.atan2(p.aimY || 0, p.aimX || 1));
+  if (p.character === "shoopi") drawShoopiJet(progress, now);
+  else if (p.character === "tuli") drawTuliCar(progress);
+  ctx.restore();
+  if (progress > .55) {
+    ctx.save();
+    ctx.globalAlpha = Math.min(1, (progress - .55) / .45);
+    ctx.scale(.72 + progress * .28, .72 + progress * .28);
+    drawCharacter(p, { moving:false, bob:0, leg:0 });
+    ctx.restore();
+  }
+}
+
 function draw() {
   const now = performance.now();
   const serverNow = Date.now();
@@ -3821,7 +3937,8 @@ function draw() {
     ctx.beginPath();
     ctx.ellipse(4, 18, 24, 8, 0, 0, Math.PI * 2);
     ctx.fill();
-    const imageCharacter = concealedMasterV ? true : drawCharacter(p, motion);
+    const transformProgress = entryTransformProgress(p, now);
+    const imageCharacter = concealedMasterV ? true : transformProgress < 1 ? (drawEntryTransform(p, transformProgress, now), true) : drawCharacter(p, motion);
     if (concealedMasterV) drawPixelatedConcealment(p, now);
     if (p.team) {
       ctx.strokeStyle = p.team === "red" ? "#ff606c" : "#55bfff";
