@@ -962,12 +962,15 @@ function special(room, p, now) {
       p.hitUntil = now + 260;
     }
   } else if (p.character === "seashark") {
-    const aim = aimDirection(p), target = firstTargetOnLine(room, p, aim.x, aim.y, 520);
-    const endX = target ? target.x : p.x + aim.x * 430;
-    const endY = target ? target.y : p.y + aim.y * 430;
+    const aim = aimDirection(p), target = nearestEnemy(room, p);
+    const targetDistance = target ? Math.hypot(target.x - p.x, target.y - p.y) : Infinity;
+    const lockedTarget = targetDistance <= 560 ? target : null;
+    const endX = lockedTarget ? lockedTarget.x : p.x + aim.x * 430;
+    const endY = lockedTarget ? lockedTarget.y : p.y + aim.y * 430;
     room.game.sharkSurges ||= [];
     room.game.sharkSurges.push({
       ownerId:p.id,
+      targetId:lockedTarget?.id || null,
       team:p.team,
       bot:Boolean(p.bot),
       x1:p.x,
@@ -1196,6 +1199,11 @@ function updateSharkSurges(room, now) {
   room.game.sharkSurges ||= [];
   room.game.sharkSurges = room.game.sharkSurges.filter(surge => now < surge.endsAt);
   for (const surge of room.game.sharkSurges) {
+    const target = surge.targetId ? room.players.get(surge.targetId) : null;
+    if (!surge.hitDone && target?.alive && target.connected) {
+      surge.x2 = clamp(target.x, 55, room.arena.width - 55);
+      surge.y2 = clamp(target.y, 55, room.arena.height - 55);
+    }
     if (surge.hitDone || now < surge.breachAt) continue;
     surge.hitDone = true;
     const owner = room.players.get(surge.ownerId) || null;
@@ -1213,8 +1221,9 @@ function updateSharkSurges(room, now) {
 }
 function nearestEnemy(room, source) {
   let selected = null, distance = Infinity;
+  const sourceId = source.ownerId || source.id;
   for (const player of room.players.values()) {
-    if (!player.alive || !player.connected || player.id === source.ownerId) continue;
+    if (!player.alive || !player.connected || player.id === sourceId) continue;
     if (isTeamCombatMode(room) && source.team && player.team === source.team) continue;
     if (room.mode === "survival" && Boolean(player.bot) === source.bot) continue;
     const d = Math.hypot(player.x - source.x, player.y - source.y);
