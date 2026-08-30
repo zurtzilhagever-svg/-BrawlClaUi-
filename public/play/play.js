@@ -490,7 +490,7 @@ const translations = {
     shoopiDesc: "Binding feathers + wind spiral",
     tuliDesc: "Ricochet yarn + invincible run",
     mastervDesc: "Admin-only ultimate brawler",
-    ultimateReady: "ULTI CHARGED",
+    ultimateReady: "ULTI READY",
     skyBombMode: "BOMB",
     skyCloneMode: "CLONE",
     adminOnlyCharacter: "Special character",
@@ -704,7 +704,7 @@ const translations = {
     shoopiDesc: "\u05e0\u05d5\u05e6\u05d5\u05ea \u05db\u05d5\u05d1\u05dc\u05d5\u05ea + \u05e1\u05e4\u05d9\u05e8\u05dc\u05ea \u05e8\u05d5\u05d7",
     tuliDesc: "\u05db\u05d3\u05d5\u05e8\u05d9 \u05e6\u05de\u05e8 \u05e7\u05d5\u05e4\u05e6\u05d9\u05dd + \u05e8\u05d9\u05e6\u05ea \u05d7\u05ea\u05d5\u05dc",
     mastervDesc: "\u05dc\u05d5\u05d7\u05dd \u05d0\u05d5\u05dc\u05d8\u05d9\u05de\u05d8\u05d9\u05d1\u05d9 \u05dc\u05d0\u05d3\u05de\u05d9\u05df \u05d1\u05dc\u05d1\u05d3",
-    ultimateReady: "\u05d9\u05e9 \u05d0\u05d5\u05dc\u05d8\u05d9 \u05d8\u05e2\u05d5\u05df",
+    ultimateReady: "\u05d9\u05e9 \u05d0\u05d5\u05dc\u05d8\u05d9",
     skyBombMode: "\u05e4\u05e6\u05e6\u05d4",
     skyCloneMode: "\u05db\u05e4\u05d9\u05dc",
     adminOnlyCharacter: "\u05d3\u05de\u05d5\u05ea \u05de\u05d9\u05d5\u05d7\u05d3\u05ea",
@@ -2642,9 +2642,10 @@ socket.on("game:state", next => {
     const required = me?.specialRequired || 5;
     const hasBuff = Boolean(me?.bazaarBuff);
     const specialLabel = t("special");
-    special.textContent = hasBuff ? t("useBuff") : charge >= required ? t("ultimateReady") : `${specialLabel} ${charge}/${required}`;
+    const specialReady = charge >= required;
+    special.textContent = hasBuff ? t("useBuff") : specialReady ? (me?.admin ? specialLabel : t("ultimateReady")) : `${specialLabel} ${charge}/${required}`;
     special.classList.toggle("charging", !hasBuff && charge < required);
-    special.classList.toggle("ready", hasBuff || charge >= required);
+    special.classList.toggle("ready", hasBuff || specialReady);
   }
 });
 socket.on("game:meta", next => {
