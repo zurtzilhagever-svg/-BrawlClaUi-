@@ -46,6 +46,15 @@ const rewardCredits = document.querySelector("#reward-credits");
 const rewardPowerPoints = document.querySelector("#reward-power-points");
 const rewardMoney = document.querySelector("#reward-money");
 const rewardClose = document.querySelector("#reward-close");
+const seasonNumber = document.querySelector("#season-number");
+const seasonName = document.querySelector("#season-name");
+const seasonStory = document.querySelector("#season-story");
+const seasonCoreShards = document.querySelector("#season-core-shards");
+const seasonBestWave = document.querySelector("#season-best-wave");
+const seasonKills = document.querySelector("#season-kills");
+const seasonGoal = document.querySelector("#season-goal");
+const seasonQuests = document.querySelector("#season-quests");
+const seasonShardHelp = document.querySelector("#season-shard-help");
 const characterPickerOpen = document.querySelector("#character-picker-open");
 const characterPicker = document.querySelector("#character-picker");
 const characterPickerClose = document.querySelector("#character-picker-close");
@@ -113,6 +122,7 @@ const rtlLanguages = new Set(["ar", "he"]);
 const survivalBestKey = "brawlclaui-survival-best";
 const economyKey = "brawlclaui-economy";
 const economyRewardKey = "brawlclaui-economy-last-reward";
+const seasonProgressKey = "brawlclaui-season-progress";
 const unlockedCharactersKey = "brawlclaui-unlocked-characters";
 const characterLevelsKey = "brawlclaui-character-levels";
 const ownedSkinsKey = "brawlclaui-owned-skins";
@@ -153,6 +163,27 @@ const ownerAdminEmail = "zurtzilhagever@gmail.com";
 const adminEmails = new Set(["zurtzilhagever@gmail.com"]);
 const adminTogglePositionKey = "brawlclaui-admin-toggle-position";
 const adminInvincibleKey = "brawlclaui-admin-invincible";
+const currentSeason = {
+  id: "season_1_frozen_core",
+  number: "עונה 1",
+  name: "הליבה הקפואה",
+  story: "מאש חטף את היוצר ונעל אותו בתוך הליבה. כדי להגיע אליו צריך לשרוד גלי בוטים, לאסוף שברי ליבה, ולהביס את ניסוי 001: מלך הכפור.",
+  goal: "אסוף 3 שברי ליבה כדי לפתוח בהמשך את הדרך אל מלך הכפור.",
+  shardHelp: "כרגע מקבלים שברי ליבה בגל 3, בגל 5, ואחרי 10 חיסולי בוטים.",
+  requiredCoreShards: 3,
+  shardMilestones: [
+    { id: "wave_3", type: "wave", target: 3 },
+    { id: "wave_5", type: "wave", target: 5 },
+    { id: "kills_10", type: "kills", target: 10 }
+  ],
+  quests: [
+    { id: "wave_3", label: "שרוד עד גל 3", type: "wave", target: 3 },
+    { id: "kills_10", label: "חסל 10 בוטים של מאש", type: "kills", target: 10 },
+    { id: "wave_5", label: "שרוד עד גל 5", type: "wave", target: 5 },
+    { id: "core_3", label: "אסוף 3 שברי ליבה", type: "coreShards", target: 3 },
+    { id: "frost_king_locked", label: "פתח בהמשך את שער מלך הכפור", type: "locked", target: 1 }
+  ]
+};
 let adminVerified = false;
 let adminPanelOpen = false;
 let adminToggleDrag = null;
@@ -312,6 +343,81 @@ function buyOrSelectNextSkin(character) {
 }
 function playerKillCount(player) {
   return Math.max(0, Math.floor(Number(player?.kills ?? player?.kos ?? player?.score ?? 0) || 0));
+}
+function defaultSeasonProgress() {
+  return { seasonId: currentSeason.id, bestWave: 0, kills: 0, coreShards: 0, claimedShards: [] };
+}
+function normalizeSeasonProgress(value = {}) {
+  const claimed = Array.isArray(value.claimedShards) ? value.claimedShards.filter(Boolean) : [];
+  return {
+    seasonId: currentSeason.id,
+    bestWave: Math.max(0, Math.floor(Number(value.bestWave) || 0)),
+    kills: Math.max(0, Math.floor(Number(value.kills) || 0)),
+    coreShards: clamp(Math.floor(Number(value.coreShards) || 0), 0, currentSeason.requiredCoreShards),
+    claimedShards: [...new Set(claimed)]
+  };
+}
+function loadSeasonProgress() {
+  try {
+    const stored = JSON.parse(localStorage.getItem(progressKey(seasonProgressKey)) || "{}");
+    return normalizeSeasonProgress(stored.seasonId === currentSeason.id ? stored : defaultSeasonProgress());
+  } catch {
+    return defaultSeasonProgress();
+  }
+}
+function saveSeasonProgress(progress) {
+  const normalized = normalizeSeasonProgress(progress);
+  localStorage.setItem(progressKey(seasonProgressKey), JSON.stringify(normalized));
+  renderSeasonPanel(normalized);
+  queueCloudSave();
+  return normalized;
+}
+function questValue(progress, quest) {
+  if (quest.type === "wave") return progress.bestWave;
+  if (quest.type === "kills") return progress.kills;
+  if (quest.type === "coreShards") return progress.coreShards;
+  return 0;
+}
+function updateSeasonProgressFromMatch() {
+  if (gameMeta.mode !== "survival") return;
+  const me = players.find(player => player.id === playerId);
+  if (!me) return;
+  const progress = loadSeasonProgress();
+  let changed = false;
+  const bestWave = Math.max(progress.bestWave, Math.floor(Number(gameMeta.wave) || 0));
+  const kills = Math.max(progress.kills, playerKillCount(me));
+  if (bestWave !== progress.bestWave) { progress.bestWave = bestWave; changed = true; }
+  if (kills !== progress.kills) { progress.kills = kills; changed = true; }
+  const claimed = new Set(progress.claimedShards);
+  for (const milestone of currentSeason.shardMilestones) {
+    const value = milestone.type === "wave" ? progress.bestWave : progress.kills;
+    if (value >= milestone.target && !claimed.has(milestone.id)) {
+      claimed.add(milestone.id);
+      progress.coreShards = Math.min(currentSeason.requiredCoreShards, progress.coreShards + 1);
+      changed = true;
+    }
+  }
+  progress.claimedShards = [...claimed];
+  if (changed) saveSeasonProgress(progress);
+}
+function renderSeasonPanel(progress = loadSeasonProgress()) {
+  if (!seasonName) return;
+  if (seasonNumber) seasonNumber.textContent = currentSeason.number;
+  seasonName.textContent = currentSeason.name;
+  if (seasonStory) seasonStory.textContent = currentSeason.story;
+  if (seasonCoreShards) seasonCoreShards.textContent = `${progress.coreShards}/${currentSeason.requiredCoreShards}`;
+  if (seasonBestWave) seasonBestWave.textContent = String(progress.bestWave);
+  if (seasonKills) seasonKills.textContent = String(progress.kills);
+  if (seasonGoal) seasonGoal.textContent = currentSeason.goal;
+  if (seasonShardHelp) seasonShardHelp.textContent = currentSeason.shardHelp;
+  if (seasonQuests) {
+    seasonQuests.innerHTML = currentSeason.quests.map(quest => {
+      const value = questValue(progress, quest);
+      const complete = quest.type !== "locked" && value >= quest.target;
+      const suffix = quest.type === "locked" ? "בקרוב" : `${Math.min(value, quest.target)}/${quest.target}`;
+      return `<li class="${complete ? "complete" : ""}"><span>${escapeHtml(quest.label)}</span><b>${escapeHtml(suffix)}</b></li>`;
+    }).join("");
+  }
 }
 function showRewardScreen({ reward, kills, won }) {
   if (!rewardScreen) return;
@@ -1362,6 +1468,7 @@ function resetProgress() {
   localStorage.removeItem(progressKey(survivalBestKey));
   localStorage.removeItem(progressKey(economyKey));
   localStorage.removeItem(progressKey(economyRewardKey));
+  localStorage.removeItem(progressKey(seasonProgressKey));
   localStorage.removeItem(progressKey(characterLevelsKey));
   localStorage.removeItem(progressKey(ownedSkinsKey));
   localStorage.removeItem(progressKey(selectedSkinsKey));
@@ -1372,6 +1479,7 @@ function resetProgress() {
   pendingCharacter = selectedCharacter;
   syncCharacterPicker();
   renderSurvivalStats();
+  renderSeasonPanel();
   renderCharacterLocks();
   updateNameLock();
   queueCloudSave();
@@ -1448,6 +1556,7 @@ function applyLanguage() {
   renderSurvivalStats();
   updateMeta();
   renderEconomy();
+  renderSeasonPanel();
   renderCharacterLocks();
   renderAccountStatus();
   renderAdminPanel();
@@ -1741,6 +1850,7 @@ function progressSnapshot() {
     characterLevels: loadCharacterLevels(),
     ownedSkins: loadOwnedSkins(),
     selectedSkins: loadSelectedSkins(),
+    seasonProgress: loadSeasonProgress(),
     unlockedCharacters: isAdminUser() ? [...lockedCharacters].sort() : [...unlockedCharacters()].sort(),
     firstGameCompleted: localStorage.getItem(firstGameCompletedKey) === "1",
     nameLocked: isNameLocked(),
@@ -2245,12 +2355,23 @@ function applyCloudProgress(progress) {
     }
     saveSelectedSkins(selected);
   }
+  if (progress.seasonProgress && typeof progress.seasonProgress === "object") {
+    const local = loadSeasonProgress();
+    const cloud = normalizeSeasonProgress(progress.seasonProgress);
+    saveSeasonProgress({
+      bestWave: Math.max(local.bestWave, cloud.bestWave),
+      kills: Math.max(local.kills, cloud.kills),
+      coreShards: Math.max(local.coreShards, cloud.coreShards),
+      claimedShards: [...new Set([...local.claimedShards, ...cloud.claimedShards])]
+    });
+  }
   if (progress.firstGameCompleted) {
     localStorage.setItem(firstGameCompletedKey, "1");
     unlockCharacter("pixel");
   }
   renderSurvivalStats();
   renderEconomy();
+  renderSeasonPanel();
   renderCharacterLocks();
   updateNameLock();
 }
@@ -2358,6 +2479,8 @@ async function setupCloudProgress() {
 
 function updateMeta() {
   renderSurvivalStats();
+  updateSeasonProgressFromMatch();
+  renderSeasonPanel();
   if (!gameMeta.mode) {
     document.querySelector("#objective").textContent = t("initialObjective");
     document.querySelector("#help").textContent = "";

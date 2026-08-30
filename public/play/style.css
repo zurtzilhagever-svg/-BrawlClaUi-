@@ -824,6 +824,35 @@ input.name-locked {
   line-height: 1.35;
 }
 
+.season-progress {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.season-progress span {
+  display: grid;
+  gap: 4px;
+  min-height: 58px;
+  padding: 8px 6px;
+  border-radius: 8px;
+  background: #0d1426cc;
+  border: 1px solid #ffffff16;
+  text-align: center;
+}
+
+.season-progress b {
+  color: #9fb2d0;
+  font-size: .66rem;
+  font-weight: 900;
+}
+
+.season-progress strong {
+  color: #ffd15a;
+  font-size: 1.08rem;
+  font-weight: 900;
+}
+
 .season-goal {
   display: grid;
   gap: 4px;
@@ -842,12 +871,37 @@ input.name-locked {
 .season-quests {
   display: grid;
   gap: 6px;
+  list-style: none;
   margin: 0;
-  padding-inline-start: 20px;
+  padding: 0;
   color: #b9d0ef;
   font-size: .82rem;
   font-weight: 800;
   line-height: 1.25;
+}
+
+.season-quests li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 30px;
+  padding: 7px 9px;
+  border-radius: 8px;
+  background: #0d142680;
+  border: 1px solid #ffffff12;
+}
+
+.season-quests li.complete {
+  color: #dcffe8;
+  border-color: #62dc8d66;
+  background: #123020cc;
+}
+
+.season-quests li b {
+  color: #ffd15a;
+  font-size: .75rem;
+  white-space: nowrap;
 }
 
 #reward-close {
