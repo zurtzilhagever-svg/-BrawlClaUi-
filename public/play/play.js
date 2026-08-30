@@ -54,8 +54,6 @@ const characterPrev = document.querySelector("#character-prev");
 const characterNext = document.querySelector("#character-next");
 const characterLevelEl = document.querySelector("#character-level");
 const characterUpgrade = document.querySelector("#character-upgrade");
-const characterSkinEl = document.querySelector("#character-skin");
-const characterSkinAction = document.querySelector("#character-skin-action");
 const currentCharacterName = document.querySelector("#current-character-name");
 const adminToggle = document.querySelector("#admin-toggle");
 const adminPanel = document.querySelector("#admin-panel");
@@ -1259,31 +1257,17 @@ function syncCharacterPicker() {
   const level = characterLevel(pendingCharacter);
   const upgradeCost = characterUpgradeCost(pendingCharacter);
   const economy = loadEconomy();
-  const skin = selectedSkin(pendingCharacter);
-  const next = nextSkin(pendingCharacter);
-  const nextSkinOwned = ownedSkins(pendingCharacter).has(next);
-  const nextSkinCost = skinCosts[next] || 0;
   if (characterLevelEl) characterLevelEl.textContent = `${level}/${maxCharacterLevel}`;
-  if (characterSkinEl) characterSkinEl.textContent = skinLabel(skin);
   if (characterUpgrade) {
     characterUpgrade.disabled = !unlockedPending || !upgradeCost || economy.powerPoints < upgradeCost;
+    const levelText = `${t("levelLabel")} ${level}/${maxCharacterLevel}`;
     characterUpgrade.textContent = !unlockedPending
       ? t("lockedCharacter")
       : !upgradeCost
-        ? t("upgradeMax")
+        ? `${levelText} · ${t("upgradeMax")}`
         : characterUpgrade.disabled
-          ? `${t("needPower")} ${upgradeCost} ${t("powerPointsLabel")}`
-          : `${t("upgradeWithPower")} ${upgradeCost} ${t("powerPointsLabel")}`;
-  }
-  if (characterSkinAction) {
-    characterSkinAction.disabled = !unlockedPending || (!nextSkinOwned && economy.money < nextSkinCost);
-    characterSkinAction.textContent = !unlockedPending
-      ? t("lockedCharacter")
-      : nextSkinOwned
-        ? `${t("chooseSkin")} ${skinLabel(next)}`
-        : characterSkinAction.disabled
-          ? `${t("needCredits")} ${nextSkinCost} ${t("moneyLabel")}`
-          : `${t("buySkinWithMoney")} ${skinLabel(next)} - ${nextSkinCost} ${t("moneyLabel")}`;
+          ? `${levelText} · ${t("needPower")} ${upgradeCost}`
+          : `${levelText} · ${t("upgradeWithPower")} ${upgradeCost}`;
   }
   if (characterConfirm) {
     const cost = characterUnlockCost(pendingCharacter);
@@ -1330,9 +1314,6 @@ function confirmCharacterPicker() {
 }
 function upgradePendingCharacter() {
   if (upgradeCharacter(pendingCharacter)) syncCharacterPicker();
-}
-function buyOrSelectPendingSkin() {
-  if (buyOrSelectNextSkin(pendingCharacter)) syncCharacterPicker();
 }
 function unlockCharacter(character) {
   const unlocked = unlockedCharacters();
@@ -2416,7 +2397,6 @@ characterConfirm?.addEventListener("click", confirmCharacterPicker);
 characterPrev?.addEventListener("click", () => movePendingCharacter(-1));
 characterNext?.addEventListener("click", () => movePendingCharacter(1));
 characterUpgrade?.addEventListener("click", upgradePendingCharacter);
-characterSkinAction?.addEventListener("click", buyOrSelectPendingSkin);
 rewardClose?.addEventListener("click", hideRewardScreen);
 characterPicker?.addEventListener("click", event => {
   if (event.target === characterPicker) closeCharacterPicker();
@@ -3402,24 +3382,29 @@ function drawProjectile(projectile, now) {
     ctx.stroke();
     ctx.shadowBlur = 0;
   } else if (projectile.type === "depthShot") {
-    ctx.fillStyle = projectile.color || "#37cfff";
-    ctx.shadowColor = projectile.color || "#37cfff";
+    const color = projectile.color || "#37cfff";
+    const glow = ctx.createRadialGradient(0, 0, 2, 0, 0, 24);
+    glow.addColorStop(0, "#ffffff");
+    glow.addColorStop(.42, color);
+    glow.addColorStop(1, "#1d6dff00");
+    ctx.shadowColor = color;
     ctx.shadowBlur = 18;
+    ctx.fillStyle = glow;
     ctx.beginPath();
-    ctx.ellipse(0, 0, 18, 10, 0, 0, Math.PI * 2);
+    ctx.arc(0, 0, 18, 0, Math.PI * 2);
     ctx.fill();
-    ctx.strokeStyle = "#d9fbff";
-    ctx.lineWidth = 3;
+    ctx.globalAlpha = .55;
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 6;
+    ctx.lineCap = "round";
     ctx.beginPath();
-    ctx.arc(5, 0, 6, 0, Math.PI * 2);
+    ctx.moveTo(-12, 0);
+    ctx.lineTo(-34, 0);
     ctx.stroke();
-    ctx.globalAlpha = .6;
-    ctx.fillStyle = "#7ee9ff";
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = "#e8fdff";
     ctx.beginPath();
-    ctx.moveTo(-15, -5);
-    ctx.lineTo(-32, 0);
-    ctx.lineTo(-15, 5);
-    ctx.closePath();
+    ctx.arc(4, -3, 5, 0, Math.PI * 2);
     ctx.fill();
     ctx.shadowBlur = 0;
   } else if (projectile.type === "plasma") {
