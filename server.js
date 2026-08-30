@@ -3,7 +3,7 @@ const express = require("express"), http = require("http"), os = require("os"), 
 const { Server } = require("socket.io");
 const app = express(), server = http.createServer(app), io = new Server(server, { cors: { origin: "*" } });
 const PORT = Number(process.env.PORT) || 3000, RECONNECT_MS = 30_000, MAX_PLAYERS = 8, SPECIAL_HITS = 5, AMMO_MAX = 5, PROJECTILE_SPEED = 12, BOB_UNLOCK_WAVE = 10;
-const BOT_DAMAGE_SCALE = 0.62, BOT_MOVE_SCALE = 0.82, BOT_RANGE_SCALE = 0.82;
+const BOT_DAMAGE_SCALE = 0.38, BOT_MOVE_SCALE = 0.68, BOT_RANGE_SCALE = 0.7;
 const rooms = new Map(), socketIndex = new Map(), lobbyPlayers = new Map(), nameLocks = new Map();
 const survivalLeaders = [];
 const COLORS = ["#ff5964", "#36c8ff", "#ffd54a", "#a875ff", "#52e084", "#ff8e4f", "#fa73bd", "#80a7ff"];
@@ -764,7 +764,7 @@ function kill(room, victim, killer) {
   if (victim.bot) {
     if (killer && killer.id !== victim.id) {
       killer.score += 1;
-      if (room.mode === "survival" && !killer.bot && killer.alive) killer.health = Math.min(killer.maxHealth, killer.health + 6);
+      if (room.mode === "survival" && !killer.bot && killer.alive) killer.health = Math.min(killer.maxHealth, killer.health + 10);
     }
     room.players.delete(victim.id);
     return;
@@ -1402,14 +1402,14 @@ function iceEffectFor(room, player) {
 }
 function spawnBot(room, now, team = null) {
   const count = [...room.players.values()].filter(p => p.bot).length;
-  const cap = isTeamCombatMode(room) ? 6 : Math.min(9, 2 + Math.floor(room.game.wave / 2));
+  const cap = isTeamCombatMode(room) ? 6 : Math.min(6, 1 + Math.floor(room.game.wave / 3));
   if (count >= cap) return;
   const arena = room.arena, edge = Math.floor(Math.random() * 4), spot = edge === 0 ? { x: 30, y: 80 + Math.random() * (arena.height-160) } : edge === 1 ? { x: arena.width-30, y: 80 + Math.random() * (arena.height-160) } : edge === 2 ? { x: 90 + Math.random() * (arena.width-180), y: 30 } : { x: 90 + Math.random() * (arena.width-180), y: arena.height-30 };
-  const character = "mash", hp = CHARACTERS[character].hp + Math.min(45, room.game.wave * 3), id = `bot-${room.code}-${room.game.botSerial++}`;
+  const character = "mash", hp = CHARACTERS[character].hp + Math.min(20, Math.floor(room.game.wave * 1.5)), id = `bot-${room.code}-${room.game.botSerial++}`;
   const bot = { id, socketId:null, name:`\u05de\u05d0\u05e9 ${room.game.botSerial}`, character, bot:true, color:team === "blue" ? "#36c8ff" : "#f07167", team, x:spot.x, y:spot.y, maxHealth:hp, health:hp, alive:true, score:0, gems:0, coins:0, input:{x:0,y:0,attack:false,special:false}, lastAttack:0, lastSpecial:false, lastSpecialAt:0, shieldUntil:0, connected:true };
   resetAmmo(bot, now);
   room.players.set(id, bot);
-  room.game.nextBotAt = now + Math.max(900, 2300 - room.game.wave * 95);
+  room.game.nextBotAt = now + Math.max(1600, 3400 - room.game.wave * 70);
 }
 function updateBots(room) {
   for (const bot of [...room.players.values()].filter(p => p.bot && p.alive)) {
@@ -1428,7 +1428,7 @@ function updateBots(room) {
     bot.input.x = bot.aimX * BOT_MOVE_SCALE;
     bot.input.y = bot.aimY * BOT_MOVE_SCALE;
     bot.input.attack = distance < CHARACTERS[bot.character].range * BOT_RANGE_SCALE;
-    bot.input.special = bot.character === "mash" && distance < 95 && Date.now() - (bot.lastSpecialAt || 0) > 9000;
+    bot.input.special = false;
   }
 }
 function updateSurvival(room, now) {

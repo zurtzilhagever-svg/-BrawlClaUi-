@@ -85,6 +85,8 @@ const adminBan = document.querySelector("#admin-ban");
 const adminRestart = document.querySelector("#admin-restart");
 const adminStatus = document.querySelector("#admin-status");
 const skyModeButton = document.querySelector("#sky-mode");
+const modeSelect = document.querySelector("#mode");
+const activeGameMode = () => modeSelect?.value || "survival";
 const input = { x: 0, y: 0, attack: false, special: false, skyMode: "bomb" };
 const touchAim = { x: 0, y: 0, active: false };
 const gamepadAim = { x: 0, y: 0, active: false };
@@ -2449,7 +2451,7 @@ characterButtons().forEach(button => {
     scrollPendingCharacterIntoView();
   };
 });
-document.querySelector("#mode").addEventListener("change", queueAutoJoin);
+modeSelect?.addEventListener("change", queueAutoJoin);
 nameInput.addEventListener("change", () => {
   if (!canEditName()) {
     nameInput.value = localStorage.getItem("brawlclaui-name") || nameInput.value;
@@ -2486,7 +2488,7 @@ document.querySelector("#create").onclick = async () => {
   requestAppFullscreen();
   await refreshCloudAuthToken();
   if (roomCode) return socket.emit("player:join", playerJoinPayload({ code: roomCode }, { askAdmin: true }), enter);
-  socket.emit("player:autoJoin", playerJoinPayload({ mode: document.querySelector("#mode").value }, { askAdmin: true }), enter);
+  socket.emit("player:autoJoin", playerJoinPayload({ mode: activeGameMode() }, { askAdmin: true }), enter);
 };
 document.querySelector("#join").onclick = () => {
   joinByCode(codeInput.value, true);

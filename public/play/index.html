@@ -18,7 +18,7 @@
   <link rel="icon" type="image/png" sizes="48x48" href="/icons/favicon-48.png?v=65">
   <link rel="apple-touch-icon" href="/icons/icon-192.png?v=65">
   <title>בראול כלווי - BrawkClaUi</title>
-  <link rel="stylesheet" href="style.css?v=109">
+  <link rel="stylesheet" href="style.css?v=110">
 </head>
 <body>
   <section id="profile-gate" class="profile-gate" aria-labelledby="profile-title">
@@ -81,6 +81,10 @@
         <li>פתח את שער הארמון הקפוא</li>
         <li>הבס את מלך הכפור</li>
       </ol>
+      <div class="season-goal">
+        <b>איך משיגים שברי ליבה</b>
+        <span>שורדים גלים, מחסלים בוטים חזקים, ושוברים ליבות קטנות שמופיעות בזירה.</span>
+      </div>
     </section>
     <label data-i18n="brawlerLabel">YOUR BRAWLER</label>
     <button id="character-picker-open" class="character-picker-open" type="button">
@@ -114,11 +118,6 @@
         <button id="character-next" type="button" aria-label="Next character">›</button>
       </div>
     </section>
-
-    <label data-i18n="modeLabel" hidden>GAME MODE</label>
-    <select id="mode" hidden>
-      <option value="survival" data-i18n="modeSurvival">Survival - bot waves</option>
-    </select>
 
     <label data-i18n="controlsLabel">CONTROLS</label>
     <select id="control-mode">
@@ -290,6 +289,6 @@
   <script src="/socket.io/socket.io.js"></script>
   <script src="/shared/qr-generator.js"></script>
   <script src="/shared/gamepad.js?v=81"></script>
-  <script src="play.js?v=109"></script>
+  <script src="play.js?v=110"></script>
 </body>
 </html>
