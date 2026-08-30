@@ -4,7 +4,7 @@ const { Server } = require("socket.io");
 const app = express(), server = http.createServer(app), io = new Server(server, { cors: { origin: "*" } });
 const PORT = Number(process.env.PORT) || 3000, RECONNECT_MS = 30_000, MAX_PLAYERS = 8, SPECIAL_HITS = 5, AMMO_MAX = 5, PROJECTILE_SPEED = 12, BOB_UNLOCK_WAVE = 10;
 const BOT_DAMAGE_SCALE = 0.62, BOT_MOVE_SCALE = 0.82, BOT_RANGE_SCALE = 0.82;
-const rooms = new Map(), socketIndex = new Map(), lobbyPlayers = new Map();
+const rooms = new Map(), socketIndex = new Map(), lobbyPlayers = new Map(), nameLocks = new Map();
 const survivalLeaders = [];
 const COLORS = ["#ff5964", "#36c8ff", "#ffd54a", "#a875ff", "#52e084", "#ff8e4f", "#fa73bd", "#80a7ff"];
 const OWNER_ADMIN_EMAIL = "zurtzilhagever@gmail.com";
@@ -435,6 +435,36 @@ function createRoom(hostSocketId, mode = "brawl") { const selectedMode = MODES[m
 function findOpenRoom(mode) {
   return [...rooms.values()].find(room => room.mode === mode && !room.game.winner && !room.game.winnerTeam && humanPlayers(room).length < MAX_PLAYERS);
 }
+function cleanPlayerName(value, fallback = "Player") {
+  return String(value || "").trim().slice(0, 14) || fallback;
+}
+function nameLockKey(playerId, accountEmail) {
+  const email = normalizeEmail(accountEmail);
+  return email || String(playerId || "").replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 48);
+}
+function allowedPlayerName(playerId, requestedName, accountEmail, fallback = "Player") {
+  const next = cleanPlayerName(requestedName, fallback), key = nameLockKey(playerId, accountEmail);
+  if (!key || isAdminEmail(accountEmail)) return next;
+  const locked = nameLocks.get(key);
+  if (!locked) {
+    nameLocks.set(key, { name:next, canRename:false });
+    return next;
+  }
+  if (locked.name === next) return locked.name;
+  if (locked.canRename) {
+    locked.name = next;
+    locked.canRename = false;
+    return next;
+  }
+  return locked.name;
+}
+function allowPlayerRename(playerId, accountEmail, currentName = "") {
+  const key = nameLockKey(playerId, accountEmail);
+  if (!key || isAdminEmail(accountEmail)) return;
+  const locked = nameLocks.get(key) || { name:cleanPlayerName(currentName), canRename:false };
+  locked.canRename = true;
+  nameLocks.set(key, locked);
+}
 function detachSocket(socket, nextRoomCode) {
   const ref = socketIndex.get(socket.id);
   if (!ref || ref.code === nextRoomCode) return;
@@ -462,6 +492,7 @@ function joinPlayer(socket, roomCode, playerId, name, character, accountEmail, i
   if (p) {
     clearTimeout(p.removeTimer); socketIndex.delete(p.socketId); p.socketId = socket.id; p.connected = true; p.accountEmail = cleanEmail || p.accountEmail || "";
     p.invincibleMode = isOwnerAdminEmail(p.accountEmail) && Boolean(invincibleMode);
+    p.name = allowedPlayerName(id, name, p.accountEmail, p.name);
     if (p.character !== selectedCharacter || p.characterLevel !== selectedLevel) {
       const ratio = p.maxHealth ? p.health / p.maxHealth : 1, stats = statsFor(selectedCharacter, selectedLevel);
       p.character = selectedCharacter; p.characterLevel = selectedLevel; p.maxHealth = stats.hp; p.health = Math.min(stats.hp, Math.max(1, Math.round(stats.hp * ratio)));
@@ -469,7 +500,7 @@ function joinPlayer(socket, roomCode, playerId, name, character, accountEmail, i
     }
     p.skin = selectedSkin;
   }
-  else { const c = selectedCharacter, stats = statsFor(c, selectedLevel), spot = randomSpot(room.arena), team=chooseTeam(room), defaultName=`Player ${humanPlayers(room).length + 1}`, displayName=String(name || "").trim().slice(0, 14) || defaultName; p = { id, socketId:socket.id, accountEmail:cleanEmail, invincibleMode:isOwnerAdminEmail(cleanEmail) && Boolean(invincibleMode), name:displayName, character:c, characterLevel:selectedLevel, skin:selectedSkin, color:COLORS[room.players.size % COLORS.length], team, x:spot.x, y:spot.y, aimX:1, aimY:0, maxHealth:stats.hp, health:stats.hp, alive:true, score:0, gems:0, coins:0, input:{x:0,y:0,attack:false,special:false,skyMode:"bomb"}, lastAttack:0, lastSpecial:false, specialCharge:0, shieldUntil:0, catRushUntil:0, bazaarBuff:"", damageBoostUntil:0, connected:true }; resetAmmo(p); room.players.set(id, p); }
+  else { const c = selectedCharacter, stats = statsFor(c, selectedLevel), spot = randomSpot(room.arena), team=chooseTeam(room), defaultName=`Player ${humanPlayers(room).length + 1}`, displayName=allowedPlayerName(id, name, cleanEmail, defaultName); p = { id, socketId:socket.id, accountEmail:cleanEmail, invincibleMode:isOwnerAdminEmail(cleanEmail) && Boolean(invincibleMode), name:displayName, character:c, characterLevel:selectedLevel, skin:selectedSkin, color:COLORS[room.players.size % COLORS.length], team, x:spot.x, y:spot.y, aimX:1, aimY:0, maxHealth:stats.hp, health:stats.hp, alive:true, score:0, gems:0, coins:0, input:{x:0,y:0,attack:false,special:false,skyMode:"bomb"}, lastAttack:0, lastSpecial:false, specialCharge:0, shieldUntil:0, catRushUntil:0, bazaarBuff:"", damageBoostUntil:0, connected:true }; resetAmmo(p); room.players.set(id, p); }
   socketIndex.set(socket.id, { code:roomCode, playerId:id }); socket.join(roomCode); ack({ ok:true, code:roomCode, player:publicPlayer(p), players:players(room), meta:meta(room) }); broadcast(room);
 }
 function adminRoom(socket, data = {}, ack = () => {}) {
@@ -1514,11 +1545,12 @@ io.on("connection", socket => {
       lobbyPlayers.delete(socket.id);
       return;
     }
+    const playerId = String(data.playerId || "").replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 48);
     lobbyPlayers.set(socket.id, {
       socketId:socket.id,
       targetId:`lobby:${socket.id}`,
-      playerId:String(data.playerId || "").replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 48),
-      name:String(data.name || email).trim().slice(0, 14) || email,
+      playerId,
+      name:allowedPlayerName(playerId, data.name, email, email),
       accountEmail:email,
       connected:true
     });
@@ -1730,6 +1762,7 @@ io.on("connection", socket => {
     const lobbyTarget = isLobbyTarget ? adminLobbyTarget(socket, data, ack) : null;
     if (isLobbyTarget) {
       if (!lobbyTarget) return;
+      allowPlayerRename(lobbyTarget.playerId, lobbyTarget.accountEmail, lobbyTarget.name);
       io.to(lobbyTarget.socketId).emit("admin:renameAllowed");
       return ack({ ok:true });
     }
@@ -1737,6 +1770,7 @@ io.on("connection", socket => {
     if (!room) return;
     const target = room.players.get(targetId);
     if (!target || target.bot) return ack({ ok:false, error:"Player not found" });
+    allowPlayerRename(target.id, target.accountEmail, target.name);
     if (target.socketId) io.to(target.socketId).emit("admin:renameAllowed");
     ack({ ok:true });
   });

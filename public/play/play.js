@@ -1633,7 +1633,7 @@ function enter(reply) {
   lastBazaarBuff = players.find(p => p.id === playerId)?.bazaarBuff || "";
   wasPlaying = true;
   syncLobbyPresence(false);
-  savePlayerName(name(), true);
+  savePlayerName(reply.player?.name || name(), true);
   localStorage.setItem("brawlclaui-room", roomCode);
   lobby.hidden = true;
   game.hidden = false;
