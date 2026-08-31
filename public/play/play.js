@@ -3964,6 +3964,49 @@ function drawEntryTransform(p, progress, now) {
   }
 }
 
+function drawAirSlam(slam, serverNow) {
+  const riseDuration = Math.max(1, (slam.impactAt || serverNow) - (slam.startedAt || serverNow));
+  const progress = clamp((serverNow - (slam.startedAt || serverNow)) / riseDuration, 0, 1);
+  const impact = clamp((serverNow - (slam.impactAt || serverNow)) / Math.max(1, (slam.endsAt || serverNow) - (slam.impactAt || serverNow)), 0, 1);
+  const lift = Math.sin(progress * Math.PI) * 190;
+  const slamScale = .9 - Math.sin(progress * Math.PI) * .22;
+  const ownerX = (slam.startX || 0) + ((slam.landingX || 0) - (slam.startX || 0)) * progress;
+  const ownerY = (slam.startY || 0) + ((slam.landingY || 0) - (slam.startY || 0)) * progress;
+  const targetX = (slam.targetStartX || ownerX) + ((slam.landingX || ownerX) - (slam.targetStartX || ownerX)) * progress;
+  const targetY = (slam.targetStartY || ownerY) + ((slam.landingY || ownerY) - (slam.targetStartY || ownerY)) * progress;
+
+  ctx.save();
+  ctx.translate(slam.landingX || ownerX, slam.landingY || ownerY);
+  ctx.fillStyle = `rgba(0,0,0,${.28 + impact * .18})`;
+  ctx.beginPath();
+  ctx.ellipse(0, 18, 34 + impact * 80, 10 + impact * 14, 0, 0, Math.PI * 2);
+  ctx.fill();
+  if (impact > 0) {
+    ctx.globalCompositeOperation = "screen";
+    ctx.strokeStyle = `rgba(128,255,244,${1 - impact})`;
+    ctx.lineWidth = 8;
+    ctx.beginPath();
+    ctx.arc(0, 0, 32 + impact * 132, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+  ctx.restore();
+
+  if (progress < 1) {
+    for (const fighter of [
+      { x:ownerX - 16, y:ownerY - lift, character:slam.character || "mutabaki", color:"#45dfd2" },
+      { x:targetX + 16, y:targetY - lift - 10, character:slam.targetCharacter || "blaze", color:"#ff5964" }
+    ]) {
+      ctx.save();
+      ctx.translate(fighter.x, fighter.y);
+      ctx.globalAlpha = .95;
+      ctx.scale(slamScale, slamScale);
+      ctx.rotate((progress - .5) * .8);
+      drawCharacter({ character:fighter.character, color:fighter.color, ghost:false, giant:false }, { moving:true, bob:0, leg:progress * Math.PI * 2 });
+      ctx.restore();
+    }
+  }
+}
+
 function draw() {
   const now = performance.now();
   const serverNow = Date.now();
@@ -4204,8 +4247,10 @@ function draw() {
     ctx.restore();
   }
   for (const projectile of gameMeta.projectiles || []) drawProjectile(projectile, now);
+  for (const slam of gameMeta.airSlams || []) drawAirSlam(slam, serverNow);
   for (const p of players) {
     const localInvisible = p.invisible && p.id === playerId;
+    if (p.airborne) continue;
     if (p.invisible && !localInvisible) continue;
     const motion = motionFor(p, now);
     const concealedMasterV = isConcealedMasterV(p.character);
