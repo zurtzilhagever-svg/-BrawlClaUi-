@@ -55,6 +55,9 @@ const seasonKills = document.querySelector("#season-kills");
 const seasonGoal = document.querySelector("#season-goal");
 const seasonQuests = document.querySelector("#season-quests");
 const seasonShardHelp = document.querySelector("#season-shard-help");
+const seasonGate = document.querySelector("#season-gate");
+const seasonGateStatus = document.querySelector("#season-gate-status");
+const seasonGateButton = document.querySelector("#season-gate-button");
 const characterPickerOpen = document.querySelector("#character-picker-open");
 const characterPicker = document.querySelector("#character-picker");
 const characterPickerClose = document.querySelector("#character-picker-close");
@@ -182,7 +185,7 @@ const currentSeason = {
     { id: "kills_10", label: "חסל 10 בוטים של מאש", type: "kills", target: 10 },
     { id: "wave_5", label: "שרוד עד גל 5", type: "wave", target: 5 },
     { id: "core_3", label: "אסוף 3 שברי ליבה", type: "coreShards", target: 3 },
-    { id: "frost_king_locked", label: "פתח בהמשך את שער מלך הכפור", type: "locked", target: 1 }
+    { id: "frost_king_gate", label: "פתח את שער מלך הכפור", type: "coreShards", target: 3 }
   ]
 };
 let adminVerified = false;
@@ -411,11 +414,22 @@ function renderSeasonPanel(progress = loadSeasonProgress()) {
   if (seasonKills) seasonKills.textContent = String(progress.kills);
   if (seasonGoal) seasonGoal.textContent = currentSeason.goal;
   if (seasonShardHelp) seasonShardHelp.textContent = currentSeason.shardHelp;
+  const gateOpen = progress.coreShards >= currentSeason.requiredCoreShards;
+  if (seasonGate) seasonGate.classList.toggle("open", gateOpen);
+  if (seasonGateStatus) {
+    seasonGateStatus.textContent = gateOpen
+      ? "השער פתוח. מלך הכפור ממתין בעדכון הבוס."
+      : `צריך עוד ${currentSeason.requiredCoreShards - progress.coreShards} שברי ליבה כדי לפתוח את השער.`;
+  }
+  if (seasonGateButton) {
+    seasonGateButton.disabled = !gateOpen;
+    seasonGateButton.textContent = gateOpen ? "השער פתוח" : "נעול";
+  }
   if (seasonQuests) {
     seasonQuests.innerHTML = currentSeason.quests.map(quest => {
       const value = questValue(progress, quest);
       const complete = quest.type !== "locked" && value >= quest.target;
-      const suffix = quest.type === "locked" ? "בקרוב" : `${Math.min(value, quest.target)}/${quest.target}`;
+      const suffix = complete ? "הושלם" : `${Math.min(value, quest.target)}/${quest.target}`;
       return `<li class="${complete ? "complete" : ""}"><span>${escapeHtml(quest.label)}</span><b>${escapeHtml(suffix)}</b></li>`;
     }).join("");
   }
@@ -2561,6 +2575,11 @@ profileNameInput?.addEventListener("keydown", event => {
   event.preventDefault();
   completeProfileGate();
 });
+seasonGateButton?.addEventListener("click", () => {
+  const progress = loadSeasonProgress();
+  if (progress.coreShards < currentSeason.requiredCoreShards) return;
+  if (error) error.textContent = "שער מלך הכפור נפתח. קרב הבוס ייבנה בשלב הבא.";
+});
 
 characterPickerOpen?.addEventListener("click", openCharacterPicker);
 characterPickerClose?.addEventListener("click", closeCharacterPicker);
@@ -3968,8 +3987,8 @@ function drawAirSlam(slam, serverNow) {
   const riseDuration = Math.max(1, (slam.impactAt || serverNow) - (slam.startedAt || serverNow));
   const progress = clamp((serverNow - (slam.startedAt || serverNow)) / riseDuration, 0, 1);
   const impact = clamp((serverNow - (slam.impactAt || serverNow)) / Math.max(1, (slam.endsAt || serverNow) - (slam.impactAt || serverNow)), 0, 1);
-  const lift = Math.sin(progress * Math.PI) * 190;
-  const slamScale = .9 - Math.sin(progress * Math.PI) * .22;
+  const lift = Math.sin(progress * Math.PI) * 245;
+  const slamScale = 1.55 - Math.sin(progress * Math.PI) * .18;
   const ownerX = (slam.startX || 0) + ((slam.landingX || 0) - (slam.startX || 0)) * progress;
   const ownerY = (slam.startY || 0) + ((slam.landingY || 0) - (slam.startY || 0)) * progress;
   const targetX = (slam.targetStartX || ownerX) + ((slam.landingX || ownerX) - (slam.targetStartX || ownerX)) * progress;
@@ -3977,34 +3996,76 @@ function drawAirSlam(slam, serverNow) {
 
   ctx.save();
   ctx.translate(slam.landingX || ownerX, slam.landingY || ownerY);
-  ctx.fillStyle = `rgba(0,0,0,${.28 + impact * .18})`;
+  ctx.fillStyle = `rgba(0,0,0,${.32 + impact * .22})`;
   ctx.beginPath();
-  ctx.ellipse(0, 18, 34 + impact * 80, 10 + impact * 14, 0, 0, Math.PI * 2);
+  ctx.ellipse(0, 18, 44 + impact * 108, 13 + impact * 18, 0, 0, Math.PI * 2);
   ctx.fill();
   if (impact > 0) {
     ctx.globalCompositeOperation = "screen";
     ctx.strokeStyle = `rgba(128,255,244,${1 - impact})`;
-    ctx.lineWidth = 8;
+    ctx.lineWidth = 11;
     ctx.beginPath();
-    ctx.arc(0, 0, 32 + impact * 132, 0, Math.PI * 2);
+    ctx.arc(0, 0, 36 + impact * 168, 0, Math.PI * 2);
     ctx.stroke();
+    ctx.fillStyle = `rgba(128,255,244,${.28 * (1 - impact)})`;
+    ctx.beginPath();
+    ctx.arc(0, 0, 30 + impact * 110, 0, Math.PI * 2);
+    ctx.fill();
   }
   ctx.restore();
 
   if (progress < 1) {
+    ctx.save();
+    ctx.globalCompositeOperation = "screen";
+    ctx.strokeStyle = `rgba(128,255,244,${.35 + .45 * Math.sin(progress * Math.PI)})`;
+    ctx.lineWidth = 6;
+    ctx.setLineDash([18, 10]);
+    ctx.beginPath();
+    ctx.moveTo(ownerX, ownerY);
+    ctx.lineTo(ownerX, ownerY - lift);
+    ctx.moveTo(targetX, targetY);
+    ctx.lineTo(targetX, targetY - lift - 10);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.restore();
     for (const fighter of [
-      { x:ownerX - 16, y:ownerY - lift, character:slam.character || "mutabaki", color:"#45dfd2" },
-      { x:targetX + 16, y:targetY - lift - 10, character:slam.targetCharacter || "blaze", color:"#ff5964" }
+      { x:ownerX - 24, y:ownerY - lift, character:slam.character || "mutabaki", color:"#45dfd2", angle:-.22 },
+      { x:targetX + 24, y:targetY - lift - 14, character:slam.targetCharacter || "blaze", color:"#ff5964", angle:.22 }
     ]) {
       ctx.save();
       ctx.translate(fighter.x, fighter.y);
       ctx.globalAlpha = .95;
       ctx.scale(slamScale, slamScale);
-      ctx.rotate((progress - .5) * .8);
+      ctx.rotate(fighter.angle + (progress - .5) * .65);
       drawCharacter({ character:fighter.character, color:fighter.color, ghost:false, giant:false }, { moving:true, bob:0, leg:progress * Math.PI * 2 });
       ctx.restore();
     }
   }
+}
+
+function drawMeleeEffect(effect, serverNow) {
+  const duration = Math.max(1, (effect.endsAt || serverNow) - (effect.startedAt || serverNow));
+  const age = clamp((serverNow - (effect.startedAt || serverNow)) / duration, 0, 1);
+  const dx = Number(effect.dx) || 1;
+  const dy = Number(effect.dy) || 0;
+  const angle = Math.atan2(dy, dx);
+  const reach = effect.heavy ? 92 : 70;
+  ctx.save();
+  ctx.translate((effect.x || 0) + dx * 34, (effect.y || 0) + dy * 34);
+  ctx.rotate(angle);
+  ctx.globalCompositeOperation = "screen";
+  ctx.globalAlpha = 1 - age * .35;
+  ctx.strokeStyle = effect.heavy ? "#fff7a8" : "#8ffff4";
+  ctx.lineWidth = effect.heavy ? 12 : 9;
+  ctx.lineCap = "round";
+  ctx.beginPath();
+  ctx.arc(12 + age * 18, 0, reach * (.42 + age * .18), -0.82, 0.82);
+  ctx.stroke();
+  ctx.fillStyle = effect.heavy ? "rgba(255,247,168,.34)" : "rgba(128,255,244,.28)";
+  ctx.beginPath();
+  ctx.ellipse(reach * (.55 + age * .2), 0, effect.heavy ? 22 : 16, effect.heavy ? 16 : 12, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
 }
 
 function draw() {
@@ -4247,6 +4308,7 @@ function draw() {
     ctx.restore();
   }
   for (const projectile of gameMeta.projectiles || []) drawProjectile(projectile, now);
+  for (const effect of gameMeta.meleeEffects || []) drawMeleeEffect(effect, serverNow);
   for (const slam of gameMeta.airSlams || []) drawAirSlam(slam, serverNow);
   for (const p of players) {
     const localInvisible = p.invisible && p.id === playerId;

@@ -330,7 +330,7 @@ function randomSpot(arena) {
   return arenaCenter(arena);
 }
 function makeItems(arena, amount, type) { return Array.from({ length: amount }, () => ({ ...randomSpot(arena), type })); }
-function gameFor(mode, arena = arenaFor(mode)) { return { startedAt: Date.now(), winner: null, winnerTeam: null, rewardCharacter: null, items: mode === "gems" ? makeItems(arena, 12, "gem") : mode === "coins" ? makeItems(arena, 18, "coin") : [], projectiles: [], pixelZones: [], iceZones: [], bazaarBoxes: [], skyBombs: [], sharkSurges: [], windBursts: [], fireTrails: [], airSlams: [], decoys: [], nextProjectileId: 0, nextDecoyId: 0, zoneScore: { red: 0, blue: 0 }, safeRadius: arenaSafeRadius(arena), nextItemAt: 0, nextBotAt: 0, botSerial: 0, wave: 0 }; }
+function gameFor(mode, arena = arenaFor(mode)) { return { startedAt: Date.now(), winner: null, winnerTeam: null, rewardCharacter: null, items: mode === "gems" ? makeItems(arena, 12, "gem") : mode === "coins" ? makeItems(arena, 18, "coin") : [], projectiles: [], meleeEffects: [], pixelZones: [], iceZones: [], bazaarBoxes: [], skyBombs: [], sharkSurges: [], windBursts: [], fireTrails: [], airSlams: [], decoys: [], nextProjectileId: 0, nextDecoyId: 0, zoneScore: { red: 0, blue: 0 }, safeRadius: arenaSafeRadius(arena), nextItemAt: 0, nextBotAt: 0, botSerial: 0, wave: 0 }; }
 function playerRadius(p) { const base = p.character === "ari" ? 27 : p.character === "skyfalcon" ? 21 : p.character === "seashark" ? 25 : p.character === "shoopi" ? 20 : p.character === "tuli" ? 21 : p.character === "gack" ? 26 : p.character === "mutabaki" ? 27 : p.character === "tank" ? 26 : p.character === "grunt" ? 18 : p.character === "mash" ? 22 : 23; return Date.now() < (p.giantUntil || 0) ? base * 1.2 : base; }
 function movePlayer(arena, p, dx, dy) {
   const radius = playerRadius(p);
@@ -419,7 +419,7 @@ function publicPlayer(p) { const now = Date.now(), unlimitedSpecial = hasUnlimit
 function players(room) { return [...room.players.values()].map(publicPlayer); }
 function humanPlayers(room) { return [...room.players.values()].filter(player => !player.bot); }
 function teamGems(room, team) { return [...room.players.values()].filter(p => p.team === team).reduce((sum, p) => sum + (p.gems || 0), 0); }
-function meta(room) { const mode = MODES[room.mode], survivalTime = room.mode === "survival" ? Math.floor(((room.game.endedAt || Date.now()) - room.game.startedAt) / 1000) : 0, winner = room.players.has(room.game.winner) ? publicPlayer(room.players.get(room.game.winner)) : room.game.winner, botCount = [...room.players.values()].filter(p => p.bot).length; return { mode:room.mode, modeName:mode.name, objective:mode.objective, target:mode.target, winner, winnerTeam:room.game.winnerTeam, rewardCharacter:room.game.rewardCharacter, items:room.game.items, projectiles:room.game.projectiles.map(({ id, x, y, vx, vy, type, color, returning, radius }) => ({ id, x, y, vx, vy, type, color, returning, radius })), pixelZones:(room.game.pixelZones || []).map(({ x, y, radius, landsAt, endsAt }) => ({ x, y, radius, landsAt, endsAt })), iceZones:(room.game.iceZones || []).map(({ x, y, radius, endsAt }) => ({ x, y, radius, endsAt })), bazaarBoxes:(room.game.bazaarBoxes || []).map(({ x, y, expiresAt }) => ({ x, y, expiresAt })), skyBombs:(room.game.skyBombs || []).map(({ x, y, radius, endsAt }) => ({ x, y, radius, endsAt })), sharkSurges:(room.game.sharkSurges || []).map(({ x1, y1, x2, y2, radius, startAt, breachAt, endsAt }) => ({ x1, y1, x2, y2, radius, startAt, breachAt, endsAt })), windBursts:(room.game.windBursts || []).map(({ x, y, radius, startsAt, endsAt }) => ({ x, y, radius, startsAt, endsAt })), fireTrails:(room.game.fireTrails || []).map(({ type, color, x, y, x1, y1, x2, y2, radius, endsAt }) => ({ type, color, x, y, x1, y1, x2, y2, radius, endsAt })), airSlams:(room.game.airSlams || []).map(({ ownerId, targetId, character, targetCharacter, startX, startY, targetStartX, targetStartY, landingX, landingY, startedAt, impactAt, endsAt }) => ({ ownerId, targetId, character, targetCharacter, startX, startY, targetStartX, targetStartY, landingX, landingY, startedAt, impactAt, endsAt })), decoys:(room.game.decoys || []).map(({ id, character, x, y, team, bot, health, golden }) => ({ id, character, x, y, team, bot, health, golden })), safeRadius:room.game.safeRadius, zoneScore:room.game.zoneScore, gemScore:{ red:teamGems(room,"red"), blue:teamGems(room,"blue") }, survivalTime, wave:room.game.wave, botCount, arena:room.arena, survivalLeaders }; }
+function meta(room) { const mode = MODES[room.mode], survivalTime = room.mode === "survival" ? Math.floor(((room.game.endedAt || Date.now()) - room.game.startedAt) / 1000) : 0, winner = room.players.has(room.game.winner) ? publicPlayer(room.players.get(room.game.winner)) : room.game.winner, botCount = [...room.players.values()].filter(p => p.bot).length; return { mode:room.mode, modeName:mode.name, objective:mode.objective, target:mode.target, winner, winnerTeam:room.game.winnerTeam, rewardCharacter:room.game.rewardCharacter, items:room.game.items, projectiles:room.game.projectiles.map(({ id, x, y, vx, vy, type, color, returning, radius }) => ({ id, x, y, vx, vy, type, color, returning, radius })), meleeEffects:(room.game.meleeEffects || []).map(({ x, y, dx, dy, type, heavy, startedAt, endsAt }) => ({ x, y, dx, dy, type, heavy, startedAt, endsAt })), pixelZones:(room.game.pixelZones || []).map(({ x, y, radius, landsAt, endsAt }) => ({ x, y, radius, landsAt, endsAt })), iceZones:(room.game.iceZones || []).map(({ x, y, radius, endsAt }) => ({ x, y, radius, endsAt })), bazaarBoxes:(room.game.bazaarBoxes || []).map(({ x, y, expiresAt }) => ({ x, y, expiresAt })), skyBombs:(room.game.skyBombs || []).map(({ x, y, radius, endsAt }) => ({ x, y, radius, endsAt })), sharkSurges:(room.game.sharkSurges || []).map(({ x1, y1, x2, y2, radius, startAt, breachAt, endsAt }) => ({ x1, y1, x2, y2, radius, startAt, breachAt, endsAt })), windBursts:(room.game.windBursts || []).map(({ x, y, radius, startsAt, endsAt }) => ({ x, y, radius, startsAt, endsAt })), fireTrails:(room.game.fireTrails || []).map(({ type, color, x, y, x1, y1, x2, y2, radius, endsAt }) => ({ type, color, x, y, x1, y1, x2, y2, radius, endsAt })), airSlams:(room.game.airSlams || []).map(({ ownerId, targetId, character, targetCharacter, startX, startY, targetStartX, targetStartY, landingX, landingY, startedAt, impactAt, endsAt }) => ({ ownerId, targetId, character, targetCharacter, startX, startY, targetStartX, targetStartY, landingX, landingY, startedAt, impactAt, endsAt })), decoys:(room.game.decoys || []).map(({ id, character, x, y, team, bot, health, golden }) => ({ id, character, x, y, team, bot, health, golden })), safeRadius:room.game.safeRadius, zoneScore:room.game.zoneScore, gemScore:{ red:teamGems(room,"red"), blue:teamGems(room,"blue") }, survivalTime, wave:room.game.wave, botCount, arena:room.arena, survivalLeaders }; }
 function broadcast(room) { io.to(room.code).emit("game:state", players(room)); io.to(room.code).emit("game:meta", meta(room)); }
 function recordSurvivalLeaders(room) {
   const survived = Math.floor((room.game.endedAt - room.game.startedAt) / 1000);
@@ -902,13 +902,16 @@ function attack(room, attacker, now) {
     return;
   }
   if (attacker.character === "mutabaki") {
+    room.game.meleeEffects ||= [];
+    room.game.meleeEffects.push({ x:attacker.x, y:attacker.y, dx, dy, type:"mutabakiPunch", heavy:false, startedAt:now, endsAt:now + 230 });
+    attacker.hitUntil = now + 140;
     const target = firstTargetOnLine(room, attacker, dx, dy, stats.range);
     if (!target) return;
     const comboWindow = now - (attacker.mutabakiComboAt || 0) < 1900;
     attacker.mutabakiCombo = comboWindow ? (attacker.mutabakiCombo || 0) + 1 : 1;
     attacker.mutabakiComboAt = now;
+    room.game.meleeEffects[room.game.meleeEffects.length - 1].heavy = attacker.mutabakiCombo % 3 === 0;
     const damage = stats.damage * (attacker.bot ? BOT_DAMAGE_SCALE : 1) * (now < (attacker.damageBoostUntil || 0) ? 1.35 : 1) * (now < (attacker.giantDamageUntil || 0) ? 1.15 : 1);
-    attacker.hitUntil = now + 120;
     target.health -= damage;
     target.hitUntil = now + 220;
     if (attacker.mutabakiCombo % 3 === 0) dashPlayer(room.arena, target, dx * 48, dy * 48);
@@ -1099,7 +1102,7 @@ function special(room, p, now) {
     }
     const landingX = clamp(target.x + aim.x * 54, 45, room.arena.width - 45);
     const landingY = clamp(target.y + aim.y * 54, 45, room.arena.height - 45);
-    const impactAt = now + 920;
+    const impactAt = now + 1250;
     room.game.airSlams ||= [];
     room.game.airSlams.push({
       ownerId:p.id,
@@ -1116,7 +1119,7 @@ function special(room, p, now) {
       landingY,
       startedAt:now,
       impactAt,
-      endsAt:now + 1320,
+      endsAt:now + 1750,
       hitDone:false
     });
     p.airSlamUntil = impactAt;
@@ -1398,6 +1401,10 @@ function updateAirSlams(room, now) {
     if (target?.health <= 0) kill(room, target, owner);
   }
 }
+function updateMeleeEffects(room, now) {
+  room.game.meleeEffects ||= [];
+  room.game.meleeEffects = room.game.meleeEffects.filter(effect => now < effect.endsAt);
+}
 function nearestEnemy(room, source) {
   let selected = null, distance = Infinity;
   const sourceId = source.ownerId || source.id;
@@ -1564,6 +1571,7 @@ function updateRoom(room, now) {
   updateSkyBombs(room, now);
   updateSharkSurges(room, now);
   updateAirSlams(room, now);
+  updateMeleeEffects(room, now);
   updateDecoys(room, now);
   updateFireTrails(room, now);
   updateWindBursts(room, now);
