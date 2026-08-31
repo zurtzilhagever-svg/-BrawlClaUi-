@@ -781,18 +781,42 @@ input.name-locked {
 }
 
 .season-panel {
+  position: relative;
   width: 100%;
   display: grid;
   gap: 10px;
   margin: 10px 0 14px;
   padding: 14px;
   border-radius: 8px;
+  overflow: hidden;
   background:
-    linear-gradient(135deg, #15213a 0%, #12314a 56%, #2a2037 100%);
-  border: 1px solid #79dcff44;
-  box-shadow: inset 0 1px #ffffff18, 0 12px 28px #0004;
+    linear-gradient(115deg, #79dcff1f 0 1px, transparent 1px 28px),
+    linear-gradient(155deg, #ffd15a18 0 1px, transparent 1px 34px),
+    linear-gradient(135deg, #111b30 0%, #123c55 54%, #32203b 100%);
+  border: 1px solid #79dcff66;
+  box-shadow: inset 0 1px #ffffff20, 0 18px 42px #0006, 0 0 34px #46c8ff18;
   transform-origin: top center;
   animation: seasonEnter .58s cubic-bezier(.2, .9, .2, 1) both;
+}
+
+.season-panel::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(90deg, transparent, #7de8ff26, transparent);
+  transform: translateX(-70%);
+  animation: seasonScan 2.8s ease-out .35s both;
+}
+
+.season-head,
+.season-panel p,
+.season-progress span,
+.season-goal,
+.season-quests li,
+.season-gate {
+  position: relative;
+  z-index: 1;
 }
 
 .season-head {
@@ -809,77 +833,32 @@ input.name-locked {
   color: #101724;
   font-size: .72rem;
   font-weight: 900;
+  animation: seasonBadgePulse 1.35s ease-out .28s both;
 }
 
-.season-head span {
-  animation: seasonBadgePulse 1.35s ease-out .28s both;
+.season-head strong {
+  color: #fff;
+  font-size: 1.18rem;
+  font-weight: 900;
+  text-shadow: 0 0 18px #79dcff66;
 }
 
 .season-panel p,
 .season-progress span,
 .season-goal,
-.season-quests li {
+.season-quests li,
+.season-gate {
   opacity: 0;
   animation: seasonItemEnter .42s ease-out both;
 }
 
 .season-panel p {
-  animation-delay: .08s;
-}
-
-.season-progress span:nth-child(1) {
-  animation-delay: .16s;
-}
-
-.season-progress span:nth-child(2) {
-  animation-delay: .22s;
-}
-
-.season-progress span:nth-child(3) {
-  animation-delay: .28s;
-}
-
-.season-goal {
-  animation-delay: .34s;
-}
-
-.season-quests li:nth-child(1) {
-  animation-delay: .42s;
-}
-
-.season-quests li:nth-child(2) {
-  animation-delay: .48s;
-}
-
-.season-quests li:nth-child(3) {
-  animation-delay: .54s;
-}
-
-.season-quests li:nth-child(4) {
-  animation-delay: .6s;
-}
-
-.season-quests li:nth-child(5) {
-  animation-delay: .66s;
-}
-
-.season-quests li.complete b {
-  animation: seasonCompletePulse 1.15s ease-out both;
-}
-
-.season-head strong {
-  color: #fff;
-  font-size: 1.05rem;
-  font-weight: 900;
-}
-
-.season-panel p,
-.season-goal span {
   margin: 0;
   color: #dce9ff;
   font-size: .88rem;
   font-weight: 800;
   line-height: 1.35;
+  animation-delay: .08s;
 }
 
 .season-progress {
@@ -897,7 +876,12 @@ input.name-locked {
   background: #0d1426cc;
   border: 1px solid #ffffff16;
   text-align: center;
+  box-shadow: inset 0 1px #ffffff10;
 }
+
+.season-progress span:nth-child(1) { animation-delay: .16s; }
+.season-progress span:nth-child(2) { animation-delay: .22s; }
+.season-progress span:nth-child(3) { animation-delay: .28s; }
 
 .season-progress b {
   color: #9fb2d0;
@@ -907,8 +891,9 @@ input.name-locked {
 
 .season-progress strong {
   color: #ffd15a;
-  font-size: 1.08rem;
+  font-size: 1.28rem;
   font-weight: 900;
+  text-shadow: 0 0 12px #ffd15a44;
 }
 
 .season-goal {
@@ -916,14 +901,25 @@ input.name-locked {
   gap: 4px;
   padding: 10px;
   border-radius: 8px;
-  background: #0d1426cc;
-  border: 1px solid #ffffff16;
+  background: linear-gradient(135deg, #0d1426e8, #121d34e8);
+  border: 1px solid #79dcff24;
+  animation-delay: .34s;
 }
 
-.season-goal b {
+.season-goal b,
+.season-gate b {
   color: #ffd15a;
   font-size: .75rem;
   font-weight: 900;
+}
+
+.season-goal span,
+.season-gate span {
+  margin: 0;
+  color: #dce9ff;
+  font-size: .84rem;
+  font-weight: 800;
+  line-height: 1.35;
 }
 
 .season-quests {
@@ -946,20 +942,79 @@ input.name-locked {
   min-height: 30px;
   padding: 7px 9px;
   border-radius: 8px;
-  background: #0d142680;
-  border: 1px solid #ffffff12;
+  background: linear-gradient(90deg, #0d1426c8, #102844c8);
+  border: 1px solid #79dcff20;
+  box-shadow: inset 3px 0 #79dcff40;
 }
+
+.season-quests li:nth-child(1) { animation-delay: .42s; }
+.season-quests li:nth-child(2) { animation-delay: .48s; }
+.season-quests li:nth-child(3) { animation-delay: .54s; }
+.season-quests li:nth-child(4) { animation-delay: .6s; }
+.season-quests li:nth-child(5) { animation-delay: .66s; }
 
 .season-quests li.complete {
   color: #dcffe8;
   border-color: #62dc8d66;
-  background: #123020cc;
+  background: linear-gradient(90deg, #123020e6, #0f3b34e6);
+  box-shadow: inset 3px 0 #62dc8d;
+}
+
+.season-quests li.complete b {
+  animation: seasonCompletePulse 1.15s ease-out both;
 }
 
 .season-quests li b {
   color: #ffd15a;
   font-size: .75rem;
   white-space: nowrap;
+}
+
+.season-gate {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #111827, #1b2844);
+  border: 1px solid #ffffff18;
+  box-shadow: inset 0 1px #ffffff12;
+  animation-delay: .74s;
+}
+
+.season-gate.open {
+  border-color: #ffd15a88;
+  background: linear-gradient(135deg, #172038, #273112);
+  box-shadow: inset 0 1px #ffffff22, 0 0 24px #ffd15a22;
+}
+
+.season-gate div {
+  display: grid;
+  gap: 4px;
+}
+
+.season-gate button {
+  min-width: 86px;
+  min-height: 42px;
+  border: 0;
+  border-radius: 8px;
+  padding: 8px 10px;
+  background: #263248;
+  color: #9fb2d0;
+  font-size: .78rem;
+  font-weight: 900;
+}
+
+.season-gate.open button {
+  background: linear-gradient(135deg, #ffd15a, #70d7ff);
+  color: #101724;
+  box-shadow: 0 0 18px #ffd15a33;
+}
+
+.season-gate button:disabled {
+  cursor: not-allowed;
+  opacity: .7;
 }
 
 @keyframes seasonEnter {
@@ -995,6 +1050,20 @@ input.name-locked {
   }
 }
 
+@keyframes seasonScan {
+  0% {
+    opacity: 0;
+    transform: translateX(-70%);
+  }
+  20% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(70%);
+  }
+}
+
 @keyframes seasonCompletePulse {
   0% {
     transform: scale(.94);
@@ -1013,6 +1082,7 @@ input.name-locked {
   .season-panel p,
   .season-progress span,
   .season-goal,
+  .season-gate,
   .season-quests li,
   .season-quests li.complete b {
     animation: none;
