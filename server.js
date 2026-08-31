@@ -34,11 +34,12 @@ const CHARACTERS = {
   shoopi: { name: "\u05e9\u05d5\u05e4\u05d9", hp: 86, speed: 4.32, damage: 13, range: 585, rate: 720, special: "Wind Spiral" },
   tuli: { name: "\u05ea\u05d5\u05dc\u05d9 \u05ea\u05d5\u05dc\u05d9", hp: 94, speed: 4.45, damage: 12, range: 520, rate: 610, special: "Invincible Cat Run" },
   gack: { name: "\u05d2\u05d0\u05e7", hp: 132, speed: 3.65, damage: 16, range: 430, rate: 760, special: "Chameleon Cloak" },
+  mutabaki: { name: "\u05de\u05ea\u05d0\u05d1\u05e7\u05d9", hp: 142, speed: 3.55, damage: 25, range: 105, rate: 620, special: "Air Slam Drop" },
   masterv: { name: "Master V", hp: 128, speed: 3.9, damage: 18, range: 470, rate: 620, special: "Ultimate Master" },
   mash: { name: "\u05de\u05d0\u05e9", hp: 78, speed: 2.8, damage: 7, range: 295, rate: 1050, special: "Star Drill" },
   grunt: { name: "Grunt", hp: 70, speed: 2.35, damage: 8, range: 44, rate: 760, special: "None" }
 };
-const PLAYABLE_CHARACTERS = new Set(["blaze", "boomer", "fangli", "pixel", "tank", "bazaar", "ari", "skyfalcon", "seashark", "shoopi", "tuli", "gack", "masterv"]);
+const PLAYABLE_CHARACTERS = new Set(["blaze", "boomer", "fangli", "pixel", "tank", "bazaar", "ari", "skyfalcon", "seashark", "shoopi", "tuli", "gack", "mutabaki", "masterv"]);
 const ADMIN_ONLY_CHARACTERS = new Set(["ari", "skyfalcon", "seashark", "masterv"]);
 const MAX_CHARACTER_LEVEL = 10;
 const SKINS = new Set(["default", "gold", "shadow"]);
@@ -56,6 +57,7 @@ const AMMO_RELOAD_MS = {
   shoopi: 1350,
   tuli: 1180,
   gack: 1500,
+  mutabaki: 980,
   masterv: 1250,
   grunt: 1300
 };
@@ -329,7 +331,7 @@ function randomSpot(arena) {
 }
 function makeItems(arena, amount, type) { return Array.from({ length: amount }, () => ({ ...randomSpot(arena), type })); }
 function gameFor(mode, arena = arenaFor(mode)) { return { startedAt: Date.now(), winner: null, winnerTeam: null, rewardCharacter: null, items: mode === "gems" ? makeItems(arena, 12, "gem") : mode === "coins" ? makeItems(arena, 18, "coin") : [], projectiles: [], pixelZones: [], iceZones: [], bazaarBoxes: [], skyBombs: [], sharkSurges: [], windBursts: [], fireTrails: [], decoys: [], nextProjectileId: 0, nextDecoyId: 0, zoneScore: { red: 0, blue: 0 }, safeRadius: arenaSafeRadius(arena), nextItemAt: 0, nextBotAt: 0, botSerial: 0, wave: 0 }; }
-function playerRadius(p) { const base = p.character === "ari" ? 27 : p.character === "skyfalcon" ? 21 : p.character === "seashark" ? 25 : p.character === "shoopi" ? 20 : p.character === "tuli" ? 21 : p.character === "gack" ? 26 : p.character === "tank" ? 26 : p.character === "grunt" ? 18 : p.character === "mash" ? 22 : 23; return Date.now() < (p.giantUntil || 0) ? base * 1.2 : base; }
+function playerRadius(p) { const base = p.character === "ari" ? 27 : p.character === "skyfalcon" ? 21 : p.character === "seashark" ? 25 : p.character === "shoopi" ? 20 : p.character === "tuli" ? 21 : p.character === "gack" ? 26 : p.character === "mutabaki" ? 27 : p.character === "tank" ? 26 : p.character === "grunt" ? 18 : p.character === "mash" ? 22 : 23; return Date.now() < (p.giantUntil || 0) ? base * 1.2 : base; }
 function movePlayer(arena, p, dx, dy) {
   const radius = playerRadius(p);
   const nextX = clamp(p.x + dx, 28, arena.width - 28);
@@ -899,6 +901,21 @@ function attack(room, attacker, now) {
     pushProjectile(room, attacker, dx, dy, stats, { type:"gackWave", color:"#76ff47", start:38, speed:15, radius:24, range:stats.range, damage:stats.damage, pierce:true });
     return;
   }
+  if (attacker.character === "mutabaki") {
+    const target = firstTargetOnLine(room, attacker, dx, dy, stats.range);
+    if (!target) return;
+    const comboWindow = now - (attacker.mutabakiComboAt || 0) < 1900;
+    attacker.mutabakiCombo = comboWindow ? (attacker.mutabakiCombo || 0) + 1 : 1;
+    attacker.mutabakiComboAt = now;
+    const damage = stats.damage * (attacker.bot ? BOT_DAMAGE_SCALE : 1) * (now < (attacker.damageBoostUntil || 0) ? 1.35 : 1) * (now < (attacker.giantDamageUntil || 0) ? 1.15 : 1);
+    attacker.hitUntil = now + 120;
+    target.health -= damage;
+    target.hitUntil = now + 220;
+    if (attacker.mutabakiCombo % 3 === 0) dashPlayer(room.arena, target, dx * 48, dy * 48);
+    if (!attacker.bot) attacker.specialCharge = Math.min(SPECIAL_HITS, (attacker.specialCharge || 0) + 1);
+    if (target.health <= 0) kill(room, target, attacker);
+    return;
+  }
   if (attacker.character === "mash") {
     for (const angle of [-0.08, 0, 0.08]) {
       const cos = Math.cos(angle), sin = Math.sin(angle);
@@ -1072,6 +1089,33 @@ function special(room, p, now) {
     p.catRushUntil = Math.max(p.catRushUntil || 0, now + 4200);
     p.hitUntil = now + 380;
     dashPlayer(room.arena, p, aim.x * 175, aim.y * 175);
+  } else if (p.character === "mutabaki") {
+    const aim = aimDirection(p);
+    const target = firstTargetOnLine(room, p, aim.x, aim.y, 165);
+    if (!target) {
+      dashPlayer(room.arena, p, aim.x * 90, aim.y * 90);
+      p.hitUntil = now + 260;
+      return;
+    }
+    const landingX = clamp(target.x + aim.x * 54, 45, room.arena.width - 45);
+    const landingY = clamp(target.y + aim.y * 54, 45, room.arena.height - 45);
+    dashPlayer(room.arena, p, landingX - p.x, landingY - p.y);
+    dashPlayer(room.arena, target, landingX - target.x, landingY - target.y);
+    target.health -= p.bot ? 36 : 72;
+    target.hitUntil = now + 520;
+    const radius = 150;
+    room.game.windBursts ||= [];
+    room.game.windBursts.push({ ownerId:p.id, team:p.team, bot:Boolean(p.bot), x:landingX, y:landingY, radius, startsAt:now, endsAt:now + 780 });
+    for (const other of room.players.values()) {
+      if (!canAffectWithSpecial(room, p, other) || other.id === target.id) continue;
+      const ox = other.x - landingX, oy = other.y - landingY, distance = Math.hypot(ox, oy) || 1;
+      if (distance > radius + playerRadius(other)) continue;
+      other.health -= p.bot ? 12 : 24;
+      other.hitUntil = now + 260;
+      dashPlayer(room.arena, other, ox / distance * 82, oy / distance * 82);
+      if (other.health <= 0) kill(room, other, p);
+    }
+    if (target.health <= 0) kill(room, target, p);
   } else if (p.character === "masterv") {
     const aim = aimDirection(p);
     dashPlayer(room.arena, p, aim.x * 150, aim.y * 150);

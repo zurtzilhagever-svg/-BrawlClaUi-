@@ -130,7 +130,7 @@ const selectedSkinsKey = "brawlclaui-selected-skins";
 const nameLockedKey = "brawlclaui-name-locked";
 const renameGrantKey = "brawlclaui-can-rename";
 const firstGameCompletedKey = "brawlclaui-first-game-completed";
-const lockedCharacters = new Set(["boomer", "fangli", "pixel", "tank", "bazaar", "ari", "skyfalcon", "seashark", "shoopi", "tuli", "gack", "masterv"]);
+const lockedCharacters = new Set(["boomer", "fangli", "pixel", "tank", "bazaar", "ari", "skyfalcon", "seashark", "shoopi", "tuli", "gack", "mutabaki", "masterv"]);
 const characterRarities = {
   blaze: "common",
   boomer: "common",
@@ -144,6 +144,7 @@ const characterRarities = {
   shoopi: "epic",
   tuli: "epic",
   gack: "mythic",
+  mutabaki: "mythic",
   masterv: "special"
 };
 const rarityCreditCosts = {
@@ -157,7 +158,7 @@ const maxCharacterLevel = 10;
 const skinOrder = ["default", "gold", "shadow"];
 const skinCosts = { default: 0, gold: 120, shadow: 180 };
 const adminOnlyCharacters = new Set(["ari", "skyfalcon", "seashark", "masterv"]);
-const adminGrantCharacters = ["boomer", "fangli", "pixel", "tank", "bazaar", "ari", "skyfalcon", "seashark", "shoopi", "tuli", "gack", "masterv"];
+const adminGrantCharacters = ["boomer", "fangli", "pixel", "tank", "bazaar", "ari", "skyfalcon", "seashark", "shoopi", "tuli", "gack", "mutabaki", "masterv"];
 const concealedCharacterLabel = "???";
 const ownerAdminEmail = "zurtzilhagever@gmail.com";
 const adminEmails = new Set(["zurtzilhagever@gmail.com"]);
@@ -582,6 +583,7 @@ const translations = {
     shoopiName: "Shoopi",
     tuliName: "Tuli Tuli",
     gackName: "Gack",
+    mutabakiName: "Mutabaki",
     mastervName: "Master V",
     blazeDesc: "3 tennis-ball volley",
     boomerDesc: "Boomerang - waits for return",
@@ -600,6 +602,7 @@ const translations = {
     shoopiDesc: "Binding feathers + wind spiral",
     tuliDesc: "Ricochet yarn + invincible run",
     gackDesc: "Piercing tail wave + 20s invisibility",
+    mutabakiDesc: "Heavy punch + air slam drop",
     mastervDesc: "Admin-only ultimate brawler",
     ultimateReady: "ULTI READY",
     skyBombMode: "BOMB",
@@ -798,6 +801,7 @@ const translations = {
     shoopiName: "\u05e9\u05d5\u05e4\u05d9",
     tuliName: "\u05ea\u05d5\u05dc\u05d9 \u05ea\u05d5\u05dc\u05d9",
     gackName: "\u05d2\u05d0\u05e7",
+    mutabakiName: "\u05de\u05ea\u05d0\u05d1\u05e7\u05d9",
     mastervName: "Master V",
     blazeDesc: "\u05de\u05d8\u05d7 3 \u05db\u05d3\u05d5\u05e8\u05d9 \u05d8\u05e0\u05d9\u05e1",
     boomerDesc: "\u05d1\u05d5\u05de\u05e8\u05e0\u05d2 - \u05de\u05d7\u05db\u05d4 \u05e9\u05d9\u05d7\u05d6\u05d5\u05e8",
@@ -816,6 +820,7 @@ const translations = {
     shoopiDesc: "\u05e0\u05d5\u05e6\u05d5\u05ea \u05db\u05d5\u05d1\u05dc\u05d5\u05ea + \u05e1\u05e4\u05d9\u05e8\u05dc\u05ea \u05e8\u05d5\u05d7",
     tuliDesc: "\u05db\u05d3\u05d5\u05e8\u05d9 \u05e6\u05de\u05e8 \u05e7\u05d5\u05e4\u05e6\u05d9\u05dd + \u05e8\u05d9\u05e6\u05ea \u05d7\u05ea\u05d5\u05dc",
     gackDesc: "\u05d2\u05dc \u05d6\u05e0\u05d1 \u05d7\u05d5\u05d3\u05e8 + \u05d4\u05e1\u05d5\u05d5\u05d0\u05d4 20 \u05e9\u05e0\u05d9\u05d5\u05ea",
+    mutabakiDesc: "\u05d0\u05d2\u05e8\u05d5\u05e3 \u05db\u05d1\u05d3 + \u05d4\u05d8\u05dc\u05ea \u05d0\u05d5\u05d5\u05d9\u05e8",
     mastervDesc: "\u05dc\u05d5\u05d7\u05dd \u05d0\u05d5\u05dc\u05d8\u05d9\u05de\u05d8\u05d9\u05d1\u05d9 \u05dc\u05d0\u05d3\u05de\u05d9\u05df \u05d1\u05dc\u05d1\u05d3",
     ultimateReady: "\u05d9\u05e9 \u05d0\u05d5\u05dc\u05d8\u05d9",
     skyBombMode: "\u05e4\u05e6\u05e6\u05d4",
@@ -1533,6 +1538,7 @@ function renderCharacterLocks() {
     else if (label && character === "shoopi") label.textContent = t("shoopiDesc");
     else if (label && character === "tuli") label.textContent = t("tuliDesc");
     else if (label && character === "gack") label.textContent = t("gackDesc");
+    else if (label && character === "mutabaki") label.textContent = t("mutabakiDesc");
     else if (label && character === "masterv") label.textContent = t("mastervDesc");
     if (locked && character === selectedCharacter) {
       selectedCharacter = "blaze";
@@ -1585,17 +1591,19 @@ let cloudSaveTimer = 0;
 let lastCloudSnapshot = "";
 let pendingJoinCode = (new URLSearchParams(location.search).get("join") || "").trim().toUpperCase();
 let profileIntroResetApplied = false;
-const characterImages = Object.fromEntries(["blaze", "boomer", "fangli", "pixel", "tank", "bazaar", "ari", "skyfalcon", "seashark", "shoopi", "tuli", "gack", "masterv", "mash"].map(id => {
+const characterImages = Object.fromEntries(["blaze", "boomer", "fangli", "pixel", "tank", "bazaar", "ari", "skyfalcon", "seashark", "shoopi", "tuli", "gack", "mutabaki", "masterv", "mash"].map(id => {
   const image = new Image();
-  image.src = `/characters/${id}.png?v=${id === "gack" ? 107 : id === "tuli" ? 107 : id === "shoopi" ? 103 : id === "seashark" ? 95 : id === "skyfalcon" ? 98 : id === "ari" ? 97 : id === "masterv" ? 77 : 62}`;
+  image.src = `/characters/${id}.png?v=${id === "mutabaki" ? 113 : id === "gack" ? 107 : id === "tuli" ? 107 : id === "shoopi" ? 103 : id === "seashark" ? 95 : id === "skyfalcon" ? 98 : id === "ari" ? 97 : id === "masterv" ? 77 : 62}`;
   return [id, image];
 }));
 const entryVehicleImages = {
   tuli: new Image(),
-  gack: new Image()
+  gack: new Image(),
+  mutabaki: new Image()
 };
 entryVehicleImages.tuli.src = "/characters/tuli-car.png?v=105";
 entryVehicleImages.gack.src = "/characters/gack-car.png?v=107";
+entryVehicleImages.mutabaki.src = "/characters/mutabaki-car.png?v=113";
 const motionState = new Map();
 const entryTransformState = new Map();
 const fallbackArena = { width: 1200, height: 900, zoneRadius: 95, obstacles: [], bushes: [], spawnPoints: [] };
@@ -1889,6 +1897,7 @@ function characterLabel(character) {
   if (character === "shoopi") return t("shoopiName");
   if (character === "tuli") return t("tuliName");
   if (character === "gack") return t("gackName");
+  if (character === "mutabaki") return t("mutabakiName");
   if (character === "masterv") return t("mastervName");
   return character.charAt(0).toUpperCase() + character.slice(1);
 }
@@ -3141,6 +3150,14 @@ function drawCharacter(p, motion) {
     ctx.lineTo(-25, 19);
     ctx.lineTo(-22, -18);
     ctx.closePath();
+  } else if (p.character === "mutabaki") {
+    ctx.moveTo(0, -31);
+    ctx.lineTo(25, -17);
+    ctx.lineTo(22, 24);
+    ctx.lineTo(0, 31);
+    ctx.lineTo(-22, 24);
+    ctx.lineTo(-25, -17);
+    ctx.closePath();
   } else if (p.character === "masterv") {
     ctx.moveTo(0, -30);
     ctx.lineTo(27, -7);
@@ -3251,6 +3268,21 @@ function drawCharacter(p, motion) {
     ctx.arc(-7, -7, 4, 0, Math.PI * 2);
     ctx.arc(7, -7, 4, 0, Math.PI * 2);
     ctx.fill();
+  } else if (p.character === "mutabaki") {
+    ctx.fillStyle = "#70f2e5";
+    ctx.beginPath();
+    ctx.arc(-7, -8, 5, 0, Math.PI * 2);
+    ctx.arc(7, -8, 5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = "#8ffff4";
+    ctx.lineWidth = 5;
+    ctx.lineCap = "round";
+    for (const side of [-1, 1]) {
+      ctx.beginPath();
+      ctx.moveTo(side * 18, 4);
+      ctx.lineTo(side * 37, 14);
+      ctx.stroke();
+    }
   } else if (p.character === "masterv") {
     ctx.fillStyle = "#ffe66d";
     ctx.beginPath();
@@ -3760,7 +3792,7 @@ function drawProjectile(projectile, now) {
 }
 
 function entryTransformProgress(p, now) {
-  if ((p.character !== "shoopi" && p.character !== "tuli" && p.character !== "gack") || !p.alive) {
+  if ((p.character !== "shoopi" && p.character !== "tuli" && p.character !== "gack" && p.character !== "mutabaki") || !p.alive) {
     entryTransformState.delete(p.id);
     return 1;
   }
@@ -3886,6 +3918,34 @@ function drawGackTruck(progress) {
   ctx.restore();
 }
 
+function drawMutabakiCar(progress) {
+  const image = entryVehicleImages.mutabaki;
+  ctx.save();
+  ctx.scale(1 - progress * .08, 1 - progress * .14);
+  if (image?.complete && image.naturalWidth) {
+    ctx.save();
+    ctx.beginPath();
+    ctx.roundRect?.(-43, -24, 86, 48, 9);
+    if (!ctx.roundRect) drawRoundedRect(-43, -24, 86, 48, 9);
+    ctx.clip();
+    ctx.drawImage(image, -43, -24, 86, 48);
+    ctx.restore();
+  } else {
+    ctx.fillStyle = "#14272b";
+    drawRoundedRect(-40, -17, 80, 34, 8);
+    ctx.fill();
+    ctx.fillStyle = "#45dfd2";
+    ctx.fillRect(-18, -12, 34, 10);
+  }
+  ctx.strokeStyle = "#55f4e8";
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.arc(-25, 18, 9, 0, Math.PI * 2);
+  ctx.arc(25, 18, 9, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.restore();
+}
+
 function drawEntryTransform(p, progress, now) {
   ctx.save();
   ctx.globalAlpha = 1 - Math.max(0, progress - .65) / .35;
@@ -3893,6 +3953,7 @@ function drawEntryTransform(p, progress, now) {
   if (p.character === "shoopi") drawShoopiJet(progress, now);
   else if (p.character === "tuli") drawTuliCar(progress);
   else if (p.character === "gack") drawGackTruck(progress);
+  else if (p.character === "mutabaki") drawMutabakiCar(progress);
   ctx.restore();
   if (progress > .55) {
     ctx.save();

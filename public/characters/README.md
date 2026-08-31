@@ -14,6 +14,8 @@ Place character images here using these exact filenames:
 - tuli-car.png
 - gack.png
 - gack-car.png
+- mutabaki.png
+- mutabaki-car.png
 - masterv.png
 - mash.png
 

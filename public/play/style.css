@@ -1431,6 +1431,17 @@ input.name-locked {
   text-shadow: 0 1px 3px #c8ff9c;
 }
 
+.portrait.mutabaki {
+  background: linear-gradient(145deg, #b7fff8, #33d8cf 45%, #172329);
+  border-radius: 46% 46% 16px 16px;
+}
+
+.portrait.mutabaki:before {
+  content: "M";
+  color: #061819;
+  text-shadow: 0 1px 3px #a9fff9;
+}
+
 .portrait.masterv {
   background: transparent;
   border-radius: 10px;
